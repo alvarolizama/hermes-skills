@@ -14,7 +14,7 @@ hermes skills install pocketbrain
 
 ## `pocketbase` — Cliente PocketBase API
 
-Cliente genérico para interactuar con la API REST de PocketBase. Maneja autenticación, CRUD de colecciones y registros, archivos, realtime SSE, y más.
+Cliente genérico para interactuar con la API REST de PocketBase: autenticación, CRUD de colecciones y registros, archivos, realtime SSE.
 
 ```python
 from pb import quick_pb
@@ -28,9 +28,7 @@ Variables de entorno: `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWOR
 
 ## `pocketbrain` — Segundo Cerebro Digital
 
-Knowledge base multi-cerebro sobre PocketBase. 12 colecciones interconectadas con trazabilidad completa.
-
-### Servidor Web Live
+Knowledge base multi-cerebro sobre PocketBase. 12 colecciones, servidor web live, trazabilidad completa.
 
 ```bash
 python3 brain_web.py --brain personal
@@ -39,25 +37,25 @@ python3 brain_web.py --brain personal
 
 ### Proyectos
 
-Cada proyecto agrupa goals, tareas, entregables y archivos. Vista completa de estado.
+Cada proyecto agrupa goals, tareas, entregables y archivos.
 
 ![Projects](screenshots/projects.png)
 
 ### Kanban
 
-Flujo de tareas: backlog → this week → today → in progress → done. Filtro por proyecto.
+Flujo de tareas con filtro por proyecto: backlog → this week → today → in progress → done.
 
 ![Kanban](screenshots/kanban.png)
 
 ### Goals & OKRs
 
-Milestones con deadline, goals con progreso, OKRs con key results anidados. Retrospectiva al cerrar.
+Milestones con deadline, goals con progreso, OKRs con key results anidados y retrospectiva al cerrar.
 
 ![Goals](screenshots/goals.png)
 
 ### Graph
 
-Visualización de todas las relaciones: páginas, goals, tareas, deliverables, reminders.
+Visualización de todas las relaciones entre páginas, goals, tareas, deliverables y reminders.
 
 ![Graph](screenshots/graph.png)
 
@@ -67,28 +65,14 @@ Visualización de todas las relaciones: páginas, goals, tareas, deliverables, r
 from brain import Brain
 brain = Brain('personal')
 
-# Conocimiento
 brain.create_page("Tema", body="## Ideas\n...", page_type="concept")
 brain.search("machine learning")
-
-# Tareas
 brain.create_todo("Revisar PR", domain="bravo")
-brain.move_todo(id, "done")
-
-# Goals con retrospectiva
 brain.create_goal("Lanzar MVP", type="milestone", deadline="2026-09-30")
 brain.complete_goal(id, retrospective="Entregado a tiempo.")
-
-# Proyectos
 brain.create_page("App Móvil", page_type="project")
-brain.create_deliverable("app-movil", file, title="Specs", version="v1")
-
-# Diario y recordatorios
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
 brain.create_reminder("Reunión", date="2026-06-15", time="10:00")
-
-# Exportar a markdown
-# python3 sync.py --brain personal --full
 ```
 
 ### 12 Colecciones
@@ -105,7 +89,16 @@ brain.create_reminder("Reunión", date="2026-06-15", time="10:00")
 | `brain_files` | Archivos adjuntos |
 | `brain_tags`, `brain_domains` | Organización |
 | `brain_page_versions` | Historial de cambios |
-| `brain_log` | Bitácora con trazabilidad |
+| `brain_log` | Bitácora con trazabilidad (agent + user) |
+
+### Scripts
+
+| Script | Uso |
+|--------|-----|
+| `brain_web.py` | Servidor web live con 7 secciones |
+| `brain.py` | Cliente Python para agentes |
+| `sync.py` | Export a markdown local |
+| `graph.py` | Graph HTML standalone |
 
 ---
 
