@@ -22,7 +22,7 @@ pb = quick_pb()
 records = pb.list('mi_coleccion', filter="status='active'")
 ```
 
-Variables de entorno requeridas: `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD`.
+Variables de entorno: `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD`.
 
 ---
 
@@ -37,27 +37,29 @@ python3 brain_web.py --brain personal
 # → http://localhost:8080
 ```
 
-7 secciones navegables con diseño limpio:
+### Proyectos
+
+Cada proyecto agrupa goals, tareas, entregables y archivos. Vista completa de estado.
 
 ![Projects](screenshots/projects.png)
 
----
+### Kanban
 
-### Kanban de Tareas
-
-Flujo completo: backlog → this week → today → in progress → done. Drag & drop entre columnas.
+Flujo de tareas: backlog → this week → today → in progress → done. Filtro por proyecto.
 
 ![Kanban](screenshots/kanban.png)
 
----
+### Goals & OKRs
 
-### Graph de Conexiones
+Milestones con deadline, goals con progreso, OKRs con key results anidados. Retrospectiva al cerrar.
 
-Visualización de todas las relaciones entre páginas, goals, tareas, entregables y recordatorios.
+![Goals](screenshots/goals.png)
+
+### Graph
+
+Visualización de todas las relaciones: páginas, goals, tareas, deliverables, reminders.
 
 ![Graph](screenshots/graph.png)
-
----
 
 ### Desde el Agente
 
@@ -67,25 +69,22 @@ brain = Brain('personal')
 
 # Conocimiento
 brain.create_page("Tema", body="## Ideas\n...", page_type="concept")
-brain.search("machine learning")     # case-insensitive, rankeado
+brain.search("machine learning")
 
 # Tareas
 brain.create_todo("Revisar PR", domain="bravo")
-brain.todos(status="today")
 brain.move_todo(id, "done")
 
 # Goals con retrospectiva
 brain.create_goal("Lanzar MVP", type="milestone", deadline="2026-09-30")
 brain.complete_goal(id, retrospective="Entregado a tiempo.")
 
-# Proyectos con todo conectado
+# Proyectos
 brain.create_page("App Móvil", page_type="project")
 brain.create_deliverable("app-movil", file, title="Specs", version="v1")
 
-# Diario
+# Diario y recordatorios
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
-
-# Recordatorios
 brain.create_reminder("Reunión", date="2026-06-15", time="10:00")
 
 # Exportar a markdown
@@ -96,26 +95,17 @@ brain.create_reminder("Reunión", date="2026-06-15", time="10:00")
 
 | Colección | Para |
 |-----------|------|
-| `brains` | Cerebros independientes (personal, bravo, proyectos...) |
+| `brains` | Cerebros independientes |
 | `brain_pages` | Páginas markdown con `[[wikilinks]]` |
 | `brain_todos` | Tareas con kanban |
 | `brain_goals` | Goals, milestones, OKRs con retrospectiva |
 | `brain_reminders` | Recordatorios con fecha/hora |
-| `brain_journal` | Diario (una entrada por día) |
+| `brain_journal` | Diario |
 | `brain_deliverables` | Entregables versionados |
 | `brain_files` | Archivos adjuntos |
 | `brain_tags`, `brain_domains` | Organización |
 | `brain_page_versions` | Historial de cambios |
-| `brain_log` | Bitácora con trazabilidad (agente + usuario) |
-
-### Scripts
-
-| Script | Uso |
-|--------|-----|
-| `brain_web.py` | Servidor web live |
-| `brain.py` | Cliente Python para agentes |
-| `sync.py` | Export a markdown local |
-| `graph.py` | Graph HTML standalone |
+| `brain_log` | Bitácora con trazabilidad |
 
 ---
 
