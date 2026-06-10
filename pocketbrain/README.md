@@ -48,7 +48,53 @@ Visualización de nodos (páginas, goals, tareas, recordatorios) y sus relacione
 
 ---
 
-## Uso con Scripts (Flujos Agentivos)
+## Dependencia
+
+Requiere el skill `pocketbase` → módulo `pb.py`. Las credenciales se cargan del archivo `~/.hermes/.env`:
+
+```bash
+POCKETBRAIN_HOST=http://localhost:8090
+POCKETBRAIN_EMAIL=admin@example.com
+POCKETBRAIN_PASSWORD=***
+```
+
+Independientes de las variables `POCKETBASE_*` que usaba el skill `pocketbase` anteriormente. Cada skill consumidor carga sus propias env vars.
+
+---
+
+## Quick Start
+
+```bash
+# 1. Crear colecciones (una vez)
+cd ~/.hermes/skills/productivity/pocketbrain/scripts
+python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
+
+# 2. Servidor web live
+python3 brain_web.py --context personal --port 8899
+# → http://localhost:8899
+
+# 3. Exportar a markdown
+python3 sync.py --context personal --full
+```
+
+### Desde el agente
+
+```python
+from brain import Brain
+
+brain = Brain('personal')
+
+# Páginas, tareas, goals, diario, recordatorios
+brain.create_page("Tema", body="## Ideas\n...", page_type="concept")
+brain.create_todo("Revisar PR", domain="projects")
+brain.create_goal("Lanzar MVP", type="milestone", deadline="2026-09-30", project_slug="app-movil")
+brain.journal_write("## Hoy\n- Avance en [[proyecto-x]]")
+brain.create_reminder("Reunión", date="2026-12-25", time="10:00")
+```
+
+---
+
+## Flujos Agentivos
 
 PocketBrain está diseñado para ser usado **100% por scripts** desde el agente. No necesitas abrir la UI si no quieres. El flujo de trabajo:
 
@@ -56,20 +102,7 @@ PocketBrain está diseñado para ser usado **100% por scripts** desde el agente.
 2. **El agente consulta** qué hay que hacer, qué está activo, qué pasó.
 3. **La UI web** es solo para consulta rápida cuando tú quieras.
 
-### Setup en 2 pasos
-
-```bash
-# 1. Variables de entorno en ~/.hermes/.env
-POCKETBRAIN_HOST=http://localhost:8090
-POCKETBRAIN_EMAIL=admin@example.com
-POCKETBRAIN_PASSWORD=***
-
-# 2. Crear colecciones (una vez)
-cd scripts
-python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pb())"
-```
-
-### Flujo 1: Guardar conocimiento
+### Guardar conocimiento
 
 ```python
 from brain import Brain
@@ -92,7 +125,7 @@ brain.append_to_page("arquitectura-de-cache", "- También sirve para rate limiti
 brain.search("cache")
 ```
 
-### Flujo 2: Gestión de Proyectos
+### Gestión de Proyectos
 
 ```python
 # Crear proyecto
@@ -119,7 +152,7 @@ brain.create_todo("Setup backend", domain="projects", page_slug="app-movil")
 brain.create_reminder("Demo con cliente", date="2026-07-15", time="10:00", page_slug="app-movil")
 ```
 
-### Flujo 3: Día a día
+### Día a día
 
 ```python
 # ¿Qué tengo para hoy?
@@ -141,7 +174,7 @@ brain.journal_write("## Hoy\n- Terminé el PR #42\n- [[Arquitectura de cache]]",
 brain.journal_entries(days=7)
 ```
 
-### Flujo 4: Auditoría y mantenimiento
+### Auditoría y mantenimiento
 
 ```python
 # Links rotos, huérfanos, etc.
@@ -197,4 +230,3 @@ Cada operación registra quién (agente) y para quién (usuario). La tabla `brai
 ## Estado
 
 Live. Funcionando en http://localhost:8899 con el contexto `personal`.
-
