@@ -988,6 +988,12 @@ class Brain:
             if page['slug'] not in all_linked:
                 report['orphans'].append(page['slug'])
 
+        # ── Drift detection ──
+        report['drift'] = self.detect_drift(limit=50)
+
+        # ── Frontmatter validation ──
+        report['frontmatter_issues'] = self.validate_frontmatter()
+
         # ── Summary ──
         report['summary'] = {
             'orphans': len(report['orphans']),
@@ -996,6 +1002,8 @@ class Brain:
             'contested': len(report['contested_pages']),
             'invalid_tags': len(report['invalid_tags']),
             'oversized': len(report['oversized_pages']),
+            'drift': len(report['drift']),
+            'frontmatter_issues': sum(len(v) for v in report['frontmatter_issues'].values()),
         }
 
         self.log('lint', description=f'Lint: {report["summary"]}')
@@ -1700,6 +1708,183 @@ class Brain:
         self.save_version(slug, f'Ingest inicial: {filename}')
 
         return data
+
+
+    # ── LLM Wiki methods ──────────────────────────────────────────
+
+    def detect_drift(self, limit: int = 50) -> list:
+        """Detecta paginas raw cuyo source_sha256 no coincide con el contenido actual.
+
+        Para paginas con page_type='raw' y source_sha256, recalcula el SHA256
+        del body y lo compara con el almacenado.
+
+        Args:
+            limit: Maximo de paginas a revisar.
+
+        Returns:
+            Lista de paginas con drift detectado.
+        """
+        if not self._context_id:
+            self.orient()
+
+        pages = self.pb.list('brain_pages',
+            filter=f"(brain='{self._context_id}' && page_type='raw' && source_sha256!='')",
+            perPage=limit)
+
+        drifted = []
+        for page in pages:
+            body = page.get('body', '') or ''
+            current_hash = sha256(body)
+            stored_hash = page.get('source_sha256', '')
+            if current_hash != stored_hash:
+                drifted.append({
+                    'slug': page['slug'],
+                    'title': page['title'],
+                    'stored_sha256': stored_hash[:16],
+                    'current_sha256': current_hash[:16],
+                    'source_url': page.get('source_url', ''),
+                })
+
+        self.log('lint', description=f'Drift detect: {len(drifted)} paginas con cambios')
+        return drifted
+
+    def validate_frontmatter(self) -> dict:
+        """Verifica campos requeridos en todas las paginas no archivadas.
+
+        Cada page_type tiene campos obligatorios:
+        - entity: title, body, summary, domain
+        - concept: title, body, summary
+        - comparison: title, body, domain
+        - raw: title, source_url, source_sha256
+        - project: title, body, domain
+        - query: title, body
+
+        Returns:
+            Dict con page_type -> lista de paginas que faltan campos.
+        """
+        if not self._context_id:
+            self.orient()
+
+        required_fields = {
+            'entity': ['title', 'body', 'summary', 'domain'],
+            'concept': ['title', 'body', 'summary'],
+            'comparison': ['title', 'body', 'domain'],
+            'raw': ['title', 'source_url', 'source_sha256'],
+            'project': ['title', 'body', 'domain'],
+            'query': ['title', 'body'],
+        }
+
+        pages = self.pb.all('brain_pages',
+            filter=f"(brain='{self._context_id}' && archived=false)")
+
+        results = {}
+        for page in pages:
+            pt = page.get('page_type', 'concept')
+            req = required_fields.get(pt, ['title'])
+            missing = [f for f in req if not page.get(f)]
+            if missing:
+                if pt not in results:
+                    results[pt] = []
+                results[pt].append({
+                    'slug': page['slug'],
+                    'title': page['title'],
+                    'missing': missing,
+                })
+
+        return results
+
+    def archive_old(self, days: int = 90, dry_run: bool = True) -> dict:
+        """Archiva paginas no actualizadas en mas de N dias.
+
+        Args:
+            days: Dias sin actualizar para considerar "viejo" (default: 90).
+            dry_run: Si True, solo reporta sin archivar.
+
+        Returns:
+            Dict con slugs archivados (o candidatos si dry_run).
+        """
+        if not self._context_id:
+            self.orient()
+
+        from datetime import datetime, timezone, timedelta
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S') + '.000Z'
+
+        pages = self.pb.all('brain_pages',
+            filter=f"(brain='{self._context_id}' && archived=false && updated<'{cutoff_str}')",
+            sort='updated', perPage=100)
+
+        results = []
+        for page in pages:
+            entry = {
+                'slug': page['slug'],
+                'title': page['title'],
+                'updated': page.get('updated', ''),
+                'page_type': page.get('page_type', ''),
+            }
+            if not dry_run:
+                self.archive_page(page['slug'])
+                entry['archived'] = True
+            results.append(entry)
+
+        action = 'lint' if dry_run else 'archive'
+        self.log(action, description=f'Archive old: {len(results)} candidatos (dry_run={dry_run}, days={days})')
+        return {'candidates': results, 'count': len(results), 'dry_run': dry_run}
+
+    def rotate_log(self, max_entries: int = 500) -> dict:
+        """Verifica tamano del log. Si excede max_entries, archiva en una
+        pagina raw y trunca brain_log.
+
+        Args:
+            max_entries: Maximo de entradas antes de rotar.
+
+        Returns:
+            Dict con estado del log.
+        """
+        if not self._context_id:
+            self.orient()
+
+        # Contar entradas aproximado
+        count_result = self.pb.list('brain_log',
+            filter=f"(brain='{self._context_id}')",
+            perPage=1, skipTotal=False)
+        # No tenemos total exacto facil, asi que intentamos all
+        all_logs = self.pb.all('brain_log',
+            filter=f"(brain='{self._context_id}')",
+            sort='created', perPage=max_entries + 200)
+        total = len(all_logs)
+
+        if total <= max_entries:
+            return {'total': total, 'rotated': False, 'reason': 'below threshold'}
+
+        keep = all_logs[-100:] if len(all_logs) > 100 else all_logs
+        archive = [l for l in all_logs if l not in keep]
+
+        if not archive:
+            return {'total': total, 'rotated': False, 'reason': 'nothing to archive'}
+
+        # Crear snapshot en brain_pages como raw
+        import json
+        from datetime import datetime, timezone
+        archive_body = json.dumps(archive, indent=2, default=str)
+        self.create_page(
+            title=f"Log Archive {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+            body=archive_body,
+            page_type='raw',
+        )
+
+        # Eliminar entradas archivadas
+        for entry in archive:
+            self.pb.delete('brain_log', entry['id'])
+
+        return {
+            'total_before': total,
+            'archived': len(archive),
+            'remaining': len(keep),
+            'rotated': True,
+        }
+
 
     # ── Internals ────────────────────────────────────────────────
 
