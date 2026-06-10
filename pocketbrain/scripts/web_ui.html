@@ -16,7 +16,8 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #nav{flex:1;overflow-y:auto;font-size:13px}
 #nav a.nav-link{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;color:var(--body);text-decoration:none;border-radius:6px;cursor:pointer;font-size:13px}
 #nav a.nav-link:hover,#nav a.nav-link.active{color:var(--ink);background:var(--soft)}
-#nav a.nav-link .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center}
+#nav a.nav-link .nav-label{display:flex;align-items:center;gap:6px;flex:1}
+#nav a.nav-link .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center;flex-shrink:0}
 #nav a.nav-link.active .nav-count{color:var(--ink);background:var(--canvas)}
 #nav .group{color:var(--mute);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:12px 4px 4px}
 #status{font-size:10px;color:var(--mute);padding:8px 4px;border-top:1px solid var(--hairline)}
@@ -151,15 +152,15 @@ function buildSidebar(){var nav=document.getElementById('nav');var h='';
 var pc=PAGES.filter(function(p){return p.page_type==='project';}).length;
 var wc=PAGES.filter(function(p){return p.page_type!=='project';}).length;
 var gc=GOALS.length,tc=TODOS.length,rc=REMINDERS.length,fc=FILES.length,dc=DEPS.length,jc=JOURNAL.length,nc=(GRAPH.nodes||[]).length;
-h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">'+icon('squares-2x2',16)+'<span>Proyectos</span><span class="nav-count">'+pc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo">'+icon('clipboard-document-list',16)+'<span>Todo</span><span class="nav-count">'+tc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals">'+icon('flag',16)+'<span>Goals</span><span class="nav-count">'+gc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders">'+icon('bell',16)+'<span>Reminders</span><span class="nav-count">'+rc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal">'+icon('book-open',16)+'<span>Journal</span><span class="nav-count">'+jc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'files\')" data-search="files">'+icon('paper-clip',16)+'<span>Files</span><span class="nav-count">'+fc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'deliverables\')" data-search="deliverables">'+icon('cube',16)+'<span>Deliverables</span><span class="nav-count">'+dc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki">'+icon('document-text',16)+'<span>Wiki</span><span class="nav-count">'+wc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph">'+icon('circle',16)+'<span>Graph</span><span class="nav-count">'+nc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo"><span class="nav-label">'+icon('clipboard-document-list',16)+'<span>Todo</span></span><span class="nav-count">'+tc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals"><span class="nav-label">'+icon('flag',16)+'<span>Goals</span></span><span class="nav-count">'+gc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders"><span class="nav-label">'+icon('bell',16)+'<span>Reminders</span></span><span class="nav-count">'+rc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal"><span class="nav-label">'+icon('book-open',16)+'<span>Journal</span></span><span class="nav-count">'+jc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'files\')" data-search="files"><span class="nav-label">'+icon('paper-clip',16)+'<span>Files</span></span><span class="nav-count">'+fc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'deliverables\')" data-search="deliverables"><span class="nav-label">'+icon('cube',16)+'<span>Deliverables</span></span><span class="nav-count">'+dc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki"><span class="nav-label">'+icon('document-text',16)+'<span>Wiki</span></span><span class="nav-count">'+wc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">◉ Graph</span><span class="nav-count">'+nc+'</span></a>';
 nav.innerHTML=h;}
 
 var _currentTab='todos',_currentProject=null;
