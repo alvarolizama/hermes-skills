@@ -139,6 +139,7 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <div id="view-wiki"></div>
   <div id="view-projects"></div>
   <div id="view-graph"><div id="graph-view"></div><div id="graph-legend"></div></div>
+  <div id="view-lint" class="view"></div>
 </div>
 <script>
 var PAGES=[],GOALS=[],TODOS=[],DEPS=[],FILES=[],REMINDERS=[],GRAPH={nodes:[],edges:[]},LOGS=[];
@@ -203,7 +204,7 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="jou
 h+='<a href="#" class="nav-link" onclick="showTab(\'files\')" data-search="files"><span class="nav-label">'+icon('paper-clip',16)+'<span>Files</span></span><span class="nav-count">'+fc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'deliverables\')" data-search="deliverables"><span class="nav-label">'+icon('cube',16)+'<span>Deliverables</span></span><span class="nav-count">'+dc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki"><span class="nav-label">'+icon('document-text',16)+'<span>Wiki</span></span><span class="nav-count">'+wc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">◉ Graph</span><span class="nav-count">'+nc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">◉ Graph</span><span class="nav-count">'+nc+'</span></a>';h+='<a href="#" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">✅ Lint</span></a>';
 nav.innerHTML=h;}
 
 var _currentTab='projects',_currentProject=null;
@@ -317,7 +318,7 @@ function showCurrentView(){
   document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});
   document.querySelectorAll('#nav a.nav-link').forEach(function(a){a.classList.remove('active');});
   if(_currentTab==='project'&&_currentProject){renderProjectView(_currentProject);return;}
-  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',files:'view-files',deliverables:'view-deliverables',wiki:'view-wiki',graph:'view-graph'};
+  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',files:'view-files',deliverables:'view-deliverables',wiki:'view-wiki',graph:'view-graph',lint:'view-lint'};
   var vid=views[_currentTab];if(!vid)return;
   document.getElementById(vid).classList.add('active');
   var sel='a.nav-link[onclick*="showTab(' + "'" + _currentTab + "'" + ')"]';
@@ -331,6 +332,7 @@ function showCurrentView(){
   else if(_currentTab==='deliverables')renderDeliverables();
   else if(_currentTab==='wiki'){if(window._wikiSlug){showPage(window._wikiSlug);}else{showIndex();}}
   else if(_currentTab==='graph'){document.getElementById('view-graph').classList.add('active');setTimeout(renderGraph,300);}
+  else if(_currentTab==='lint')renderLintView();
   document.getElementById('view-'+_currentTab).scrollTop=0;
 }
 
@@ -452,6 +454,41 @@ function renderRemindersView(){
   });
   document.getElementById('view-reminders').innerHTML=h||'<p style="color:var(--mute)">No hay recordatorios.</p>';
 }
+
+"use strict";
+function renderLintView() {
+  var el = document.getElementById('view-lint');
+  el.classList.add('active');
+  var h = '<h1 style="margin-bottom:20px">\u2705 Lint</h1>';
+  h += '<p style="color:var(--mute);margin-bottom:16px">Resultados de brain.lint(). Refresca desde el agente o haz click abajo.</p>';
+  h += '<button class="btn" onclick="refreshLint()" style="margin-bottom:16px;padding:8px 16px;border:1px solid var(--hairline);border-radius:6px;cursor:pointer;background:var(--canvas)">\ud83d\udd04 Refrescar</button>';
+  h += '<div id="lint-results"><p style="color:var(--mute)">Sin datos.</p></div>';
+  el.innerHTML = h;
+}
+function refreshLint() {
+  var el = document.getElementById('lint-results');
+  if (!el) return;
+  el.innerHTML = '<p style="color:var(--mute)">Cargando...</p>';
+  fetch('/api/lint').then(function(r){return r.json();}).then(function(data){
+    var h = '';
+    if (!data||!data.summary) { el.innerHTML = '<p style="color:var(--mute)">Sin datos.</p>'; return; }
+    h += '<div style="margin-bottom:16px"><strong>Total p\u00e1ginas:</strong> ' + data.total_pages + '</div>';
+    h += '<table style="width:100%;border-collapse:collapse;border:1px solid var(--hairline)"><tr style="background:var(--hairline)"><th style="padding:6px 12px;text-align:left">Issue</th><th style="padding:6px 12px;text-align:right">Cantidad</th></tr>';
+    var issues = {orphans:'Hu\u00e9rfanos',broken_links:'Links rotos',low_confidence:'Confianza baja',contested:'Contested',invalid_tags:'Tags inv\u00e1lidos',oversized:'P\u00e1ginas grandes',drift:'Source drift',frontmatter_issues:'Frontmatter inv\u00e1lido'};
+    Object.keys(issues).forEach(function(k){
+      var c = data.summary[k] || 0;
+      h += '<tr><td style="padding:4px 12px">' + issues[k] + '</td><td style="padding:4px 12px;text-align:right;font-weight:' + (c > 0 ? '700' : '400') + '">' + c + '</td></tr>';
+    });
+    h += '</table>';
+    if (data.orphans && data.orphans.length) { h += '<h3 style="margin-top:16px">Hu\u00e9rfanas (' + data.orphans.length + ')</h3>'; data.orphans.forEach(function(s){h += '<div class="card" style="cursor:pointer;padding:6px 12px;margin-bottom:4px" onclick="showPage(\\\'' + s + '\\\')">' + s + '</div>';}); }
+    if (data.broken_links && data.broken_links.length) { h += '<h3 style="margin-top:16px">Links rotos (' + data.broken_links.length + ')</h3>'; data.broken_links.forEach(function(b){h += '<div class="card" style="padding:6px 12px;margin-bottom:4px"><strong>' + b.page + '</strong> \u2192 ' + b.link + '</div>';}); }
+    if (data.low_confidence && data.low_confidence.length) { h += '<h3 style="margin-top:16px">Confianza baja (' + data.low_confidence.length + ')</h3>'; data.low_confidence.forEach(function(s){h += '<div class="card" style="cursor:pointer;padding:6px 12px;margin-bottom:4px" onclick="showPage(\\\'' + s + '\\\')">' + s + '</div>';}); }
+    if (data.contested_pages && data.contested_pages.length) { h += '<h3 style="margin-top:16px">Contested (' + data.contested_pages.length + ')</h3>'; data.contested_pages.forEach(function(s){h += '<div class="card" style="cursor:pointer;padding:6px 12px;margin-bottom:4px" onclick="showPage(\\\'' + s + '\\\')">' + s + '</div>';}); }
+    if (data.oversized_pages && data.oversized_pages.length) { h += '<h3 style="margin-top:16px">P\u00e1ginas grandes (' + data.oversized_pages.length + ')</h3>'; data.oversized_pages.forEach(function(s){h += '<div class="card" style="cursor:pointer;padding:6px 12px;margin-bottom:4px" onclick="showPage(\\\'' + s + '\\\')">' + s + '</div>';}); }
+    el.innerHTML = h;
+  }).catch(function(e){ el.innerHTML = '<p style="color:#E53935">Error: ' + e.message + '</p>'; });
+}
+
 
 // ── Wiki ──────────────────────────────────────────────────
 
