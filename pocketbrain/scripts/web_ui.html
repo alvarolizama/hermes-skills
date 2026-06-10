@@ -26,7 +26,7 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #main>div.active{display:block}
 #view-graph.active{display:flex;flex-direction:column;position:relative;max-width:none;padding:0;height:100%}
 #graph-view{position:absolute;top:0;left:0;right:0;bottom:0;min-height:400px}
-#graph-legend{position:absolute;top:12px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap}
+#graph-legend{position:absolute;bottom:12px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap}
 #graph-legend span{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
 .view-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 .view-header h1{font-family:SF Pro Rounded,system-ui,sans-serif;font-size:30px;font-weight:500;margin:0}
@@ -445,7 +445,7 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
   if(relCount)h+='<a href=\#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div>';
-  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href=\#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1>'+p.title+'</h1>';
+  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href=\#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div class="wiki-layout-page"><div class="wiki-left">';
   h+='<div id="page-tab-content"></div>';
   var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);
@@ -567,7 +567,7 @@ function renderProjectView(slug){
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var pfiles=FILES.filter(function(f){return f.page_slug===slug;});
   var h='<div class="project-tabs"><a class="active" href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a><a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals ('+pgoals.length+')</a><a href="\#" onclick="switchProjectTab(\'kanban\',\''+slug+'\'); return false;">Kanban ('+ptodos.length+')</a><a href="\#" onclick="switchProjectTab(\'reminders\',\''+slug+'\'); return false;">Recordatorios ('+prems.length+')</a><a href="\#" onclick="switchProjectTab(\'journal\',\''+slug+'\'); return false;">Journal ('+pjour.length+')</a><a href="\#" onclick="switchProjectTab(\'files\',\''+slug+'\'); return false;">Archivos ('+pfiles.length+')</a><a href="\#" onclick="switchProjectTab(\'deliverables\',\''+slug+'\'); return false;">Entregables ('+pdeps.length+')</a><a href="\#" onclick="switchProjectTab(\'graph\',\''+slug+'\'); return false;">Graph ('+(1+pgoals.length+ptodos.length+prems.length)+')</a></div>';
-  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:12px;display:flex;align-items:center;gap:8px"><a href="\#" onclick="showTab(\'projects\')" style="color:var(--ink);display:flex;align-items:center;gap:4px">'+icon('arrow-left',16)+' Proyectos</a></div><h1>'+p.title+'</h1>';
+  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:12px;display:flex;align-items:center;gap:8px"><a href="\#" onclick="showTab(\'projects\')" style="color:var(--ink);display:flex;align-items:center;gap:4px">'+icon('arrow-left',16)+' Proyectos</a></div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div id="project-tab-content"></div>';
   vp.innerHTML=h;vp.scrollTop=0;
   window._projectData={slug:slug,goals:pgoals,todos:ptodos,rems:prems,jour:pjour,files:pfiles,deps:pdeps,p:p};
