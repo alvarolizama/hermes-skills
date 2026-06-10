@@ -289,7 +289,7 @@ function showCurrentView(){
   else if(_currentTab==='reminders')renderRemindersView();
   else if(_currentTab==='files')renderFiles();
   else if(_currentTab==='deliverables')renderDeliverables();
-  else if(_currentTab==='wiki')showIndex();
+  else if(_currentTab==='wiki'){if(window._wikiSlug){showPage(window._wikiSlug);}else{showIndex();}}
   else if(_currentTab==='graph'){document.getElementById('view-graph').classList.add('active');setTimeout(renderGraph,300);}
   document.getElementById('view-'+_currentTab).scrollTop=0;
 }
@@ -412,7 +412,7 @@ function renderRemindersView(){
 
 // ── Wiki ──────────────────────────────────────────────────
 function showIndex(){
-  var h='<div class="view-header"><h1>Wiki</h1></div>';
+  window._wikiSlug=null;
   var tabs=[{k:'all',l:'Todos'},{k:'project',l:'Proyectos'},{k:'concept',l:'Conceptos'},{k:'entity',l:'Entidades'},{k:'comparison',l:'Comparaciones'},{k:'query',l:'Consultas'},{k:'raw',l:'Raw'}];
   var byType={};PAGES.forEach(function(p){var pt=p.page_type||'concept';byType[pt]=byType[pt]||[];byType[pt].push(p);});
   var counts={all:PAGES.length,project:(byType['project']||[]).length,concept:(byType['concept']||[]).length,entity:(byType['entity']||[]).length,comparison:(byType['comparison']||[]).length,query:(byType['query']||[]).length,raw:(byType['raw']||[]).length};
@@ -432,7 +432,7 @@ function showIndex(){
   document.getElementById('view-wiki').innerHTML=h;
 }
 
-function showPage(slug){var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
+function showPage(slug){window._wikiSlug=slug;var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
   document.getElementById('view-wiki').classList.add('active');
   var pgoals=GOALS.filter(function(g){return g.page===slug;});
   var ptodos=TODOS.filter(function(t){return t.page_slug===slug;});
