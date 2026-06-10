@@ -104,9 +104,7 @@ h1{font-size:24px!important}h2{font-size:18px!important}
 </head>
 <body>
 <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
-<span class="mobile-title">PocketBrain</span>
 <div id="sidebar">
-  <h2>PocketBrain</h2>
   <select id="brain-selector" onchange="switchBrain(this.value)"><option>Cargando...</option></select>
   <input type="text" id="search" placeholder="Buscar..." oninput="filterSidebar()">
   <div id="nav"></div>
