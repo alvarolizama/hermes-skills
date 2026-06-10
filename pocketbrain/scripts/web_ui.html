@@ -441,7 +441,6 @@ function showPage(slug){window._wikiSlug=slug;var p=pmap[slug];if(!p){document.g
   if(relCount)h+='<a href=\#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div>';
   h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href=\#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1>'+p.title+'</h1>';
-  h+='<div class="meta" style="margin-bottom:12px"><span>'+p.page_type+'</span>'+(p.confidence?'<span>'+p.confidence+'</span>':'')+'<span>'+pgoals.length+' goals</span><span>'+ptodos.length+' tareas</span><span>'+bl.length+' backlinks</span></div>';
   h+='<div class="wiki-layout-page"><div class="wiki-left">';
   h+='<div id="page-tab-content"></div>';
   var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);
@@ -458,6 +457,11 @@ function showPage(slug){window._wikiSlug=slug;var p=pmap[slug];if(!p){document.g
   if(bl.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#F5F5F0;color:#737373">B</span><span class="wiki-rel-label">'+bl.length+' backlinks</span></div>';
   h+='</div></div>';
   h+='<div class="wiki-relations-card"><div class="wiki-relations-title">Metadata</div><div class="wiki-relation-row">';
+  h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Tipo</span><span class="wiki-rel-value">'+p.page_type+'</span></div>';
+  if(p.confidence) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Confianza</span><span class="wiki-rel-value">'+p.confidence+'</span></div>';
+  if(pgoals.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Goals</span><span class="wiki-rel-value">'+pgoals.length+'</span></div>';
+  if(ptodos.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Tareas</span><span class="wiki-rel-value">'+ptodos.length+'</span></div>';
+  if(bl.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Backlinks</span><span class="wiki-rel-value">'+bl.length+'</span></div>';
   if(p.created) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Creado</span><span class="wiki-rel-value">'+p.created+'</span></div>';
   if(p.updated) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Actualizado</span><span class="wiki-rel-value">'+p.updated+'</span></div>';
   if(p.status) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Estado</span><span class="wiki-rel-value">'+p.status+'</span></div>';
