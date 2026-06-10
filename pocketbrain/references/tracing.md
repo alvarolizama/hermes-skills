@@ -16,24 +16,32 @@ brain = Brain('projects', agent='project-manager', user='alvaro')
 brain = Brain('bravo', agent='bravo-manager', user='alvaro')
 ```
 
+El `log()` se llama automáticamente desde todos los métodos. No hay que hacer nada extra.
+Cada entrada de `brain_log` incluye `details.agent` y `details.requested_by`.
+
 ## Qué se registra
 
-TODAS las operaciones: `create_page`, `create_todo`, `update_page`, `move_todo`,
-`complete_todo`, `create_goal`, `complete_goal`, `journal_write`, `create_reminder`,
-`create_deliverable`, `attach_file`, `archive_page`, `delete_page`, etc.
+TODAS las operaciones que modifican datos: `create_page`, `create_todo`, `update_page`,
+`move_todo`, `complete_todo`, `cancel_todo`, `start_todo`, `create_goal`, `complete_goal`,
+`cancel_goal`, `update_goal`, `journal_write`, `create_reminder`, `complete_reminder`,
+`create_deliverable`, `version_deliverable`, `attach_file`, `archive_page`, `delete_page`,
+`ingest_file`, `create_brain`, `update_schema`, y `lint`.
 
 ## Estructura del log
 
 ```json
 {
+  "id": "eyw389xh82l9u6r",
   "action": "create",
   "description": "Todo: Revisar PR de auth",
   "page": "abc123",
+  "brain": "5qd0l3i63bbj68k",
   "details": {
     "agent": "chaos-manager",
     "requested_by": "alvaro"
   }
 }
+```
 ```
 
 ## Consultas

@@ -67,7 +67,7 @@ def get_pages():
         if et and isinstance(et,list) and len(et)>0:
             tns = [t.get("name","") for t in et] if isinstance(et[0],dict) else et
         bld = [{"slug":b,"title":smap[b].get("title",b)} for b in bls.get(pg["slug"],[]) if b in smap]
-        result.append({"slug":pg["slug"],"title":pg.get("title",pg["slug"]),
+        result.append({"id":pg["id"],"slug":pg["slug"],"title":pg.get("title",pg["slug"]),
             "page_type":pg.get("page_type","concept"),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),
             "confidence":pg.get("confidence",""),"summary":pg.get("summary","") or "",
             "domain":dn,"tags":tns,"body":pg.get("body","") or "","backlinks":bld,
@@ -79,11 +79,12 @@ def get_pages():
 
 def get_goals():
     brain = get_brain()
-    goals = brain.pb.all("brain_goals", filter="(brain='" + brain._context_id + "')")
+    goals = brain.pb.all("brain_goals", filter="(brain='" + brain._context_id + "')", expand="page")
     return [{"id":g["id"],"title":g.get("title",""),"type":g.get("type","goal"),
         "status":g.get("status","planned"),"progress":g.get("progress",0) or 0,
         "deadline":(g.get("deadline","") or "")[:10],"description":g.get("description","") or "",
-        "page":g.get("page","") or "","parent":g.get("parent","") or ""} for g in goals]
+        "page":g.get("page","") or "","page_slug":(g.get("expand",{}).get("page",{}) or {}).get("slug","") or "",
+        "parent":g.get("parent","") or ""} for g in goals]
 
 def get_todos():
     brain = get_brain()
@@ -191,6 +192,46 @@ def get_graph():
         if r.get("page") and r["page"] in pid_map: edges.append({"from":rid,"to":pid_map[r["page"]]})
     return {"nodes":nodes,"edges":edges}
 
+
+
+def get_logs():
+    brain = get_brain()
+    logs = brain.pb.all("brain_log", filter="(brain='{}')".format(brain._context_id), sort="-created", per_page=100)
+    return [{"id":l["id"],"operation":l.get("operation",""),"created":(l.get("created") or "")[:10],"details":l.get("details","") or "","page":l.get("page","") or "","goal":l.get("goal","") or "","todo":l.get("todo","") or ""} for l in logs]
+
+def get_versions(slug=None):
+    try:
+        from brain import Brain
+    except Exception:
+        pass
+    brain = get_brain()
+    page_id = None
+    if slug:
+        try:
+            pages = brain.pb.all("brain_pages", filter="(slug='{}' && brain='{}')".format(slug, brain._context_id))
+            if pages:
+                page_id = pages[0].get("id")
+        except Exception:
+            pass
+    if not page_id:
+        return []
+    try:
+        vers = brain.pb.all("brain_page_versions", filter="(page='{}')".format(page_id), sort="-version")
+    except Exception:
+        return []
+    result = []
+    for v in vers:
+        result.append({
+            "version": v.get("version", 0),
+            "title": v.get("title", "") or "",
+            "change_summary": v.get("change_summary", "") or "",
+            "body_preview": (v.get("body", "") or "")[:300],
+            "created": (v.get("created", "") or "")[:10],
+            "updated": (v.get("updated", "") or "")[:10],
+            "page_type": v.get("page_type", "") or "",
+        })
+    return result
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         global CTX
@@ -207,6 +248,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/reminders": self.serve_json(get_reminders())
         elif path == "/api/journal": self.serve_json(get_journal())
         elif path == "/api/graph": self.serve_json(get_graph())
+        elif path == "/api/versions": 
+            self.serve_json(get_versions(qs.get('slug',[None])[0]))
+        elif path == "/api/logs": self.serve_json(get_logs())
         elif path == "/api/contexts":
             pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
             self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
