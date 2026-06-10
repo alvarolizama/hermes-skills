@@ -49,9 +49,9 @@ def get_brain():
     _brain_cache[CTX] = brain
     return brain
 
-def get_pages():
+def get_pages(include_archived=False):
     brain = get_brain()
-    pages = brain.list_pages(include_archived=False, per_page=500)
+    pages = brain.list_pages(include_archived=include_archived, per_page=500)
     smap = {p["slug"]: p for p in pages}
     bls = {p["slug"]: [] for p in pages}
     for pg in pages:
@@ -77,6 +77,10 @@ def get_pages():
             "comment":pg.get("comment","") or "",
             "created":(pg.get("created","") or "")[:10],"updated":(pg.get("updated","") or "")[:10]})
     return result
+
+def get_lint():
+    brain = get_brain()
+    return brain.lint()
 
 def get_goals():
     brain = get_brain()
@@ -250,13 +254,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         qs = urllib.parse.parse_qs(parts.query)
         if 'context' in qs: CTX = qs['context'][0]
         if path == "/": self.serve_html()
-        elif path == "/api/pages": self.serve_json(get_pages())
+        elif path == "/api/pages": self.serve_json(get_pages("archived" in qs))
         elif path == "/api/goals": self.serve_json(get_goals())
         elif path == "/api/todos": self.serve_json(get_todos())
         elif path == "/api/deps": self.serve_json(get_deps())
         elif path == "/api/files": self.serve_json(get_files())
         elif path == "/api/reminders": self.serve_json(get_reminders())
         elif path == "/api/journal": self.serve_json(get_journal())
+        elif path == "/api/lint": self.serve_json(get_lint())
         elif path == "/api/graph": self.serve_json(get_graph())
         elif path == "/api/versions": 
             self.serve_json(get_versions(qs.get('slug',[None])[0]))

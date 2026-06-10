@@ -89,7 +89,15 @@ blockquote{font-style:italic;color:var(--mute);border-left:3px solid var(--mute)
 .wiki-relation-item{display:flex;align-items:center;gap:8px;font-size:13px}
 .wiki-rel-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-size:11px;font-weight:600;flex-shrink:0}
 .wiki-rel-label{color:var(--body);flex:1}
+.wiki-contested{border-left:3px solid #E53935;padding-left:5px}
 .wiki-rel-value{color:var(--ink);font-weight:500}
+.index-item:hover{border-color:var(--accent)}
+.conf-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;vertical-align:middle}
+.conf-high{background:#E8F5E9;color:#2E7D32}
+.conf-medium{background:#FFF8E1;color:#F57F17}
+.conf-low{background:#FFEBEE;color:#C62828}
+.pm{text-decoration:none;color:var(--accent);font-size:10px;cursor:pointer}
+.pm-broken{color:#E53935;cursor:help}
 .wiki-log{margin-top:32px;border-top:1px solid var(--hairline);padding-top:16px;font-size:13px}
 .wiki-log h2{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:12px}
 .wiki-log h2:first-child{margin-top:0}
@@ -446,10 +454,25 @@ function renderRemindersView(){
 }
 
 // ── Wiki ──────────────────────────────────────────────────
+
+function toggleArchived(show){
+  window._showArchived=show;
+  if(show){
+    fetch('/api/pages?archived=1').then(function(r){return r.json();}).then(function(pages){
+      window._archivedPages=pages;
+      showIndex();
+    });
+  }else{
+    window._archivedPages=null;
+    showIndex();
+  }
+}
+
+
 function showIndex(){
   window._wikiSlug=null;
   var tabs=[{k:'all',l:'Todos'},{k:'project',l:'Proyectos'},{k:'concept',l:'Conceptos'},{k:'entity',l:'Entidades'},{k:'comparison',l:'Comparaciones'},{k:'query',l:'Consultas'},{k:'raw',l:'Raw'}];
-  var byType={};PAGES.forEach(function(p){var pt=p.page_type||'concept';byType[pt]=byType[pt]||[];byType[pt].push(p);});
+  var src=window._showArchived&&window._archivedPages?window._archivedPages:PAGES;var byType={};src.forEach(function(p){var pt=p.page_type||'concept';byType[pt]=byType[pt]||[];byType[pt].push(p);});
   var counts={all:PAGES.length,project:(byType['project']||[]).length,concept:(byType['concept']||[]).length,entity:(byType['entity']||[]).length,comparison:(byType['comparison']||[]).length,query:(byType['query']||[]).length,raw:(byType['raw']||[]).length};
   var h='';
   h+='<div class="project-tabs" style="margin-bottom:20px">';
@@ -457,13 +480,15 @@ function showIndex(){
   h+='</div>';
   var types=_wikiIndexTab==='all'?['project','concept','entity','comparison','query','raw']:[_wikiIndexTab];
   var total=types.reduce(function(s,t){return s+(byType[t]||[]).length;},0);
+  if(!window._showArchived)window._showArchived=false;
+  h+='<div style="margin-bottom:12px"><label style="font-size:12px;color:var(--mute);cursor:pointer"><input type="checkbox" onchange="toggleArchived(this.checked)" '+(window._showArchived?'checked':'')+'> Mostrar archivadas</label></div>';
   h+='<p style="color:var(--mute);margin-bottom:20px">'+total+' páginas</p>';
   var tn={project:'Proyectos',concept:'Conceptos',entity:'Entidades',comparison:'Comparaciones',query:'Consultas',raw:'Raw'};
   types.forEach(function(pt){
     var items=byType[pt]||[];if(!items.length)return;
     h+='<h2>'+tn[pt]+' ('+items.length+')</h2>';
     items.sort(function(a,b){return a.title.localeCompare(b.title);});
-    items.forEach(function(p){h+='<div class="card" style="cursor:pointer" onclick="showPage(\''+p.slug+'\')"><h3>'+p.title+'</h3></div>';});
+    items.forEach(function(p){var b='';if(p.confidence)b=' <span class="conf-badge conf-'+p.confidence+'">'+p.confidence+'</span>';h+='<div class="card" style="cursor:pointer" onclick="showPage(\''+p.slug+'\')"><h3>'+p.title+b+'</h3></div>';});
   });
   document.getElementById('view-wiki').innerHTML=h;
 }
@@ -499,6 +524,10 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
   h+='<div class="wiki-relations-card"><div class="wiki-relations-title">Metadata</div><div class="wiki-relation-row">';
   h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Tipo</span><span class="wiki-rel-value">'+p.page_type+'</span></div>';
   if(p.confidence) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Confianza</span><span class="wiki-rel-value">'+p.confidence+'</span></div>';
+  if(p.source_url) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Source URL</span><span class="wiki-rel-value"><a href="'+esc(p.source_url)+'" target="_blank">'+esc(p.source_url.substring(0,40))+'</a></span></div>';
+  if(p.source_sha256) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">SHA256</span><span class="wiki-rel-value" style="font-family:monospace;font-size:11px">'+p.source_sha256.substring(0,16)+'...</span></div>';
+  if(p.contested) h+='<div class="wiki-relation-item wiki-contested"><span class="wiki-rel-label">Contested</span><span class="wiki-rel-value" style="color:#E53935">&#x26A0; S&iacute;</span></div>';
+  if(p.contradictions) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Contradicciones</span><span class="wiki-rel-value">'+esc(p.contradictions)+'</span></div>';
   if(pgoals.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Goals</span><span class="wiki-rel-value">'+pgoals.length+'</span></div>';
   if(ptodos.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Tareas</span><span class="wiki-rel-value">'+ptodos.length+'</span></div>';
   if(bl.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Backlinks</span><span class="wiki-rel-value">'+bl.length+'</span></div>';
@@ -542,9 +571,10 @@ function switchPageTab(tab,slug){
   ct.innerHTML=h||'<p style="color:var(--mute)">Sin contenido.</p>';
 }
 
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}
+
 function mdToHtml(text){
   if(!text)return'';var lines=text.split('\n'),out=[],ic=false,ul=false,ol=false;
-  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}
   function rl(tx){
     tx=tx.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>\$1</em></strong>');
     tx=tx.replace(/\*\*(.+?)\*\*/g,'<strong>\$1</strong>');
@@ -555,6 +585,10 @@ function mdToHtml(text){
       target=target.trim();alias=alias.trim();
       if(pmap[target])return'<a href="\#" class="wl" onclick="showPage(\''+target+'\')">'+alias+'</a>';
       return'<span class="bl" title="'+target+'">'+alias+'</span>';
+    }).replace(/\^\[([^\]]+)\]/g,function(_,slug){
+      slug=slug.trim().toLowerCase().replace(/ /g,'-');
+      if(pmap[slug])return' <sup><a href="#" onclick="showPage(\''+slug+'\');return false" class="pm" title="'+slug+'">['+slug.substring(0,12)+']</a></sup>';
+      return' <sup><span class="pm pm-broken" title="'+slug+'">[?]</span></sup>';
     });
   }
   function closeList(){if(ul){out.push('</ul>');ul=false;}if(ol){out.push('</ol>');ol=false;}}
