@@ -1,6 +1,6 @@
 # PocketBrain
 
-Un segundo cerebro digital multi-contexto. Backend en PocketBase (12 colecciones), servidor web live, y un cliente Python para que los agentes de IA escriban conocimiento gestionen tareas y proyectos.
+Un segundo cerebro digital multi-contexto. Backend en PocketBase (12 colecciones), servidor web live, y un cliente Python para que los agentes de IA escriban conocimiento, gestionen tareas y proyectos.
 
 Los agentes guardan. Tú consultas.
 
@@ -9,42 +9,42 @@ Los agentes guardan. Tú consultas.
 ### Proyectos
 Vista principal con tarjetas de proyecto, conteo de goals, tareas y recordatorios.
 
-![Proyectos](screenshots/proyectos.png)
+![Proyectos](screenshots/01-proyectos.png)
 
 ### Kanban de Tareas
 Board completo por status: backlog, this week, today, in progress, done, cancelled.
 
-![Todo](screenshots/todo.png)
+![Todo](screenshots/02-todo.png)
 
 ### Goals
 Goals filtrables por estado: activos, terminados, cancelados. Cada uno con tipo (goal, milestone, okr), deadline y proyecto.
 
-![Goals](screenshots/goals.png)
-
-### Wiki
-Páginas markdown con `[[wikilinks]]`, filtros por tipo (proyectos, conceptos, entidades, comparaciones).
-
-![Wiki](screenshots/wiki.png)
+![Goals](screenshots/03-goals.png)
 
 ### Recordatorios
 Recordatorios con fecha y hora, filtrables por hoy, esta semana, próximos, atrasados.
 
-![Reminders](screenshots/reminders.png)
+![Reminders](screenshots/04-reminders.png)
+
+### Wiki
+Páginas markdown con `[[wikilinks]]`, filtros por tipo (proyectos, conceptos, entidades, comparaciones).
+
+![Wiki](screenshots/05-wiki.png)
 
 ### Detalle de Proyecto
 Vista completa de un proyecto: contenido markdown, tabs de goals, kanban por goal, recordatorios, archivos, entregables y grafo de relaciones.
 
-![Project Detail](screenshots/project-detail.png)
+![Project Detail](screenshots/06-project-detail.png)
 
 ### Kanban por Proyecto
 Tareas del proyecto agrupadas en columnas por status. Filtros: todas, sin goal, por goal.
 
-![Kanban](screenshots/kanban.png)
+![Kanban](screenshots/07-kanban.png)
 
 ### Grafo de Conocimiento
 Visualización de nodos (páginas, goals, tareas, recordatorios) y sus relaciones via vis.js.
 
-![Graph](screenshots/graph.png)
+![Graph](screenshots/08-project-graph.png)
 
 ---
 
@@ -66,7 +66,7 @@ POCKETBRAIN_PASSWORD=***
 
 # 2. Crear colecciones (una vez)
 cd scripts
-python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
+python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pb())"
 ```
 
 ### Flujo 1: Guardar conocimiento
@@ -137,7 +137,7 @@ brain.move_todo("TODO_ID", "done")
 # Diario automático
 brain.journal_write("## Hoy\n- Terminé el PR #42\n- [[Arquitectura de cache]]", mood="great")
 
-# Listar entrys recientes del diario
+# Listar entradas recientes del diario
 brain.journal_entries(days=7)
 ```
 
