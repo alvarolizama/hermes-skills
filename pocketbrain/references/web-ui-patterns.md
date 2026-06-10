@@ -175,3 +175,27 @@ h += '<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="tod
 
 **Pitfall: invisible count badge** — using `background: var(--soft)` (almost white) on a white sidebar makes the badge invisible. Always use `var(--hairline)` for the badge background so it has visible contrast.
 **Pitfall: active badge disappears** — when the link is active/hovered, its background changes to `var(--soft)`. The `.nav-count` background must switch to `var(--canvas)` (white) so it pops against the grey active state, not blend in.
+
+
+**Patrón: icon + label agrupados a la izquierda, badge a la derecha.**
+
+Con flex `space-between`, si el link tiene 3 items (icon, text, badge), el texto queda centrado entre icono y badge. Para anclar el icono + texto juntos a la izquierda, envolverlos en un `<span>` con `.nav-label`:
+
+```css
+#nav a.nav-link .nav-label {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+}
+#nav a.nav-link .nav-count {
+  font-size: 10px; color: var(--body); background: var(--hairline);
+  padding: 1px 6px; border-radius: 9999px; min-width: 20px; text-align: center;
+  flex-shrink: 0;
+}
+```
+
+```js
+h += '<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">' +
+     '<span class="nav-label">' + icon('squares-2x2', 16) + '<span>Proyectos</span></span>' +
+     '<span class="nav-count">' + pc + '</span></a>';
+```
+
+Resultado: `[Icon] [Text]          [Badge]` — el badge se empuja a la derecha por `space-between`, mientras el texto permanece pegado al icono. Si falta `.nav-label`, el texto se distribuye en el espacio medio y no se ve a la izquierda.
