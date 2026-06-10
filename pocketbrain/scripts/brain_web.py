@@ -80,12 +80,17 @@ def get_pages():
 
 def get_goals():
     brain = get_brain()
-    goals = brain.pb.all("brain_goals", filter="(brain='" + brain._context_id + "')", expand="page")
-    return [{"id":g["id"],"title":g.get("title",""),"type":g.get("type","goal"),
-        "status":g.get("status","planned"),"progress":g.get("progress",0) or 0,
-        "deadline":(g.get("deadline","") or "")[:10],"description":g.get("description","") or "",
-        "page":g.get("page","") or "","page_slug":(g.get("expand",{}).get("page",{}) or {}).get("slug","") or "",
-        "parent":g.get("parent","") or ""} for g in goals]
+    goals = brain.pb.all("brain_goals", filter="brain='" + brain._context_id + "'", expand="page")
+    result = []
+    for g in goals:
+        d = {"id": g["id"], "title": g.get("title", ""), "type": g.get("type", "goal"),
+             "status": g.get("status", "planned"),
+             "deadline": (g.get("deadline", "") or "")[:10], "description": g.get("description", "") or "",
+             "page": g.get("page", "") or "",
+             "page_slug": (g.get("expand", {}).get("page", {}) or {}).get("slug", "") or "",
+             "parent": g.get("parent", "") or ""}
+        result.append(d)
+    return result
 
 def get_todos():
     brain = get_brain()

@@ -233,7 +233,6 @@ BRAIN_SCHEMA = {
              "values": ["goal", "milestone", "okr"], "maxSelect": 1},
             {"name": "status", "type": "select", "required": True,
              "values": ["planned", "active", "done", "cancelled"], "maxSelect": 1},
-            {"name": "progress", "type": "number", "min": 0, "max": 100},
             {"name": "deadline", "type": "date"},
             {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
@@ -1496,7 +1495,6 @@ class Brain:
                     project_slug: Optional[str] = None,
                     description: str = '',
                     deadline: str = '',
-                    progress: int = 0,
                     parent_id: Optional[str] = None,
                     status: str = 'planned') -> dict:
         """Crea un goal, milestone u OKR.
@@ -1507,7 +1505,6 @@ class Brain:
             project_slug: Slug del proyecto asociado.
             description: Detalle.
             deadline: Fecha limite (YYYY-MM-DD) - obligatorio para milestones.
-            progress: 0-100 (solo para goals).
             parent_id: ID del OKR padre (para key results).
             status: 'planned', 'active', 'done', 'cancelled'.
         """
@@ -1519,7 +1516,6 @@ class Brain:
             'type': type,
             'description': description,
             'status': status,
-            'progress': progress,
             'brain': self._context_id,
         }
 
@@ -1576,7 +1572,7 @@ class Brain:
         return self.pb.get('brain_goals', goal_id)
 
     def update_goal(self, goal_id: str, **updates) -> dict:
-        """Actualiza un goal (progress, status, deadline, etc.)."""
+        """Actualiza un goal (status, deadline, etc.)."""
         if 'deadline' in updates and updates['deadline']:
             if '00:00:00' not in str(updates['deadline']):
                 updates['deadline'] = str(updates['deadline']) + ' 00:00:00.000Z'
@@ -1597,10 +1593,10 @@ class Brain:
             elif not parent_id:
                 roots.append(g)
 
-        # Sort: milestones by deadline, goals by progress desc
+        # Sort: milestones by deadline
         for g in goals:
             if g.get('children'):
-                g['children'].sort(key=lambda x: -(x.get('progress', 0) or 0))
+                g['children'].sort(key=lambda x: x.get('title', ''))
 
         return roots
 

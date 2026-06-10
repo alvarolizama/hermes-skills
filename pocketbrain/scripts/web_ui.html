@@ -54,8 +54,6 @@ blockquote{font-style:italic;color:var(--mute);border-left:3px solid var(--mute)
 #project-tab-content{display:flex;flex-direction:column;flex:1;min-height:0}
 .chip{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:500;margin-right:4px}
 .chip-goal{background:#E8F5E9;color:var(--green)}.chip-milestone{background:#FFF3E0;color:var(--orange)}.chip-okr{background:#FCE4EC;color:var(--pink)}
-.progress-bar{height:6px;background:var(--soft);border-radius:9999px;margin-top:6px;overflow:hidden}
-.progress-fill{height:100%;background:var(--green);border-radius:9999px;transition:width .3s}
 .kanban{display:flex;gap:8px;padding-bottom:20px}
 .kanban-col{flex:1 1 0;min-width:140px;background:var(--soft);border-radius:12px;padding:12px}
 .kanban-col h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;color:var(--mute)}
@@ -206,7 +204,7 @@ function switchProjectTab(tab,slug,el){
     if(!pGoals.length)h+='<p style="color:var(--mute)">No hay goals.</p>';
     pGoals.forEach(function(g){
       var chip=g.type==='okr'?'chip-okr':g.type==='milestone'?'chip-milestone':'chip-goal';
-      h+='<div class="card"><h3><span class="chip '+chip+'">'+g.type+'</span> '+g.title+'</h3><div style="font-size:12px;color:var(--mute)">'+g.status+(g.deadline?' · '+g.deadline:'')+'</div>'+(g.type==='goal'?'<div class="progress-bar"><div class="progress-fill" style="width:'+g.progress+'%"></div></div><div style="font-size:11px;color:var(--mute)">'+g.progress+'%</div>':'')+'</div>';
+      h+='<div class="card"><h3><span class="chip '+chip+'">'+g.type+'</span> '+g.title+'</h3><div style="font-size:12px;color:var(--mute)">'+g.status+(g.deadline?' · '+g.deadline:'')+'</div></div>';
     });
   }
   if(tab==='kanban'){
@@ -352,7 +350,7 @@ function renderGoalsView(){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
     var chip=g.type==='okr'?'chip-okr':g.type==='milestone'?'chip-milestone':'chip-goal';
     h+='<div class="card"><h3><span class="chip '+chip+'">'+g.type+'</span> '+g.title+'</h3><div style="font-size:12px;color:var(--mute)">'+g.status+(g.deadline?' · '+g.deadline:'')+'</div>';
-    if(g.type==='goal')h+='<div class="progress-bar"><div class="progress-fill" style="width:'+g.progress+'%"></div></div><div style="font-size:11px;color:var(--mute)">'+g.progress+'%</div>';
+
     h+='</div>';
   });
   document.getElementById('view-goals').innerHTML=h||'<p style="color:var(--mute)">No hay goals.</p>';
