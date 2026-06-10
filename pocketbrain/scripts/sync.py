@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-PocketBrain Sync — Exporta cerebros de PocketBase a archivos markdown locales.
+PocketBrain Sync — Exporta contextos de PocketBase a archivos markdown locales.
 
 Sincronización UNIDIRECCIONAL: PocketBase → archivos locales.
 Solo actualiza páginas modificadas desde la última sync (incremental).
 Los attachments de páginas raw se descargan al mismo directorio.
 
 Uso:
-    python3 sync.py [--brain BRAIN_NAME] [--full] [--output DIR]
+    python3 sync.py [--context CONTEXT_NAME] [--full] [--output DIR]
 
-    --brain    Solo sync de un cerebro específico (default: todos)
+    --context  Solo sync de un contexto específico (default: todos)
     --full     Forzar sync completo (ignora estado incremental)
     --output   Directorio de salida (default: ~/brain-sync)
 
 Ejemplos:
-    python3 sync.py                          # todos los cerebros, incremental
-    python3 sync.py --brain personal         # solo el cerebro 'personal'
+    python3 sync.py                          # todos los contextos, incremental
+    python3 sync.py --context personal       # solo el contexto 'personal'
     python3 sync.py --full --output ~/wiki   # sync completo a ~/wiki
 """
 
@@ -45,9 +45,9 @@ os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 from pb import PB, quick_pb
 
 
-# ═════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════
 #  SYNC ENGINE
-# ═════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════
 
 class SyncEngine:
     """Exporta cerebros PocketBase → archivos markdown locales."""
@@ -122,7 +122,7 @@ class SyncEngine:
 
     def _write_schema(self, brain: dict, brain_dir: Path):
         """Genera SCHEMA.md desde schema_config."""
-        schema = brain.get("schema_config", {}) or {}
+        schema = context.get("schema_config", {}) or {}
         lines = [
             "# Wiki Schema\n",
             f"## Domain\n{brain.get('description', brain.get('name', ''))}\n",
@@ -137,14 +137,14 @@ class SyncEngine:
                 lines.append(f"- **{cat}**: {', '.join(tags_list)}")
             lines.append("")
 
-        (brain_dir / "SCHEMA.md").write_text("\n".join(lines))
+        (context_dir / "SCHEMA.md").write_text("\n".join(lines))
 
     # ── Log export ─────────────────────────────────────────────────
 
-    def _write_log(self, brain_id: str, brain_dir: Path):
+    def _write_log(self, context_id: str, brain_dir: Path):
         """Genera log.md desde brain_log."""
         logs = self.pb.all("brain_log",
-            filter="(brain='" + brain_id + "')", perPage=200)
+            filter="(brain='" + context_id + "')", perPage=200)
 
         lines = [
             "# Wiki Log\n",
@@ -164,20 +164,20 @@ class SyncEngine:
                 lines.append(f"- {desc}")
             lines.append("")
 
-        (brain_dir / "log.md").write_text("\n".join(lines))
+        (context_dir / "log.md").write_text("\n".join(lines))
 
     # ── Journal export ──────────────────────────────────────────────
 
-    def _write_journal(self, brain_id: str, brain_dir: Path):
+    def _write_journal(self, context_id: str, brain_dir: Path):
         """Exporta brain_journal a journal.md."""
         entries = self.pb.all("brain_journal",
-            filter="(brain='" + brain_id + "')",
+            filter="(brain='" + context_id + "')",
             sort="date", perPage=500)
 
         if not entries:
             return
 
-        journal_dir = brain_dir / "journal"
+        journal_dir = context_dir / "journal"
         journal_dir.mkdir(parents=True, exist_ok=True)
 
         lines = [
@@ -204,10 +204,10 @@ class SyncEngine:
 
     # ── Todos export ────────────────────────────────────────────────
 
-    def _write_todos(self, brain_id: str, brain_dir: Path):
+    def _write_todos(self, context_id: str, brain_dir: Path):
         """Exporta brain_todos a todos.md agrupado por status."""
         todos = self.pb.all("brain_todos",
-            filter="(brain='" + brain_id + "')",
+            filter="(brain='" + context_id + "')",
             perPage=500)
 
         if not todos:
@@ -267,15 +267,15 @@ class SyncEngine:
                 lines.append("")
             lines.append("")
 
-        (brain_dir / "todos.md").write_text("\n".join(lines))
+        (context_dir / "todos.md").write_text("\n".join(lines))
         print("   Todos: " + str(len(todos)) + " tasks")
 
     # ── Files export ─────────────────────────────────────────────────
 
-    def _write_files(self, brain_id: str, brain_dir: Path):
+    def _write_files(self, context_id: str, brain_dir: Path):
         """Descarga archivos adjuntos de brain_files."""
         files = self.pb.all("brain_files",
-            filter="(brain='" + brain_id + "')",
+            filter="(brain='" + context_id + "')",
             expand="page", perPage=500)
 
         if not files:
@@ -295,9 +295,9 @@ class SyncEngine:
                 page_slug = page_expand.get("slug", "")
 
             if page_slug:
-                dest_dir = brain_dir / "files" / page_slug
+                dest_dir = context_dir / "files" / page_slug
             else:
-                dest_dir = brain_dir / "files"
+                dest_dir = context_dir / "files"
             dest_dir.mkdir(parents=True, exist_ok=True)
 
             host = self.pb.host
@@ -349,7 +349,7 @@ class SyncEngine:
                     lines.append(f"  {summary[:120]}")
             lines.append("")
 
-        (brain_dir / "index.md").write_text("\n".join(lines))
+        (context_dir / "index.md").write_text("\n".join(lines))
 
     # ── Page export ────────────────────────────────────────────────
 
@@ -423,18 +423,18 @@ class SyncEngine:
 
     # ── Main sync ──────────────────────────────────────────────────
 
-    def sync_brain(self, brain: dict):
+    def sync_context(self, context: dict):
         """Sincroniza un cerebro completo."""
-        brain_id = brain["id"]
-        brain_name = brain["name"]
-        brain_dir = self.output_dir / brain_name
+        context_id = context["id"]
+        context_name = context["name"]
+        context_dir = self.output_dir / context_name
 
-        print(f"\n🧠 Syncing brain: {brain_name}")
-        brain_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n🧠 Syncing context: {brain_name}")
+        context_dir.mkdir(parents=True, exist_ok=True)
 
         # Obtener todas las páginas (no archivadas) con tags y domain expandidos
         pages = self.pb.all("brain_pages",
-            filter=f"(brain='{brain_id}' && archived=false)",
+            filter=f"(brain='{context_id}' && archived=false)",
             expand="tags,domain",
             sort="title")
 
@@ -448,7 +448,7 @@ class SyncEngine:
             slug = page.get("slug", "?")
 
             if self._needs_update(pid, updated):
-                self._write_page(page, brain_dir, brain_name)
+                self._write_page(page, context_dir, context_name)
                 self._mark_synced(pid, updated)
                 synced_pages.append(page)
                 self.stats["updated"] += 1
@@ -458,12 +458,12 @@ class SyncEngine:
                 self.stats["skipped"] += 1
 
         # Escribir archivos de navegación
-        self._write_schema(brain, brain_dir)
-        self._write_index(synced_pages, brain_dir)
-        self._write_log(brain_id, brain_dir)
-        self._write_journal(brain_id, brain_dir)
-        self._write_todos(brain_id, brain_dir)
-        self._write_files(brain_id, brain_dir)
+        self._write_schema(context, context_dir)
+        self._write_index(synced_pages, context_dir)
+        self._write_log(context_id, context_dir)
+        self._write_journal(context_id, context_dir)
+        self._write_todos(context_id, context_dir)
+        self._write_files(context_id, context_dir)
 
         # Limpiar páginas que ya no existen en PB
         self._cleanup_stale(brain, synced_pages)
@@ -474,7 +474,7 @@ class SyncEngine:
 
     def _cleanup_stale(self, brain: dict, synced_pages: list):
         """Elimina archivos .md locales de páginas que ya no existen en PB."""
-        brain_dir = self.output_dir / brain["name"]
+        context_dir = self.output_dir / context["name"]
         if not brain_dir.exists():
             return
 
@@ -482,7 +482,7 @@ class SyncEngine:
         type_dirs = ["entities", "concepts", "comparisons", "queries", "raw", "projects"]
 
         for subdir in type_dirs:
-            d = brain_dir / subdir
+            d = context_dir / subdir
             if not d.exists():
                 continue
             for md_file in d.glob("*.md"):
@@ -497,10 +497,10 @@ class SyncEngine:
 
     def sync_all(self):
         """Sincroniza todos los cerebros."""
-        brains = self.pb.all("brains")
+        brains = self.pb.all("contexts")
         print(f"Found {len(brains)} brain(s)")
-        for brain in brains:
-            self.sync_brain(brain)
+        for context in contexts:
+            self.sync_context(context)
         self._save_state()
         self._print_summary()
 
@@ -513,20 +513,20 @@ class SyncEngine:
         print(f"  Output: {self.output_dir}")
 
 
-# ═════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════
 #  CLI
-# ═════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════
 
 def parse_args():
     args = sys.argv[1:]
-    brain_name = None
+    context_name = None
     full = False
     output = os.path.expanduser("~/brain-sync")
 
     i = 0
     while i < len(args):
-        if args[i] == "--brain" and i + 1 < len(args):
-            brain_name = args[i + 1]
+        if args[i] == "--context" and i + 1 < len(args):
+            context_name = args[i + 1]
             i += 2
         elif args[i] == "--full":
             full = True
@@ -541,16 +541,16 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    brain_name, full, output = parse_args()
+    context_name, full, output = parse_args()
 
     engine = SyncEngine(output_dir=output, full=full)
 
-    if brain_name:
-        brains = engine.pb.list("contexts", filter=f"(name='{brain_name}')")
+    if context_name:
+        contexts = engine.pb.list("contexts", filter=f"(name='{brain_name}')")
         if not contexts:
             print(f"Brain '{brain_name}' not found.")
             sys.exit(1)
-        engine.sync_brain(brains[0])
+        engine.sync_context(contexts[0])
         engine._save_state()
         engine._print_summary()
     else:

@@ -6,8 +6,8 @@ Genera un archivo HTML autocontenido con un force-directed graph
 que muestra páginas (nodos) y sus [[wikilinks]] (edges).
 
 Uso:
-    python3 graph.py --brain personal
-    python3 graph.py --brain personal --output ~/Desktop/mi-cerebro.html
+    python3 graph.py --context personal
+    python3 graph.py --context personal --output ~/Desktop/mi-cerebro.html
 
 Requiere conexión a internet para cargar vis.js CDN.
 """
@@ -57,10 +57,10 @@ TEXT_COLOR = "#e0e0e0"
 #  GRAPH BUILDER
 # ═══════════════════════════════════════════════════════
 
-def build_graph(brain: Brain) -> dict:
-    """Construye nodos y edges desde las páginas del cerebro."""
-    brain.orient()
-    pages = brain.list_pages(include_archived=False)
+def build_graph(ctx: Brain) -> dict:
+    """Construye nodos y edges desde las páginas del contexto."""
+    ctx.orient()
+    pages = ctx.list_pages(include_archived=False)
 
     slug_map = {p["slug"]: p for p in pages}
 
@@ -109,7 +109,7 @@ def build_graph(brain: Brain) -> dict:
                         "summary": (tp.get("summary", "") or "")[:100],
                     })
 
-    return {"nodes": nodes, "edges": edges, "context": brain.context_name}
+    return {"nodes": nodes, "edges": edges, "context": ctx.context_name}
 
 
 # ═══════════════════════════════════════════════════════
@@ -121,7 +121,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PocketBrain Graph — BRAIN_NAME</title>
+<title>PocketBrain Graph — CTX_NAME</title>
 <script src="https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -171,7 +171,7 @@ document.getElementById('legend').innerHTML = legendHtml;
 
 // Stats
 document.getElementById('stats').innerHTML =
-  '<strong>BRAIN_NAME</strong><br>' +
+  '<strong>CTX_NAME</strong><br>' +
   data.nodes.length + ' nodos &middot; ' + data.edges.length + ' conexiones';
 
 // Build network
@@ -255,26 +255,26 @@ network.on('doubleClick', function(params) {
 
 def parse_args():
     args = sys.argv[1:]
-    brain_name = "personal"
+    context = "personal"
     output = None
     i = 0
     while i < len(args):
-        if args[i] == "--brain" and i + 1 < len(args):
-            brain_name = args[i + 1]; i += 2
+        if args[i] == "--context" and i + 1 < len(args):
+            context = args[i + 1]; i += 2
         elif args[i] == "--output" and i + 1 < len(args):
             output = args[i + 1]; i += 2
         else:
             i += 1
-    return brain_name, output
+    return context, output
 
 
 if __name__ == "__main__":
-    brain_name, output = parse_args()
-    output = output or os.path.expanduser(f"~/brain-graph-{brain_name}.html")
+    context, output = parse_args()
+    output = output or os.path.expanduser(f"~/context-graph-{context}.html")
 
     pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
-    brain = Brain(brain_name, pb=pb)
-    graph = build_graph(brain)
+    ctx = Brain(context, pb=pb)
+    graph = build_graph(ctx)
 
     legend_json = json.dumps(PAGE_COLORS)
     graph_json = json.dumps(graph, ensure_ascii=False)
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     html = HTML_TEMPLATE
     html = html.replace("GRAPH_DATA", graph_json)
     html = html.replace("LEGEND_COLORS", legend_json)
-    html = html.replace("BRAIN_NAME", brain_name)
+    html = html.replace("CTX_NAME", context)
     html = html.replace("BG_COLOR", BG_COLOR)
     html = html.replace("TEXT_COLOR", TEXT_COLOR)
 
