@@ -134,3 +134,44 @@ function closeSidebar() {
 ```
 
 Llamar `closeSidebar()` en `showTab()`, `showProject()`, `showPage()` — cualquier navegación que el usuario inicie desde el menú.
+
+## Sidebar nav badges / counts
+
+Mostrar el número de elementos a la derecha de cada link de navegación en el sidebar (Proyectos 5, Todo 21, etc.).
+
+**Patrón CSS** — flexbox con `justify-content:space-between`:
+```css
+#nav a.nav-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; color: var(--body); text-decoration: none;
+  border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+#nav a.nav-link:hover, #nav a.nav-link.active { color: var(--ink); background: var(--soft); }
+#nav a.nav-link .nav-count {
+  font-size: 10px; color: var(--body); background: var(--hairline);
+  padding: 1px 6px; border-radius: 9999px; min-width: 20px; text-align: center;
+}
+#nav a.nav-link.active .nav-count { color: var(--ink); background: var(--canvas); }
+```
+
+**Patrón HTML/JS** — cada link envuelve texto + icono en spans, el count en otro span:
+```js
+// Inside buildSidebar() — compute counts from global arrays first:
+var pc = PAGES.filter(function(p) { return p.page_type === 'project'; }).length;
+var wc = PAGES.filter(function(p) { return p.page_type !== 'project'; }).length;
+var gc = GOALS.length, tc = TODOS.length, rc = REMINDERS.length;
+var fc = FILES.length, dc = DEPS.length, jc = JOURNAL.length;
+var nc = (GRAPH.nodes || []).length;
+
+// Then render each link with spans:
+h += '<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">' +
+     icon('squares-2x2', 16) + '<span>Proyectos</span>' +
+     '<span class="nav-count">' + pc + '</span></a>';
+h += '<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo">' +
+     icon('clipboard-document-list', 16) + '<span>Todo</span>' +
+     '<span class="nav-count">' + tc + '</span></a>';
+// ... repeat for goals, reminders, journal, files, deliverables, wiki, graph
+```
+
+**Pitfall: invisible count badge** — using `background: var(--soft)` (almost white) on a white sidebar makes the badge invisible. Always use `var(--hairline)` for the badge background so it has visible contrast.
+**Pitfall: active badge disappears** — when the link is active/hovered, its background changes to `var(--soft)`. The `.nav-count` background must switch to `var(--canvas)` (white) so it pops against the grey active state, not blend in.

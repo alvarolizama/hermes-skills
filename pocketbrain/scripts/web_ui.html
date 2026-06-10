@@ -14,8 +14,10 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #search{width:100%;padding:8px 14px;border:1px solid var(--hairline);border-radius:9999px;background:var(--soft);color:var(--ink);font-size:13px;margin-bottom:12px;outline:none}
 #search:focus{background:var(--canvas);border-color:var(--ink)}
 #nav{flex:1;overflow-y:auto;font-size:13px}
-#nav a.nav-link{display:block;padding:6px 10px;color:var(--body);text-decoration:none;border-radius:6px;cursor:pointer;font-size:13px}
+#nav a.nav-link{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;color:var(--body);text-decoration:none;border-radius:6px;cursor:pointer;font-size:13px}
 #nav a.nav-link:hover,#nav a.nav-link.active{color:var(--ink);background:var(--soft)}
+#nav a.nav-link .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center}
+#nav a.nav-link.active .nav-count{color:var(--ink);background:var(--canvas)}
 #nav .group{color:var(--mute);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:12px 4px 4px}
 #status{font-size:10px;color:var(--mute);padding:8px 4px;border-top:1px solid var(--hairline)}
 #main{flex:1;overflow-y:auto}
@@ -130,7 +132,8 @@ var _ICONS={
   'check-circle':'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   'magnifying-glass':'m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z',
   'clock':'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
-  'x-circle':'m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'
+  'x-circle':'m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  'circle':'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'
 };
 function icon(name, size){size=size||20;return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="'+(_ICONS[name]||'')+'"/></svg>';}
 
@@ -145,15 +148,18 @@ function loadAll(){document.getElementById('status').textContent='● cargando..
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
 function buildSidebar(){var nav=document.getElementById('nav');var h='';
-h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo">'+icon('clipboard-document-list',16)+' Todo</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals">'+icon('flag',16)+' Goals</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders">'+icon('bell',16)+' Reminders</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal">'+icon('book-open',16)+' Journal</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'files\')" data-search="files">'+icon('paper-clip',16)+' Files</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'deliverables\')" data-search="deliverables">'+icon('cube',16)+' Deliverables</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki">'+icon('document-text',16)+' Wiki</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">'+icon('squares-2x2',16)+' Proyectos</a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph">◉ Graph</a>';
+var pc=PAGES.filter(function(p){return p.page_type==='project';}).length;
+var wc=PAGES.filter(function(p){return p.page_type!=='project';}).length;
+var gc=GOALS.length,tc=TODOS.length,rc=REMINDERS.length,fc=FILES.length,dc=DEPS.length,jc=JOURNAL.length,nc=(GRAPH.nodes||[]).length;
+h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">'+icon('squares-2x2',16)+'<span>Proyectos</span><span class="nav-count">'+pc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo">'+icon('clipboard-document-list',16)+'<span>Todo</span><span class="nav-count">'+tc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals">'+icon('flag',16)+'<span>Goals</span><span class="nav-count">'+gc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders">'+icon('bell',16)+'<span>Reminders</span><span class="nav-count">'+rc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal">'+icon('book-open',16)+'<span>Journal</span><span class="nav-count">'+jc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'files\')" data-search="files">'+icon('paper-clip',16)+'<span>Files</span><span class="nav-count">'+fc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'deliverables\')" data-search="deliverables">'+icon('cube',16)+'<span>Deliverables</span><span class="nav-count">'+dc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki">'+icon('document-text',16)+'<span>Wiki</span><span class="nav-count">'+wc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph">'+icon('circle',16)+'<span>Graph</span><span class="nav-count">'+nc+'</span></a>';
 nav.innerHTML=h;}
 
 var _currentTab='todos',_currentProject=null;

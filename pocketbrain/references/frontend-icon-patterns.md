@@ -87,7 +87,7 @@ Nunca mezclar concatenaciones JS (`'+icon(...)+'`) dentro del HTML body estátic
 | Files | paper-clip | `paper-clip` | Sidebar, cards |
 | Deliverables | cube | `cube` | Sidebar, cards |
 | Wiki | document-text | `document-text` | Sidebar, pages |
-| Graph | chart-pie | `chart-pie` | Sidebar, legend |
+| Graph | circle | `circle` | Sidebar, legend |
 | Atrasados | exclamation-triangle | `exclamation-triangle` | Section header |
 | Hoy/esta semana | calendar-days | `calendar-days` | Section header |
 | Completados | check-circle | `check-circle` | Section, kanban done |
@@ -102,6 +102,24 @@ Nunca mezclar concatenaciones JS (`'+icon(...)+'`) dentro del HTML body estátic
 
 ---
 
+## Pitfall: sidebar items con icono hardcodeado en vez de `icon()`
+
+Cuando se agrega un nuevo item al sidebar (o se refactoriza uno existente), es fácil dejar el icono como **texto Unicode hardcodeado** (ej. `◉ Graph`) o como texto plano sin SVG, rompiendo la consistencia visual con el resto del menú que usa `icon('name',16)`.
+
+**Síntoma:** Un item del sidebar aparece sin icono (solo texto) o con un símbolo Unicode que no tiene el mismo estilo/tamaño que los SVG de Heroicons.
+
+**Fix:**
+1. Si el icono no existe en `_ICONS`, agregar el path al dict con el nombre de Heroicons (ej: `circle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'`).
+2. En `buildSidebar()`, usar `icon('circle',16)` en lugar del símbolo Unicode:
+   ```javascript
+   // Correcto
+   h += '<a href="#" class="nav-link" onclick="showTab(\'graph\')">' + icon('circle',16) + '<span>Graph</span><span class="nav-count">' + nc + '</span></a>';
+   
+   // Incorrecto (rompe consistencia visual)
+   h += '<a href="#" class="nav-link" onclick="showTab(\'graph\')">◉ Graph<span class="nav-count">' + nc + '</span></a>';
+   ```
+3. Verificar que todos los items del sidebar usan el mismo patrón: `icon('name',16) + '<span>Texto</span>...'`.
+
 ## Verificación
 
 ```bash
@@ -109,3 +127,9 @@ grep -n 'function icon(' ~/.hermes/skills/productivity/pocketbrain/scripts/web_u
 ```
 
 Debe devolver línea con el helper. Después de deploy, usar `browser_vision` para verificar que los iconos aparecen y no hay fallback vacío.
+
+```bash
+# Verificar que NINGUN sidebar item usa un símbolo Unicode hardcodeado
+grep -oP '◉|☐|⏰|📁|📅|📚|📓|🎯' ~/.hermes/skills/productivity/pocketbrain/scripts/web_ui.html
+# El resultado debe estar vacío (todos los iconos deben ser SVG inline)
+```
