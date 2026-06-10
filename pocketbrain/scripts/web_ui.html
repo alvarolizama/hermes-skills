@@ -20,7 +20,20 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #nav a.nav-link .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center;flex-shrink:0}
 #nav a.nav-link.active .nav-count{color:var(--ink);background:var(--canvas)}
 #nav .group{color:var(--mute);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:12px 4px 4px}
-#status{font-size:10px;color:var(--mute);padding:8px 4px;border-top:1px solid var(--hairline)}
+#status{font-size:10px;color:var(--mute);padding:8px 4px;border-top:1px solid var(--hairline);display:flex;align-items:center;gap:6px}
+#status .dot{width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--mute)}
+#status.live .dot{background:var(--green)}
+#status.offline .dot{background:#EF5350}
+#status.live{color:var(--green)}
+#status.offline{color:#EF5350}
+#toasts{position:fixed;bottom:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;background:var(--ink);color:var(--canvas);padding:12px 16px;border-radius:12px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.15);opacity:0;transform:translateY(8px);transition:all .3s ease;max-width:280px;cursor:pointer}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.info{background:var(--ink)}
+.toast.success{background:var(--green)}
+.toast.error{background:#EF5350}
+.toast strong{display:block;font-size:12px;margin-bottom:2px;opacity:.7}
+
 #main{flex:1;overflow-y:auto}
 #main>div{display:none;padding:20px 30px;max-width:none}
 #main>div.active{display:block}
@@ -106,7 +119,7 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <select id="brain-selector" onchange="switchBrain(this.value)"><option>Cargando...</option></select>
   <input type="text" id="search" placeholder="Buscar..." oninput="filterSidebar()">
   <div id="nav"></div>
-  <div id="status">● cargando...</div>
+  <div id="status"><span class="dot"></span>cargando...</div>
 </div>
 <div id="main">
   <div id="view-todos"></div>
@@ -149,11 +162,20 @@ function icon(name, size){size=size||20;return '<svg xmlns="http://www.w3.org/20
 
 function api(path){var c=currentContext||'personal';var sep=path.indexOf('?')>-1?'&':'?';return fetch('/api'+path+sep+'context='+c).then(function(r){return r.json();});}
 
+var _pbConfig=null,_hbTimer=null,_hbFail=0,_lastSnap={pages:0,goals:0,todos:0,deps:0,files:0,reminders:0,journal:0};
+function updateStatus(state){var el=document.getElementById('status');if(!el)return;el.className=state==='live'?'live':(state==='offline'?'offline':'');el.innerHTML='<span class="dot"></span>'+(state==='live'?'live':(state==='offline'?'offline':'cargando...'));}
+function loadPbConfig(){api('/config').then(function(cfg){_pbConfig=cfg;updateStatus('live');startHeartbeat();}).catch(function(err){console.error('config error',err);updateStatus('offline');});}
+function startHeartbeat(){if(_hbTimer)clearInterval(_hbTimer);_hbTimer=setInterval(function(){if(!_pbConfig)return;fetch(_pbConfig.pb_url+'/api/health',{cache:'no-store'}).then(function(r){if(r.ok){_hbFail=0;updateStatus('live');}else{throw new Error('bad health');}}).catch(function(){_hbFail++;if(_hbFail>=2)updateStatus('offline');});},10000);}
+function checkDiff(now){var msgs=[];if(now[0].length!==_lastSnap.pages)msgs.push('Páginas');if(now[1].length!==_lastSnap.goals)msgs.push('Goals');if(now[2].length!==_lastSnap.todos)msgs.push('Tareas');if(now[3].length!==_lastSnap.deps)msgs.push('Entregables');if(now[4].length!==_lastSnap.files)msgs.push('Archivos');if(now[5].length!==_lastSnap.reminders)msgs.push('Reminders');if(now[6]&&now[6].length!==_lastSnap.journal)msgs.push('Journal');if(msgs.length)showToast(msgs.join(', '),'info');}
+function saveSnap(now){_lastSnap={pages:now[0].length,goals:now[1].length,todos:now[2].length,deps:now[3].length,files:now[4].length,reminders:now[5].length,journal:(now[6]||[]).length};}
+function showToast(msg,type){var container=document.getElementById('toasts');if(!container)return;while(container.children.length>=3){container.removeChild(container.firstChild);}var t=document.createElement('div');t.className='toast '+(type||'info');t.innerHTML='<strong>'+(type==='success'?'Creado':type==='error'?'Eliminado':'Actualizado')+'</strong>'+msg;container.appendChild(t);requestAnimationFrame(function(){t.classList.add('show');});setTimeout(function(){t.classList.remove('show');setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},300);},5000);}
+
 function loadBrains(){api('/contexts').then(function(brains){var sel=document.getElementById('brain-selector');sel.innerHTML=brains.map(function(b){var s=b.name===currentContext?' selected':'';return'<option value="'+b.name+'"'+s+'>'+b.name+'</option>';}).join('');currentContext=sel.value||brains[0]?.name||'personal';loadAll();});}
 
 function switchBrain(name){currentContext=name;_graphInit=false;PAGES=[];GOALS=[];TODOS=[];DEPS=[];FILES=[];REMINDERS=[];JOURNAL=[];loadAll();}
 
-function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph'),api('/logs')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};LOGS=results[8]||[];_graphInit=false;pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
+var _firstLoad=true;
+function loadAll(){updateStatus('syncing');Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph'),api('/logs')]).then(function(results){if(!_firstLoad)checkDiff(results);PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};LOGS=results[8]||[];_graphInit=false;pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();saveSnap(results);_firstLoad=false;updateStatus('live');}).catch(function(e){updateStatus('offline');console.error(e);setTimeout(loadAll,2000);});}
 
 function getHashParams(){var hash=location.hash||'';if(!hash||hash==='#')return{};var p={},parts=hash.substring(1).split('&');parts.forEach(function(x){var kv=x.split('=');if(kv.length===2)p[kv[0]]=decodeURIComponent(kv[1]);});return p;}
 function setHashParams(p){var parts=[];for(var k in p){if(p[k])parts.push(k+'='+encodeURIComponent(p[k]));}history.replaceState(null,'','#'+parts.join('&'));}
@@ -667,6 +689,8 @@ setTimeout(function(){
 },500);
 setInterval(function(){if(!document.hidden)loadAll();},30000);
 window.addEventListener('popstate',restoreFromHash);
+loadPbConfig();
 </script>
+<div id="toasts"></div>
 </body>
 </html>

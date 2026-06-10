@@ -264,6 +264,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/contexts":
             pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
             self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
+        elif path == "/api/config":
+            brain = get_brain()
+            self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "token": brain.pb.get_token(), "context": CTX})
         else: self.send_response(404); self.end_headers()
     def serve_json(self, data):
         self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
