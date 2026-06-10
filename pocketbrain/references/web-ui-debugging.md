@@ -142,3 +142,55 @@ expression="renderProjectsView(); typeof _projectData === 'object' ? 'OK' : 'FAI
 **Nunca decir "ya jala" sin:** `node --check` + API curl + al menos una `browser_console` check o `browser_vision` screenshot.
 
 **Preferir browser automation sobre desktop tools.** La herramienta `browser_*` (Hermes browser automation) SÍ accede a `localhost` y ejecuta JS en el contexto de la página. No usar `screencapture`, `osascript`, `open` de Chrome/Safari — son flaky en headless y no son reproducibles. Usar `browser_navigate` / `browser_console` / `browser_vision`.
+
+---
+
+## Pitfall: `_graphInit` flag bloquea re-render después de `loadAll()`
+
+El grafo de vis.js usa una variable global `window._graphInit` para evitar inicializar dos veces. Después de `loadAll()` (polling cada 30s), los datos nuevos llegan pero `renderGraph()` detecta `_graphInit === true` y omite la renderización → canvas vacío, leyenda vacía.
+
+**Síntoma:** al primer load el grafo se ve. Tras 30s (o tras cambiar de tab y volver), el grafo aparece en blanco. `browser_console` confirma `GRAPH.counts` existe, los nodos existen, pero `document.getElementById('graph-legend').innerHTML === ''`.
+
+**Fix:** resetear `_graphInit = false` dentro de `loadAll()` al recibir los datos nuevos:
+```javascript
+function loadAll(){
+  Promise.all([...]).then(function(results){
+    // ... asignar datos ...
+    _graphInit = false;  // ← forzar re-render del grafo
+    // ...
+  });
+}
+```
+
+**Regla:** cualquier flag de "inicialización única" en el frontend debe invalidarse cuando `loadAll()` refresca los datos. No confiar en que "solo se inicializa una vez" si los datos son dinámicos.
+
+## Pitfall: `patch` tool crea elementos duplicados al remover inline tags
+
+Al eliminar un elemento inline (ej. `<h2>PocketBrain</h2>`) con `patch` usando un `old_string` que incluye el elemento anterior como contexto, el tool puede duplicar el elemento padre si el `old_string` no es lo suficientemente específico.
+
+**Ejemplo real:**
+```html
+<!-- Original -->
+<span class="mobile-title">PocketBrain</span>
+<div id="sidebar">
+  <h2>PocketBrain</h2>
+```
+
+Parche para quitar el `<h2>`:
+- `old_string = "\n  <h2>PocketBrain</h2>\n"`
+- El tool matchó solo el `\n` (newline) y reemplazó, dejando:
+```html
+<div id="sidebar">
+<div id="sidebar">
+```
+
+**Regla:** al remover elementos inline de HTML con `patch`, usar `old_string` lo suficientemente largo para ser único: incluir al menos 2-3 líneas de contexto antes y después. Si el elemento está entre otros tags del mismo tipo, usar `execute_code` (Python regex/replace) en vez de `patch`.
+
+## Pitfall: vis.js canvas invisible → `position:relative` en padre
+
+Cuando la leyenda del grafo se posiciona `absolute` (ej. `bottom:12px;right:12px`), el padre necesita `position:relative` para que el canvas se contenga correctamente. Si el padre no tiene `position:relative`, el canvas de vis.js sale del flujo (0x0) y la leyenda no se visualiza.
+
+**Fix:** asegurar que `#view-graph.active` tiene `position:relative`:
+```css
+#view-graph.active{display:flex;flex-direction:column;position:relative;...}
+```

@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 2.9.8
+version: 2.13.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -15,13 +15,87 @@ metadata:
 Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
 Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
 
-## Novedades v2.9.7
+## Novedades v2.13.0 (live status + change toasts)
 
-- **Proyectos como vista default** — `_currentTab='projects'` al cargar, el div `view-projects` es la primera activa.
-- **Conteos en todos los tabs** — sidebar, Goals (status), Wiki (tipos), Reminders (secciones), project detail (tabs), wiki page detail (backlinks/related/content). Pitfall: `counts` dict keys deben coincidir EXACTAMENTE con el identificador del tab (`t.k`), no con el label (`t.l`).
-- **Footer de metadata en wiki page detail** — bajo cada página: fechas creado/actualizado, estado, dominio, tags, nota, fechas de inicio/completado/cancelado, logs de actividad (10 más recientes), y relaciones links a goals/tareas/reminders/journal/backlinks.
-- **Logs fetch en loadAll** — `/api/logs` fetchea automáticamente junto a los otros 8 endpoints; `LOGS` global disponible para filtrar por page/goal/todo.
-- **Mejor render markdown en wiki** — contenido envuelto en `.card.md-content` para consistencia con project detail.
+- **Status indicator con dot de colores**: verde=live, gris=syncing, rojo=offline. Se actualiza en cada `loadAll()` y por heartbeat a PocketBase `/api/health` cada 10s.
+- **Detección de cambios por conteos** (sin SSE real): `loadAll()` compara longitudes de arrays (`pages.length`, `goals.length`, etc.) contra `_lastSnap`. Si difieren después del primer load, muestra toast con las colecciones que cambiaron.
+- **Toast system**: contenedor fijo bottom-right, max 3 toasts visibles (FIFO), 5s de duración, auto-dismiss con fade-out. Colores: verde=create, gris=update, rojo=delete.
+- **Endpoint `/api/config`**: devuelve `{pb_url, token, context}` para que el frontend pueda hacer heartbeat al PocketBase real. El token se obtiene vía `brain.pb.get_token()`.
+- **Flag `_firstLoad`**: evita mostrar toasts en la carga inicial — solo en polls/refresh subsiguientes.
+
+### Pitfall: PocketBase no expone SSE por el endpoint `/api/collections/{col}/sse`
+
+La versión de PocketBase actual devuelve `404 {"message":"File not found."}` al intentar suscribirse a `/api/collections/brain_goals/sse?auth=TOKEN`. No intentar usar `EventSource` directo — no funciona sin instalar el plugin de realtime por separado.
+
+**Alternativa implementada**: heartbeat (poll de `/api/health` cada 10s) + comparación de conteos en cada `loadAll()`. Si los conteos cambian, se muestra un toast con la colección que varió. No es realtime event-level, pero detecta cambios entre polls y notifica al usuario.
+
+### Patrón: status indicator UX
+
+- CSS: `#status .dot{width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--mute)}` + clases `.live`/`.offline` en el `#status`.
+- `updateStatus(state)` cambia el texto y el color del dot.
+- `loadAll()` setea `syncing` antes del fetch, `live` después, `offline` en catch.
+- El heartbeat es independiente: usa `fetch(pb_url+'/api/health')` y actualiza solo si falla 2 veces seguidas.
+
+## Novedades v2.9.11 (metadata pills → sidebar)
+
+- **Wiki page detail**: los pills de metadata (`page_type`, `confidence`, `goals`, `tareas`, `backlinks`) debajo del título se eliminaron del cuerpo principal y se movieron a la **tarjeta Metadata del sidebar derecho**.
+- El sidebar ahora muestra `Tipo`, `Confianza`, `Goals`, `Tareas`, `Backlinks` junto con los campos existentes (`Creado`, `Actualizado`, `Estado`, etc.).
+- Patrón: si el usuario dice "ponlo en el sidebar derecho", mover metadata del `.meta` central al `wiki-right`.
+
+## Workflow notes ( user's style )
+
+**"commit" = commit inmediato, sin discusión.** Cuando Álvaro dice "commit" (o "commit nada mas"), no expliques qué vas a hacer ni pases plan detallado. Copia runtime → repo, `git add`, `git commit -m "..."`, reporta el hash. Él espera acción, no conversación.
+
+**Terse, directo, sin branding.** Álvaro prefiere UI limpia sin texto de producto (quitó "PocketBrain" del sidebar). Las instrucciones son tajantes: "quita esto", "pon esto allá", "dale". Cumplir sin parafrasear.
+
+## Novedades v2.9.10 (tabs consistency above headers)
+
+- **Tabs positioning unified**: en todas las vistas con tabs (Goals, Reminders, Project detail, Wiki page detail), los tabs ahora están **arriba** del header/título/breadcrumb, no entre el título y el contenido. Patrón: `tabs → header → content`.
+- CSS duplicado `.project-tab` (nunca usado) removido. El estilo de tabs único es `.project-tabs a` (líneas 41-44).
+
+### v2.9.9 (preserva wiki page en polling)
+
+- **Polling fix**: `window._wikiSlug` guarda el slug actual de la wiki page. Al hacer `loadAll()` cada 30s, `showCurrentView()` restaura la página (`showPage(_wikiSlug)`) en vez de resetear al índice cada vez. `showIndex()` borra `_wikiSlug`. `showPage()` lo setea.
+- `href="#"` syntax consistente en todos los tabs generados por JS (bug previo con `href=\#"`).
+
+### v2.10.0 (URL deep-linking + graph legends + consistent branding)
+
+- **SPA hash routing**: `showTab`, `showProject`, `showPage` escriben al hash (`#tab=goals`, `#project=slug`, `#page=rust`). `restoreFromHash()` con retry loop espera a que `loadAll()` termine antes de saltar. `popstate` para Back/Forward.
+- **Graph global legend** con conteos: `get_graph()` devuelve `counts: {page: N, goal: N, todo: N, reminder: N}`. `renderGraph()` itera `GRAPH.counts` con label mapping (`GTYPE_NAMES`). Leyenda posicionada `bottom:12px;right:12px`.
+- **Project graph legend**: `renderProjectGraph()` genera leyenda debajo del canvas contando `d.goals.length`, `d.todos.length`, `d.rems.length` + proyecto (1).
+- **Branding removible**: `<h2>PocketBrain</h2>` del sidebar y `<span class="mobile-title">PocketBrain</span>` del header móvil pueden eliminarse para UI sin branding (user preference).
+- **Consistent margin-bottom**: todos los H1 ahora tienen `margin-bottom:20px` (incluyendo wiki page detail y project detail que usaban `<h1>` inline, no `.view-header h1`).
+- **CSS fix**: `#view-graph.active` requiere `position:relative` para que la leyenda absoluta funcione. Sin esto el canvas se sale del padre y la leyenda no se ve.
+
+### v2.12.0 (goal progress removed — status-only)
+
+- **Campo `progress` eliminado de `brain_goals`**: schema, `create_goal()`, `update_goal()`, `get_goals()`, `get_goal_tree()`, y toda la UI. Los goals ahora solo usan `status: planned | active | done | cancelled`. No hay barra de progreso ni porcentaje en ninguna vista.
+- Sort de sub-goals en `get_goal_tree()`: ahora por `title` alfabético (antes era por `progress` descendente).
+- CSS `.progress-bar` y `.progress-fill` eliminados de `web_ui.html`.
+
+### v2.11.0 (Project kanban filters — all, no-goal, by-goal)
+
+- **Patrón de filtros de tabs en project detail**: cada tab que muestra una lista filtrable (Goals, Reminders, Kanban) usa el mismo patrón:
+  1. Variable global `window._proj*Filter` (ej. `_projGoalStatus`, `_projKanbanFilter`, `_projReminderStatusTab`).
+  2. Función `setProj*Filter(s)` que setea la variable y llama `switchProjectTab('tabName', window._projectData.slug)`.
+  3. Tabs generados dinámicamente con conteos por filtro, `active` class en el filtro actual.
+- **Kanban filters**:
+  - **Todas**: todos los todos del proyecto, agrupados por status (backlog → cancelled).
+  - **Sin Goal**: filtra `!t.goal_id`, mismas columnas de status.
+  - **Por Goal**: columnas = goals del proyecto (más "Sin Goal"). Cada columna tiene las tareas de ese goal con status+domain en la meta.
+- **Reutilización del patrón**: Goals usa `setProjGoalStatus` con sub-tabs Activos/Terminados/Cancelados. Reminders usa `setProjReminderStatus` con Hoy/Semana/Futuro. Kanban usa `setProjKanbanFilter` con Todas/Sin Goal/Por Goal. Mismo boilerplate, distinta lógica de filtro.
+- **Importante**: cuando se agrega un nuevo filtro de tab de proyecto, seguir el patrón existente: variable global + setter + tabs con conteo + render condicional en `switchProjectTab`.
+
+### v2.9.8 (sidebar derecho en wiki pages)
+
+- **Nuevo layout de dos columnas** en cada wiki page: `.wiki-layout-page` con `.wiki-left` (contenido + logs) y `.wiki-right` (sidebar 240px fijo).
+- **Tarjeta Relaciones** (sidebar): items con iconos de color (G verde goals, T púrpura tareas, R amarillo reminders, J azul journal, B gris backlinks). Cada item muestra conteo y label.
+- **Tarjeta Metadata** (sidebar): campos `creado`, `actualizado`, `estado`, `dominio`, `tags`, `nota`, `iniciado`, `completado`, `cancelado`. Vacíos se ocultan.
+- **Log de actividad** debajo del contenido en columna izquierda (últimos 10 logs filtrados por page ID). Muestra "Sin actividad reciente" si no hay logs.
+- **CSS responsive**: en `@media(max-width:768px)` el sidebar se apila al 100% debajo del contenido.
+- Contenido markdown se renderiza dentro de `.card.md-content` para consistencia visual con project detail.
+
+### v2.9.7 (Proyectos default, wiki render mejorado, footer metadata/logs)
 
 ### v2.9.6 (conteos en tabs)
 - Goals view: sub-tabs Todos/Activos/Terminados/Cancelados con conteo.
@@ -43,15 +117,8 @@ Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
 
 - **UI refactor completo**: sidebar con iconos en todos los títulos (`📅`, `☐`, `🎯`, `⏰`, `📓`, `📚`, `◉`).
 - **Goals con tabs internos**: listado con **Activos/Terminados/Cancelados** + paginación 50/50. Detalle con **Contenido/Tareas/Key Results/Progreso/Relación**.
-- **Progreso automático**: calculado visualmente desde el estado de tareas (`backlog=0`, `in progress=50`, `done=100`).
-- **Markdown renderer propio**: bold, italic, headers, lists, code blocks, `[[wikilinks]]`, links externos.
-- **Toasts de notificación** en tiempo real al detectar cambios nuevos.
-- **Footer de actividad reciente** (`brain_log`) en cada página, goal y proyecto.
-- **Indicador live** verde con pulse animation en sidebar.
-- **Paginación 50/50** también en Wiki (tabs por tipo de página).
-- **Fixes de backend**: `get_goals()` ahora expande `page` y devuelve `page_slug` (antes devolvía ID, rompiendo el filtro de goals por proyecto en el frontend).
-- **Fixes de frontend**: uso de `forEach + getAttribute + includes` en vez de `querySelector` con atributos que contienen comillas dinámicas. Typo `api('/de ps')` corregido a `api('/deps')`.
-- **Nuevas vistas: Files y Deliverables** — listados independientes con filtro por proyecto (dropdown "Todos/Sin proyecto/Proyecto X"), igual que Todo, Goals y Reminders. Tabs Archivos y Entregables en detalle de cada proyecto.
+- **Iconos Heroicons SVG inline** — reemplazo completo de emojis Unicode en sidebar y headers por SVG inline con paths de Heroicons 24 outline. Helper `icon(name, size)` en el JS.
+- **Patrón de patching seguro** — documentado en `references/html-js-patching.md`: usar `execute_code` (Python) con `assert` para reemplazos masivos en `web_ui.html`, evitando `write_file` truncamientos y parches inconsistentes.
 
 ### v2.9.1 (Refactor UI — Proyecto primera, Kanban full, markdown, Heroicons)
 - **Proyecto como primera vista en sidebar** — "Proyectos" ahora es el primer ítem de navegación.
@@ -317,9 +384,15 @@ El icono Unicode `&#9745;` (☐ “Ballot Box with Check”) es ambiguo en algun
 h+='<span class="nav-icon">&#10003;</span>Todo</a>';  // sidebar y view-header
 ```
 
-### web_ui.html: quitar meta pills de wiki_showPage
+### web_ui.html: mover meta pills al sidebar derecho
 
-En la página de detalle de una wiki page (`wiki_showPage`), los pills de metadatos (page_type, goals count, tareas count, backlinks) arriba de los tabs distraían y ocupaban espacio. La solución es **no inyectar el div de `.meta` antes de los tabs**; la información se muestra ya en el tab “Relacionado” o en los breadcrumbs (`Wiki · concept`).
+En la wiki page detail (`wiki_showPage`), los pills de metadatos (`page_type`, `confidence`, `goals count`, `tareas count`, `backlinks`) debajo del `<h1>` distraían y ocupaban espacio horizontal valioso. La solución es:
+
+1. **Eliminar** el `<div class="meta">` del centro (debajo del título).
+2. **Agrupar** esa información en la tarjeta **Metadata** del sidebar derecho, junto con `created`, `updated`, `status`, `domain`, etc.
+3. **Los conteos funcionales** (`Goals`, `Tareas`, `Backlinks`) también van en Metadata como items de lectura, junto al resto de campos de la página.
+
+**Regla:** Nunca pongas pills de metadata bajo el `<h1>` en una layout de dos columnas. El sidebar derecho existe para eso.
 
 ### web_ui.html: validación antes de deploy (node --check)
 
@@ -361,7 +434,13 @@ Toda la interfaz web usa `?context=personal` (no `?brain=personal`). El endpoint
 
 ### web_ui.html: variables JS sin declarar
 
-El `renderProjectView` de `web_ui.html` referenció `pfiles` en el template pero no la declaró (`var pfiles = ...`). Resultado: JavaScript crashea en silencio, la vista del proyecto se queda en blanco, y los tabs no se renderizan. **Verificación:** antes de deploy, revisar que toda variable usada en `innerHTML` esté declarada en el scope. El browser muestra "blank page" sin error visible.
+Cualquier función render de `web_ui.html` que genera HTML vía concatenación de strings (`h+=...`) pero olvida declarar la variable (`var h='';`) produce una vista vacía o incompleta sin error visible en el browser.
+
+**Casos reales:**
+- **`renderProjectView`**: referenció `pfiles` en el template sin declarar (`var pfiles = ...`). Los tabs del proyecto quedaron en blanco.
+- **`showIndex()` (wiki)**: usó `h+=...` para construir el índice de wikis sin `var h='';`. Resultado: la pestaña Wiki se quedaba vacía, el sidebar seguía funcionando pero al clicar en Wiki no aparecía nada. El `undefined` de `h` se concatenaba a un string vacío, dejando `innerHTML = undefined` que el browser renderiza como cadena vacía.
+
+**Verificación:** antes de deploy, revisar que toda variable usada en `innerHTML` esté declarada en el scope. Buscar el patrón `var h='';` o equivalente al inicio de cada función render. El browser muestra "blank page" sin error visible.
 
 ### backend: timestamps `created`/`updated` no llegan al frontend
 
@@ -574,7 +653,35 @@ En mobile, al hacer click en cualquier opción del menú (`showTab`, `showProjec
 
 ---
 
-### web_ui.html: análisis completo antes de modificar
+### web_ui.html: SPA state preservation during polling (loadAll)
+
+El frontend hace `loadAll()` cada 30s (`setInterval(30000)`). Después de cada refresh, llama `showCurrentView()` que decide qué vista mostrar. Para el tab **Wiki**, si el usuario está viendo una página específica (`showPage('rust')`), `showCurrentView()` llamará `showIndex()` que resetea al índice de wiki — **el usuario pierde la página que estaba leyendo**.
+
+**Fix:** Guardar `_wikiSlug` al entrar a una página, borrarlo al ir al índice, y restaurarlo en `showCurrentView()`:
+```javascript
+function showPage(slug) {
+  window._wikiSlug = slug;  // guarda la página actual
+  // ... renderiza la página
+}
+
+function showIndex() {
+  window._wikiSlug = null;  // borra, showCurrentView hará showIndex()
+  // ... renderiza el índice
+}
+
+// En showCurrentView(), cuando _currentTab === 'wiki':
+else if (_currentTab === 'wiki') {
+  if (window._wikiSlug) {
+    showPage(window._wikiSlug);  // restaura la página
+  } else {
+    showIndex();
+  }
+}
+```
+
+**Regla:** cualquier vista que muestre un detalle dentro de otro tab (ej. página individual dentro de Wiki, goal individual dentro de Goals) debe tener un estado global de "sub-vista" que se preserve durante el polling de `loadAll()`.
+
+### web_ui.html: dos-column layout para wiki page detail
 
 El usuario puede solicitar explícitamente que se **analice el código antes de tocarlo**. Antes de modificar `web_ui.html` (CSS, JS, o HTML inline), **leer el archivo completo** y entender:
 - Estructura CSS y los selectores que se afectarán
@@ -753,4 +860,4 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/rename-checklist.md` | Antes y después de cualquier mass rename en el código |
 | `references/frontend-icon-patterns.md` | Al reemplazar emojis/Unicode por iconos SVG inline (Heroicons) en el frontend |
 | `references/browser-debugging.md` | Al debuggear UI sin screenshots: verificar DOM/estructura con `browser_console`, detectar U+2019 en archivos |
-| `references/backend-frontend-contract.md` | Al debuggear por qué contadores (goals, tareas) aparecen en 0 en las tarjetas de proyecto a pesar de que los datos existen |
+| `references/realtime-fallback.md` | Al implementar notificaciones realtime: SSE vs heartbeat, toasts de cambio, status indicator |

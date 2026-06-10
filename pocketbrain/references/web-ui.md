@@ -154,12 +154,81 @@ def get_brain():
 
 - El browser tool de Hermes (Browserbase) NO puede hacer `fetch()` a localhost — las requests van al servidor remoto.
 - Para testear la UI con datos reales, abrir en Chrome local.
-- Para verificar APIs: `curl http://localhost:8899/api/<endpoint>?brain=personal`.
+- For verificar APIs: `curl http://localhost:8899/api/<endpoint>?brain=personal`.
 - **JS syntax validation:** `node --check` sobre el JS extraído del HTML detecta syntax errors antes de abrir el browser:
   ```bash
   python3 -c "import re; html=open('web_ui.html').read(); m=re.search(r'<script>(.*?)</script>', html, re.DOTALL); open('/tmp/js.js','w').write(m.group(1))"
   node --check /tmp/js.js
   ```
+
+## SPA Hash Routing (URL Deep-Linking)
+
+La interfaz web es una SPA de un solo archivo. Para deep-linking sin framework:
+
+```javascript
+// Helpers
+function getHashParams(){var hash=location.hash||'';if(!hash||hash==='#')return{};var p={},parts=hash.substring(1).split('&');parts.forEach(function(x){var kv=x.split('=');if(kv.length===2)p[kv[0]]=decodeURIComponent(kv[1]);});return p;}
+function setHashParams(p){var parts=[];for(var k in p){if(p[k])parts.push(k+'='+encodeURIComponent(p[k]));}history.replaceState(null,'','#'+parts.join('&'));}
+function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='project';_currentProject=hp.project;showCurrentView();}else if(hp.page){_currentTab='wiki';window._wikiSlug=hp.page;showCurrentView();}else if(hp.tab){_currentTab=hp.tab;_currentProject=null;showCurrentView();}}
+
+// En cada función de navegación
+function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:tab});showCurrentView();}
+function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();}
+function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slug});/* ... render ... */}
+
+// Init + popstate
+loadBrains();
+setTimeout(function(){
+  function tryRestore(){if(!PAGES.length){setTimeout(tryRestore,200);return;}var hp=getHashParams();if(hp.project||hp.page||hp.tab)restoreFromHash();}
+  tryRestore();
+},500);
+window.addEventListener('popstate',restoreFromHash);
+```
+
+**Por qué `replaceState` y no `pushState`:** en una SPA de un solo archivo con polling cada 30s, `pushState` crearía una entrada por cada navegación, saturando el historial. `replaceState` mantiene una sola entrada activa.
+
+**Por qué retry loop:** `loadBrains()` dispara `loadAll()` que carga datos async. Si `restoreFromHash()` corre antes de que `PAGES` tenga elementos, las vistas detalle (wiki page, project) intentan acceder a `pmap[slug]` que aún no existe. El retry espera a que los datos carguen.
+
+## Graph Legends with Node Counts
+
+### Backend: `get_graph()` returns counts
+
+```python
+def get_graph():
+    # ... existing node/edge building ...
+    counts = {}
+    for n in nodes:
+        g = n.get("group", "unknown")
+        counts[g] = counts.get(g, 0) + 1
+    return {"nodes": nodes, "edges": edges, "counts": counts}
+```
+
+### Frontend: `renderGraph()` legend
+
+```javascript
+var GTYPE_NAMES = {page:'Paginas', goal:'Goals', todo:'Todo', deliverable:'Entregables', reminder:'Reminders'};
+var lh = '';
+var counts = GRAPH.counts || {};
+for (var group in counts) {
+    var color = GCOLORS[group] || '#888';
+    var label = GTYPE_NAMES[group] || group;
+    lh += '<div><span style="background:'+color+'"></span> '+label+' ('+counts[group]+')</div>';
+}
+document.getElementById('graph-legend').innerHTML = lh;
+```
+
+**Positioning:** `bottom:12px;right:12px` via `position:absolute` on `#graph-legend`. The parent `#view-graph.active` must have `position:relative`.
+
+### Frontend: `renderProjectGraph()` legend
+
+```javascript
+var ptypes = [];
+if (d.goals.length) ptypes.push({label:'Goals', count:d.goals.length, color:'#4CAF50'});
+if (d.todos.length) ptypes.push({label:'Tareas', count:d.todos.length, color:'#9C27B0'});
+if (d.rems.length) ptypes.push({label:'Reminders', count:d.rems.length, color:'#FFC107'});
+ptypes.push({label:'Proyecto', count:1, color:'#E91E63'});
+// ... build HTML ...
+```
 
 ## ⚠️ PITFALLS
 
@@ -248,3 +317,52 @@ Si una variable se refiere en `renderProjectView()` pero no se define (ej. `pfil
 // renderProjectView() usaba `pfiles.length` pero `pfiles` nunca se declaró
 // El JS crashea, la barra de tabs no aparece, la vista queda vacía silenciosamente
 ```
+
+### PITFALL 8: `#view-graph.active` necesita `position:relative` para hijos absolutos
+
+La leyenda del grafo (`#graph-legend`) usa `position:absolute;bottom:12px;right:12px`. El padre `#view-graph.active` DEBE tener `position:relative` para que la leyenda se ancle a él y no al `<body>`. Si falta:
+
+- La leyenda puede aparecer en una esquina del viewport en vez del canvas.
+- El canvas de vis.js (`#graph-view` con `position:absolute;top:0;left:0;right:0;bottom:0`) necesita un padre posicionado para calcular su altura.
+
+**Fix:**
+```css
+#view-graph.active{display:flex;flex-direction:column;position:relative;max-width:none;padding:0;height:100%;animation:none}
+```
+
+### PITFALL 9: `_graphInit` bloquea re-render después de `loadAll()`
+
+`renderGraph()` guarda `_graphInit=true` en la primera corrida para evitar recrear la red. Cuando `loadAll()` refresca los datos cada 30s, si `_graphInit` sigue en `true`, la leyenda no se regenera con los nuevos `GRAPH.counts`.
+
+**Fix:** Resetear `_graphInit` al inicio de `loadAll`:
+```javascript
+function loadAll() {
+    // ...
+    _graphInit = false;  // permite re-render del grafo y leyenda
+    // ...
+}
+```
+
+**Síntoma:** la leyenda del grafo aparece vacía después del primer polling, o muestra counts desactualizados. El DOM existe (`#graph-legend.innerHTML === ''`).
+
+### PITFALL 10: Cambios en `brain_web.py` requieren reiniciar el servidor; `web_ui.html` no
+
+- `brain_web.py` se carga una vez al iniciar el proceso Python. Cualquier cambio en funciones de backend (`get_pages()`, `get_graph()`, etc.) requiere **matar y levantar el proceso** (`pkill -f brain_web.py; python3 brain_web.py`).
+- `web_ui.html` se lee en cada request (`_load_html()`). Los cambios de CSS/JS/HTML se reflejan inmediatamente sin reinicio.
+
+**Síntoma del error:** editas `get_graph()` para agregar `counts`, pero `curl http://localhost:8899/api/graph` sigue devolviendo solo `{nodes, edges}` sin `counts`. El server sigue corriendo con el código antiguo.
+
+### PITFALL 11: H1 sin `margin-bottom` rompe consistencia visual
+
+`.view-header h1` tiene `margin:0` y el `.view-header` maneja `margin-bottom:20px`. Pero cuando un `<h1>` se genera fuera de `.view-header` (wiki page detail, project detail), carece de margen inferior y el contenido queda pegado al título.
+
+**Fix:** Agregar `style="margin-bottom:20px"` inline a los `<h1>` fuera de `.view-header`:
+```javascript
+// Wiki page detail
+h+='<h1 style="margin-bottom:20px">'+p.title+'</h1>';
+
+// Project detail
+h+='<h1 style="margin-bottom:20px">'+p.title+'</h1>';
+```
+
+**Regla:** Siempre verificar que TODOS los H1 de la app tengan `margin-bottom:20px`, sea por el contenedor `.view-header` o por estilo inline.

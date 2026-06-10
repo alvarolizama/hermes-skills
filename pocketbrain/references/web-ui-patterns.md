@@ -42,6 +42,90 @@ if (tab === 'goals') {
 
 **Filtro de status**: `active` agrupa `active` + `planned`; `completed` = `completed`; `cancelled` = `cancelled`.
 
+## Patrón general: filtros de tabs en project detail
+
+Cada tab de proyecto que muestra una lista filtrable (Goals, Reminders, Kanban) usa el **mismo patrón arquitectónico**:
+
+1. **Variable global** `window._proj*Filter` para persistir el filtro entre renders.
+2. **Setter** `setProj*Filter(s)` que muta la variable y re-renderiza el tab.
+3. **Tabs dinámicos** con conteo por filtro y `active` class en el filtro actual.
+4. **Render condicional** dentro de `switchProjectTab()` según `window._proj*Filter`.
+
+### Ejemplos concretos:
+
+| Tab | Variable global | Setter | Filtros |
+|-----|----------------|--------|---------|
+| Goals | `window._projGoalStatus` | `setProjGoalStatus(s)` | all / active / completed / cancelled |
+| Reminders | `window._projReminderStatusTab` | `setProjReminderStatus(s)` | today / week / future / overdue / done / all |
+| Kanban | `window._projKanbanFilter` | `setProjKanbanFilter(s)` | all / no-goal / by-goal |
+
+### Goals: filtrado por status
+
+```js
+function setProjGoalStatus(s) {
+  window._projGoalStatus = s;
+  switchProjectTab('goals', window._projectData.slug);
+}
+// En switchProjectTab('goals'):
+var gsf = window._projGoalStatus || 'all';
+var pGoalsAll = d.goals;
+var cAll = pGoalsAll.length, cActive = pGoalsAll.filter(g => g.status === 'active' || g.status === 'planned').length;
+// ... tabs con conteos ...
+var pGoals = d.goals;
+if (gsf === 'active') pGoals = pGoals.filter(g => g.status === 'active' || g.status === 'planned');
+```
+
+### Reminders: filtrado por fecha
+
+```js
+function setProjReminderStatus(s) {
+  window._projReminderStatusTab = s;
+  switchProjectTab('reminders', window._projectData.slug);
+}
+```
+
+### Kanban: filtrado por goal association
+
+El kanban tiene tres modos de visualización que cambian completamente la estructura de columnas:
+
+- **Todas** (default): todas las tareas del proyecto, agrupadas por status en columnas fijas (backlog → cancelled).
+- **Sin Goal**: tareas donde `!t.goal_id`, mismas columnas de status.
+- **Por Goal**: columnas = goals del proyecto (más "Sin Goal" como última columna). Cada columna contiene las tareas de ese goal, con status+domain en la meta.
+
+```js
+function setProjKanbanFilter(s) {
+  window._projKanbanFilter = s;
+  switchProjectTab('kanban', window._projectData.slug);
+}
+// En switchProjectTab('kanban'):
+var kf = window._projKanbanFilter || 'all';
+var cAll = d.todos.length;
+var cNoGoal = d.todos.filter(function(t) { return !t.goal_id; }).length;
+var cByGoal = d.todos.filter(function(t) { return !!t.goal_id; }).length;
+// Tabs: Todas (N) | Sin Goal (N) | Por Goal (N)
+
+if (kf === 'by-goal') {
+  // Columnas por goal
+  var gcols = [];
+  d.goals.forEach(function(g) { gcols.push({id: g.id, title: g.title, type: g.type, todos: []}); });
+  gcols.push({id: null, title: 'Sin Goal', type: 'none', todos: []});
+  d.todos.forEach(function(t) {
+    var found = false;
+    for (var i = 0; i < gcols.length - 1; i++) {
+      if (gcols[i].id === t.goal_id) { gcols[i].todos.push(t); found = true; break; }
+    }
+    if (!found) gcols[gcols.length - 1].todos.push(t);
+  });
+  // Render kanban con gcols como columnas (solo si tienen todos)
+} else {
+  // Kanban por status: ss = ['backlog','this week','today','in progress','done','cancelled']
+  var filtered = (kf === 'no-goal') ? d.todos.filter(function(t) { return !t.goal_id; }) : d.todos;
+  // distribuir en bs[status]
+}
+```
+
+**Regla:** cuando se agrega un nuevo filtro de tab de proyecto, seguir este patrón exacto. No inventar nombres nuevos para variables o funciones; usar `_proj` + `NombreTab` + `Filter/Status` y `setProj` + `NombreTab` + `Filter/Status`.
+
 ## Kanban: full-width + full-height dentro del proyecto
 
 Dentro del tab `Kanban` del proyecto, el board debe ocupar todo el espacio disponible (100% ancho, 100% alto de su contenedor):
@@ -104,6 +188,41 @@ function icon(name, size) {
 ```
 
 Usar `icon('arrow-left', 16) + ' Proyectos'` en el breadcrumb de la vista de proyecto, y en los headers de cada sección (Reminders: icon('exclamation-triangle') + ' Atrasados').
+
+## Tab positioning: tabs always above the header/title
+
+**Regla de diseño:** En todas las vistas con tabs, los tabs deben estar **arriba** del breadcrumb, título `<h1>`, dropdown de filtro, y contenido. Nunca entre el título y el contenido, ni entre breadcrumb y título.
+
+### Vistas afectadas (todas cumplen el patrón `tabs → header → content`):
+
+- **Goals (general)**: tabs de status (Todos/Activos/Terminados/Cancelados) → h1 "Goals" → dropdown de filtro por proyecto → lista
+- **Reminders**: tabs (Hoy/Esta semana/Próximos/Atrasados/Completados/Todos) → h1 "Reminders" → dropdown de filtro por proyecto → lista
+- **Project detail**: tabs (Contenido/Goals/Kanban/Recordatorios/Journal/Archivos/Entregables/Graph) → breadcrumb "Proyectos" → h1 título del proyecto → contenido
+- **Wiki page detail**: tabs (Contenido/Backlinks/Relacionado) → breadcrumb "Wiki" → h1 título de la página → layout dos columnas
+
+### Antipatrón: tabs entre título y contenido
+
+```html
+<!-- NO — tabs enterrados entre h1 y contenido -->
+<h1>Goals</h1>
+<div class="project-tabs">...</div>  <!-- mal -->
+<p>17 goals</p>
+```
+
+```html
+<!-- SÍ — tabs arriba de TODO -->
+<div class="project-tabs">...</div>
+<h1>Goals</h1>
+<p>17 goals</p>
+```
+
+En el project detail, el título va DEBAJO del breadcrumb, y el breadcrumb DEBAJO de los tabs:
+```html
+<div class="project-tabs">...Contenido...Goals...</div>
+<div style="font-size:12px">← Proyectos</div>
+<h1>Viaje a Japón 2026</h1>
+<div id="project-tab-content"></div>
+```
 
 ## Sidebar: orden de navegación
 
