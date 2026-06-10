@@ -144,8 +144,8 @@ cd ~/.hermes/skills/productivity/pocketbrain/scripts
 python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
 # 2. Servidor web live
-python3 brain_web.py --context personal
-# → http://localhost:8080
+python3 brain_web.py --context personal --port 8899
+# → http://localhost:8899
 
 # 3. Exportar a markdown
 python3 sync.py --context personal --full
@@ -739,7 +739,7 @@ Si se llenan datos densos de demo sobre una base que ya tiene registros previos,
 
 | Script | Uso |
 |--------|-----|
-| `brain_web.py` | Servidor web live en `localhost:8080`. Lee HTML de `web_ui.html`. |
+| `brain_web.py` | Servidor web live en `localhost:8899`. Lee HTML de `web_ui.html`. |
 | `brain.py` | Cliente Python para agentes |
 | `sync.py` | Export a markdown local con frontmatter YAML |
 | `graph.py` | Graph HTML standalone per-contexto |
@@ -861,3 +861,4 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/frontend-icon-patterns.md` | Al reemplazar emojis/Unicode por iconos SVG inline (Heroicons) en el frontend |
 | `references/browser-debugging.md` | Al debuggear UI sin screenshots: verificar DOM/estructura con `browser_console`, detectar U+2019 en archivos |
 | `references/realtime-fallback.md` | Al implementar notificaciones realtime: SSE vs heartbeat, toasts de cambio, status indicator |
+| `references/repo-maintenance.md` | Cómo mantener el repo sync: qué va y qué no va en el tap, screenshots, `.gitignore` |
