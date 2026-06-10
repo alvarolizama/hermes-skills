@@ -75,6 +75,26 @@ blockquote{font-style:italic;color:var(--mute);border-left:3px solid var(--mute)
 .project-tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
 .project-tab .count{font-size:10px;color:var(--mute);margin-left:4px}
 
+
+.wiki-layout-page{display:flex;gap:24px;align-items:flex-start}
+.wiki-left{flex:1;min-width:0}
+.wiki-right{width:240px;min-width:240px;flex-shrink:0}
+.wiki-relations-card{background:var(--soft);border:1px solid var(--hairline);border-radius:12px;padding:16px;margin-bottom:12px}
+.wiki-relations-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.wiki-relation-row{display:flex;flex-direction:column;gap:8px}
+.wiki-relation-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.wiki-rel-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-size:11px;font-weight:600;flex-shrink:0}
+.wiki-rel-label{color:var(--body);flex:1}
+.wiki-rel-value{color:var(--ink);font-weight:500}
+.wiki-log{margin-top:32px;border-top:1px solid var(--hairline);padding-top:16px;font-size:13px}
+.wiki-log h2{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:12px}
+.wiki-log h2:first-child{margin-top:0}
+.wiki-log div{padding:6px 0;border-bottom:1px solid var(--hairline);color:var(--body)}
+.wiki-log strong{color:var(--ink)}
+@media(max-width:768px){
+.wiki-layout-page{flex-direction:column}
+.wiki-right{width:100%;min-width:0}
+}
 @media(max-width:768px){
 .hamburger{display:block}
 .mobile-title{display:block}
@@ -419,19 +439,38 @@ function showPage(slug){var p=pmap[slug];if(!p){document.getElementById('view-wi
   var prems=REMINDERS.filter(function(r){return r.page_slug===slug;});
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var bl=p.backlinks||[];
-  var h='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href="#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1>'+p.title+'</h1>';
+  var h='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href=\#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1>'+p.title+'</h1>';
   h+='<div class="meta" style="margin-bottom:12px"><span>'+p.page_type+'</span>'+(p.confidence?'<span>'+p.confidence+'</span>':'')+'<span>'+pgoals.length+' goals</span><span>'+ptodos.length+' tareas</span><span>'+bl.length+' backlinks</span></div>';
-  h+='<div class="project-tabs"><a class="active" href="#" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
-  if(bl.length)h+='<a href="#" onclick="switchPageTab(\'backlinks\',\''+slug+'\'); return false;">Backlinks ('+bl.length+')</a>';
+  h+='<div class="wiki-layout-page"><div class="wiki-left">';
+  h+='<div class="project-tabs"><a class="active" href=\#" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
+  if(bl.length)h+='<a href=\#" onclick="switchPageTab(\'backlinks\',\''+slug+'\'); return false;">Backlinks ('+bl.length+')</a>';
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
-  if(relCount)h+='<a href="#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
+  if(relCount)h+='<a href=\#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div><div id="page-tab-content"></div>';
   var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);
-  var meta2='<div style="margin-top:32px;border-top:1px solid var(--hairline);padding-top:16px;font-size:12px;color:var(--mute)"><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">'+(p.created?'<span><strong>Creado:</strong> '+p.created+'</span>':'')+(p.updated?'<span><strong>Actualizado:</strong> '+p.updated+'</span>':'')+(p.status?'<span><strong>Estado:</strong> '+p.status+'</span>':'')+(p.domain?'<span><strong>Dominio:</strong> '+p.domain+'</span>':'')+(p.tags&&p.tags.length?'<span><strong>Tags:</strong> '+p.tags.join(', ')+'</span>':'')+(p.comment?'<span><strong>Nota:</strong> '+p.comment+'</span>':'')+(p.started_date?'<span><strong>Iniciado:</strong> '+p.started_date+'</span>':'')+(p.completed_date?'<span><strong>Completado:</strong> '+p.completed_date+'</span>':'')+(p.cancelled_date?'<span><strong>Cancelado:</strong> '+p.cancelled_date+'</span>':'')+'</div>';
-  if(pageLogs.length){meta2+='<h2 style="font-size:14px;font-weight:600;margin:12px 0 8px;color:var(--ink)">Actividad reciente</h2>';pageLogs.forEach(function(l){meta2+='<div style="padding:4px 0;border-bottom:1px solid var(--hairline)"><strong>'+l.created+'</strong> · '+l.operation+(l.details?': '+l.details:'')+'</div>';});}
-  var rels='<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--hairline)"><div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink)">Relaciones</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+(pgoals.length?'<a href="#" onclick="showTab(\'goals\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+pgoals.length+' goals</a>':'')+(ptodos.length?'<a href="#" onclick="showTab(\'todos\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+ptodos.length+' tareas</a>':'')+(prems.length?'<a href="#" onclick="showTab(\'reminders\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+prems.length+' reminders</a>':'')+(pjour.length?'<a href="#" onclick="showTab(\'journal\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+pjour.length+' journal</a>':'')+(bl.length?'<a href="#" onclick="showTab(\'wiki\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+bl.length+' backlinks</a>':'')+'</div></div>';
-  h+=meta2+rels;
-  h+='</div>';
+  h+='<div class="wiki-log"><h2>Actividad reciente</h2>';
+  if(pageLogs.length){for(var i=0;i<pageLogs.length;i++){var l=pageLogs[i];h+='<div><strong>'+l.created+'</strong> · '+l.operation+(l.details?': '+l.details:'')+'</div>';}}
+  else h+='<p style="color:var(--mute);font-size:13px">Sin actividad reciente.</p>';
+  h+='</div></div>'; // end wiki-left
+  h+='<div class="wiki-right">';
+  h+='<div class="wiki-relations-card"><div class="wiki-relations-title">Relaciones</div><div class="wiki-relation-row">';
+  if(pgoals.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#E8F5E9;color:#4CAF50">G</span><span class="wiki-rel-label">'+pgoals.length+' goals</span></div>';
+  if(ptodos.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#F3E8F5;color:#9C27B0">T</span><span class="wiki-rel-label">'+ptodos.length+' tareas</span></div>';
+  if(prems.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#FFF8E1;color:#FFC107">R</span><span class="wiki-rel-label">'+prems.length+' reminders</span></div>';
+  if(pjour.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#E3F0FF;color:#2196F3">J</span><span class="wiki-rel-label">'+pjour.length+' journal</span></div>';
+  if(bl.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-icon" style="background:#F5F5F0;color:#737373">B</span><span class="wiki-rel-label">'+bl.length+' backlinks</span></div>';
+  h+='</div></div>';
+  h+='<div class="wiki-relations-card"><div class="wiki-relations-title">Metadata</div><div class="wiki-relation-row">';
+  if(p.created) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Creado</span><span class="wiki-rel-value">'+p.created+'</span></div>';
+  if(p.updated) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Actualizado</span><span class="wiki-rel-value">'+p.updated+'</span></div>';
+  if(p.status) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Estado</span><span class="wiki-rel-value">'+p.status+'</span></div>';
+  if(p.domain) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Dominio</span><span class="wiki-rel-value">'+p.domain+'</span></div>';
+  if(p.tags && p.tags.length) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Tags</span><span class="wiki-rel-value">'+p.tags.join(', ')+'</span></div>';
+  if(p.comment) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Nota</span><span class="wiki-rel-value">'+p.comment+'</span></div>';
+  if(p.started_date) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Iniciado</span><span class="wiki-rel-value">'+p.started_date+'</span></div>';
+  if(p.completed_date) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Completado</span><span class="wiki-rel-value">'+p.completed_date+'</span></div>';
+  if(p.cancelled_date) h+='<div class="wiki-relation-item"><span class="wiki-rel-label">Cancelado</span><span class="wiki-rel-value">'+p.cancelled_date+'</span></div>';
+  h+='</div></div></div></div>'; // end wiki-layout-page
   document.getElementById('view-wiki').innerHTML=h;
   document.getElementById('view-wiki').scrollTop=0;
   window._pageData={slug:slug,p:p,goals:pgoals,todos:ptodos,rems:prems,jour:pjour,bl:bl};

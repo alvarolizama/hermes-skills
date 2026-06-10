@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 2.9.3
+version: 2.9.8
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -14,6 +14,30 @@ metadata:
 
 Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
 Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
+
+## Novedades v2.9.7
+
+- **Proyectos como vista default** — `_currentTab='projects'` al cargar, el div `view-projects` es la primera activa.
+- **Conteos en todos los tabs** — sidebar, Goals (status), Wiki (tipos), Reminders (secciones), project detail (tabs), wiki page detail (backlinks/related/content). Pitfall: `counts` dict keys deben coincidir EXACTAMENTE con el identificador del tab (`t.k`), no con el label (`t.l`).
+- **Footer de metadata en wiki page detail** — bajo cada página: fechas creado/actualizado, estado, dominio, tags, nota, fechas de inicio/completado/cancelado, logs de actividad (10 más recientes), y relaciones links a goals/tareas/reminders/journal/backlinks.
+- **Logs fetch en loadAll** — `/api/logs` fetchea automáticamente junto a los otros 8 endpoints; `LOGS` global disponible para filtrar por page/goal/todo.
+- **Mejor render markdown en wiki** — contenido envuelto en `.card.md-content` para consistencia con project detail.
+
+### v2.9.6 (conteos en tabs)
+- Goals view: sub-tabs Todos/Activos/Terminados/Cancelados con conteo.
+- Wiki index: tabs por tipo de página con conteo.
+- Project detail: tabs de secciones con conteo.
+- Project goals sub-tabs: Todos/Activos/Terminados/Cancelados con conteo.
+- Wiki page detail: tabs Contenido/Backlinks/Relacionado con conteo.
+
+### v2.9.5 (sidebar badges alineados)
+- `.nav-label` agrupa icono+texto con `flex: 1` (izquierda), `.nav-count` con `flex-shrink: 0` (derecha).
+- Badge sin fondo cuando el tab es activo para evitar clash con highlight.
+- `gap: 6px` entre icono y texto en `.nav-label`.
+
+### v2.9.4 (sidebar badges)
+- Cada nav-link del sidebar muestra conteo de elementos a la derecha como badge gris con `border-radius: 9999px`.
+- `justify-content: space-between` en `nav-link`.
 
 ## Novedades v2.9.0
 
@@ -339,6 +363,33 @@ Toda la interfaz web usa `?context=personal` (no `?brain=personal`). El endpoint
 
 El `renderProjectView` de `web_ui.html` referenció `pfiles` en el template pero no la declaró (`var pfiles = ...`). Resultado: JavaScript crashea en silencio, la vista del proyecto se queda en blanco, y los tabs no se renderizan. **Verificación:** antes de deploy, revisar que toda variable usada en `innerHTML` esté declarada en el scope. El browser muestra "blank page" sin error visible.
 
+### backend: timestamps `created`/`updated` no llegan al frontend
+
+`pb.list()` y `pb.all()` del SDK de PocketBase no devuelven los campos autogenerados `created`/`updated` por default a menos que se especifiquen explícitamente en `fields` o que el SDK esté configurado para incluirlos. Si `get_pages()` incluye `created` y `updated` en la respuesta JSON pero el frontend los ve como strings vacías, el problema no es el frontend — es el backend que no recibe los datos.
+
+**Síntoma:** `curl http://localhost:8899/api/pages` devuelve `{created: "", updated: ""}` a pesar de que el registro tiene timestamps en PocketBase. El footer de metadata se renderiza vacío.
+
+**Fix:** Verificar que el SDK/pb.py incluye `created` y `updated` en la respuesta. Si no, agregar explícitamente:
+```python
+# En pb.py o en brain_web.py get_pages()
+# Agregar fields o asegurar que el SDK no los filtra
+params = {
+    'filter': "...",
+    'fields': '*,created,updated',  # si el SDK lo soporta
+}
+# O verificar si pb.list() ya los incluye y el problema está en otro lado
+```
+
+**Verificación:** Después de agregar campos, verificar que la API devuelve valores no vacíos:
+```bash
+curl -s http://localhost:8899/api/pages | python3 -c "import json,sys; d=json.load(sys.stdin); p=[x for x in d if x['slug']=='rust'][0]; print(p['created'], p['updated'])"
+# → esperado: fechas, no ""
+```
+
+**Nota:** Este pitfall puede aplicar a otros campos autogenerados de PocketBase (`id` sí siempre llega, pero `created`, `updated`, `expand` dependen de la configuración del SDK y la versión del servidor).
+
+---
+
 ### backend: `create_goal` y `_get_page` pueden devolver error-dict sin `id`
 
 `Brain.create_goal` llama `self._get_page(project_slug)` y si la página no existe (o el slug es incorrecto), el resultado puede ser un dict de error o un dict vacío. Luego hace `project['id']` lanzando `KeyError: 'id'` sin mensaje claro.
@@ -550,20 +601,21 @@ var counts = { todos: PAGES.length, proyectos: byType['project'], ... };
 var counts = { all: PAGES.length, project: byType['project'], ... };
 ```
 
-### Carácter Unicode U+2019 (’) en archivos de código
+### Carácter Unicode U+2019 (') en archivos de código
 
 El `patch` tool o copiar-pegar desde chat pueden introducir U+2019 (Right Single Quotation Mark) en lugar de la apóstrofo ASCII U+0027. Visualmente son idénticos pero el parser JS falla con `SyntaxError: Invalid or unexpected token`.
 
-**Fix:** Si `node --check` falla en una línea con comillas aparentemente correctas, buscar U+2019:
+**Fix:** Si `node --check` falla en una línea aparentemente correcta:
 ```python
 with open('web_ui.html', 'rb') as f:
     data = f.read()
     if b'\xe2\x80\x99' in data:  # U+2019 encoded as UTF-8
         print('Found at', data.index(b'\xe2\x80\x99'))
 ```
-**Prevention:** No escribir apóstrofos en `new_string` del patch si puede evitarse. Preferir dobles comillas o concatenación.
+**Prevention:** No escribir apóstrofos en strings de `new_string` del patch. Preferir dobles comillas o concatenación.
 
 ---
+
 
 ### Re-seeding de datos de demo: limpiar duplicados antes
 
@@ -700,5 +752,5 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/cli-migration.md` | Al hacer mass rename de variables/colecciones, o al vincular datos a proyectos |
 | `references/rename-checklist.md` | Antes y después de cualquier mass rename en el código |
 | `references/frontend-icon-patterns.md` | Al reemplazar emojis/Unicode por iconos SVG inline (Heroicons) en el frontend |
-| `references/web-ui-js-escaping.md` | Al debuguear SyntaxError en web_ui.html: escaping de comillas simples en strings JS generadores de HTML |
+| `references/browser-debugging.md` | Al debuggear UI sin screenshots: verificar DOM/estructura con `browser_console`, detectar U+2019 en archivos |
 | `references/backend-frontend-contract.md` | Al debuggear por qué contadores (goals, tareas) aparecen en 0 en las tarjetas de proyecto a pesar de que los datos existen |
