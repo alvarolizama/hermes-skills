@@ -9,19 +9,18 @@ Guía rápida de setup, uso y flujos de trabajo comunes.
 ### 1. Variables de entorno (`~/.hermes/.env`)
 
 ```bash
-POCKETBASE_HOST=http://localhost:8090
-POCKETBASE_EMAIL=admin@example.com
-POCKETBASE_PASSWORD=***
+POCKETBRAIN_HOST=http://localhost:8090
+POCKETBRAIN_EMAIL=admin@example.com
+POCKETBRAIN_PASSWORD=***
 ```
 
 ### 2. Crear colecciones en PocketBase
 
 ```python
-from pb import quick_pb
-from brain import setup_brains
+from brain import _pocketbrain_pb, setup_brains
 
-pb = quick_pb()
-setup_brains(pb)  # crea las 11 colecciones
+pb = _pocketbrain_pb()       # carga POCKETBRAIN_* del .env, autentica
+setup_brains(pb)              # crea las 11 colecciones
 ```
 
 ### 3. Crear tu primer cerebro
@@ -43,7 +42,7 @@ brain.orient()  # carga el contexto
 | `brain_web.py` | `python3 brain_web.py` | Servidor web live en `http://localhost:8080` |
 | `brain_web.py` | `python3 brain_web.py --output ~/wiki.html` | Exportar HTML estático |
 | `sync.py` | `python3 sync.py` | Exportar todos los cerebros a markdown |
-| `sync.py` | `python3 sync.py --brain personal` | Exportar un cerebro |
+| `sync.py` | `python3 sync.py --context personal` | Exportar un cerebro |
 | `sync.py` | `python3 sync.py --full --output ~/wiki` | Sync completo a directorio custom |
 
 ---
@@ -126,7 +125,7 @@ Agente:  report = brain.lint()
 ### 🖥️ Ver el wiki en el navegador
 
 ```bash
-python3 brain_web.py --brain personal
+python3 brain_web.py --context personal
 # Abre http://localhost:8080
 # Navega entre: Todo | Goals | Journal | Proyectos | Wiki | Graph
 # Cambia de cerebro con el dropdown superior
@@ -135,7 +134,7 @@ python3 brain_web.py --brain personal
 ### 📤 Exportar a markdown
 
 ```bash
-python3 sync.py --brain personal --full
+python3 sync.py --context personal --full
 # → ~/brain-sync/personal/
 #   SCHEMA.md | index.md | log.md | todos.md
 #   entities/ | concepts/ | projects/ | raw/
@@ -176,6 +175,41 @@ Viernes:
   - brain.lint()  → auditar contenido
   - brain.journal_write("## Retrospectiva semanal")
   - python3 sync.py  → backup a markdown
+```
+
+---
+
+---
+
+## Servidor Web Live
+
+`brain_web.py` es un servidor HTTP Python que expone endpoints `/api/*` 
+consultando PocketBase en tiempo real. El token NUNCA sale del servidor.
+
+```bash
+python3 brain_web.py --context personal --port 8080
+# → http://localhost:8080
+```
+
+Arquitectura: Navegador → Python Server → PocketBase. Auto-refresh cada 30s.
+Cambia de cerebro con el dropdown superior sin reiniciar.
+
+---
+
+## Clean / Reset
+
+```python
+from brain import nuke_brain, _pocketbrain_pb
+
+pb = _pocketbrain_pb()
+
+# Limpiar un cerebro
+nuke_brain(pb, brain_name='personal', confirm='YES_DELETE_ALL')
+
+# Limpiar TODA la base de datos (todos los cerebros)
+nuke_brain(pb, confirm='YES_DELETE_ALL')
+
+# Sin confirmación explícita → ValueError
 ```
 
 ---

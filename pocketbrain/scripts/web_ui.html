@@ -101,15 +101,15 @@ h1{font-size:24px!important}h2{font-size:18px!important}
 <script>
 var PAGES=[],GOALS=[],TODOS=[],DEPS=[],FILES=[],REMINDERS=[],GRAPH={nodes:[],edges:[]};
 var pmap={},gmap={},JOURNAL=[];
-var currentBrain='';
+var currentContext='';
 var _todoFilter='',_goalFilter='',_reminderFilter='';
 var _journalYear=0,_journalMonth=0;
 
-function api(path){var b=currentBrain||'personal';var sep=path.indexOf('?')>-1?'&':'?';return fetch('/api'+path+sep+'brain='+b).then(function(r){return r.json();});}
+function api(path){var c=currentContext||'personal';var sep=path.indexOf('?')>-1?'&':'?';return fetch('/api'+path+sep+'context='+c).then(function(r){return r.json();});}
 
-function loadBrains(){api('/brains').then(function(brains){var sel=document.getElementById('brain-selector');sel.innerHTML=brains.map(function(b){var s=b.name===currentBrain?' selected':'';return'<option value="'+b.name+'"'+s+'>'+b.name+'</option>';}).join('');currentBrain=sel.value||brains[0]?.name||'personal';loadAll();});}
+function loadBrains(){api('/contexts').then(function(brains){var sel=document.getElementById('brain-selector');sel.innerHTML=brains.map(function(b){var s=b.name===currentContext?' selected':'';return'<option value="'+b.name+'"'+s+'>'+b.name+'</option>';}).join('');currentContext=sel.value||brains[0]?.name||'personal';loadAll();});}
 
-function switchBrain(name){currentBrain=name;_graphInit=false;PAGES=[];GOALS=[];TODOS=[];DEPS=[];FILES=[];REMINDERS=[];JOURNAL=[];loadAll();}
+function switchBrain(name){currentContext=name;_graphInit=false;PAGES=[];GOALS=[];TODOS=[];DEPS=[];FILES=[];REMINDERS=[];JOURNAL=[];loadAll();}
 
 function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7];pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
 

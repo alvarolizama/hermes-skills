@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PocketBrain Web — Servidor live. python3 brain_web.py [--port 8080] [--brain personal]"""
+"""PocketBrain Web — Servidor live. python3 brain_web.py [--port 8080] [--context personal]"""
 import sys, os, json, re, http.server, urllib.parse, time
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -24,29 +24,29 @@ from brain import Brain, extract_wikilinks
 from pb import quick_pb
 
 COLORS = {"entity":"#4CAF50","concept":"#2196F3","comparison":"#FF9800","query":"#9C27B0","raw":"#607D8B","project":"#E91E63"}
-BN = "personal"
+CTX = "personal"
 
 def parse_args():
     args = sys.argv[1:]
-    bn, port = "personal", 8080
+    ctx, port = "personal", 8080
     i = 0
     while i < len(args):
-        if args[i] == "--brain" and i+1 < len(args): bn = args[i+1]; i+=2
+        if args[i] == "--context" and i+1 < len(args): ctx = args[i+1]; i+=2
         elif args[i] == "--port" and i+1 < len(args): port = int(args[i+1]); i+=2
-        else: i+=1
-    return bn, port
+        else: i += 1
+    return ctx, port
 
 # ── Brain cache (evita re-autenticar en cada request) ──────────
-_brain_cache = {}  # BN -> Brain
+_brain_cache = {}  # CTX -> Brain
 
 def get_brain():
-    global _brain_cache
-    if BN in _brain_cache:
-        return _brain_cache[BN]
+    global CTX
+    if CTX in _brain_cache:
+        return _brain_cache[CTX]
     pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
-    brain = Brain(BN, pb=pb)
+    brain = Brain(CTX, pb=pb)
     brain.orient()
-    _brain_cache[BN] = brain
+    _brain_cache[CTX] = brain
     return brain
 
 def get_pages():
@@ -193,11 +193,11 @@ def get_graph():
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        global BN
+        global CTX
         parts = urllib.parse.urlparse(self.path)
         path = parts.path
         qs = urllib.parse.parse_qs(parts.query)
-        if 'brain' in qs: BN = qs['brain'][0]
+        if 'context' in qs: CTX = qs['context'][0]
         if path == "/": self.serve_html()
         elif path == "/api/pages": self.serve_json(get_pages())
         elif path == "/api/goals": self.serve_json(get_goals())
@@ -207,10 +207,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/reminders": self.serve_json(get_reminders())
         elif path == "/api/journal": self.serve_json(get_journal())
         elif path == "/api/graph": self.serve_json(get_graph())
-        elif path == "/api/brain": self.serve_json({"name":BN})
-        elif path == "/api/brains":
-            pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); brains = pb.list("contexts", perPage=50)
-            self.serve_json([{"name":b["name"],"label":b.get("label",""),"id":b["id"]} for b in brains])
+        elif path == "/api/contexts":
+            pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
+            self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
         else: self.send_response(404); self.end_headers()
     def serve_json(self, data):
         self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
@@ -223,8 +222,8 @@ def _load_html():
     html_path = Path(__file__).parent / "web_ui.html"
     return html_path.read_text()
 if __name__ == "__main__":
-    BN, PORT = parse_args()
-    print("PocketBrain Web :: http://localhost:%d (brain: %s)" % (PORT, BN))
+    CTX, PORT = parse_args()
+    print("PocketBrain Web :: http://localhost:%d (context: %s)" % (PORT, CTX))
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     try: server.serve_forever()
     except KeyboardInterrupt: print("\nStopped")
