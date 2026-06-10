@@ -24,7 +24,7 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #main{flex:1;overflow-y:auto}
 #main>div{display:none;padding:20px 30px;max-width:none}
 #main>div.active{display:block}
-#view-graph.active{display:flex;flex-direction:column;max-width:none;padding:0;height:100%}
+#view-graph.active{display:flex;flex-direction:column;position:relative;max-width:none;padding:0;height:100%}
 #graph-view{position:absolute;top:0;left:0;right:0;bottom:0;min-height:400px}
 #graph-legend{position:absolute;top:12px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap}
 #graph-legend span{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
@@ -157,7 +157,11 @@ function loadBrains(){api('/contexts').then(function(brains){var sel=document.ge
 
 function switchBrain(name){currentContext=name;_graphInit=false;PAGES=[];GOALS=[];TODOS=[];DEPS=[];FILES=[];REMINDERS=[];JOURNAL=[];loadAll();}
 
-function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph'),api('/logs')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};LOGS=results[8]||[];pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
+function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph'),api('/logs')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};LOGS=results[8]||[];_graphInit=false;pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
+
+function getHashParams(){var hash=location.hash||'';if(!hash||hash==='#')return{};var p={},parts=hash.substring(1).split('&');parts.forEach(function(x){var kv=x.split('=');if(kv.length===2)p[kv[0]]=decodeURIComponent(kv[1]);});return p;}
+function setHashParams(p){var parts=[];for(var k in p){if(p[k])parts.push(k+'='+encodeURIComponent(p[k]));}history.replaceState(null,'','#'+parts.join('&'));}
+function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='project';_currentProject=hp.project;showCurrentView();}else if(hp.page){_currentTab='wiki';window._wikiSlug=hp.page;showCurrentView();}else if(hp.tab){_currentTab=hp.tab;_currentProject=null;showCurrentView();}}
 
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
@@ -177,8 +181,8 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph
 nav.innerHTML=h;}
 
 var _currentTab='projects',_currentProject=null;
-function showTab(tab){_currentTab=tab;_currentProject=null;showCurrentView();}
-function showProject(slug){_currentTab='project';_currentProject=slug;showCurrentView();}
+function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:tab});showCurrentView();}
+function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();}
 function switchProjectTab(tab,slug,el){
   var d=window._projectData;if(!d)return;
   if(el){
@@ -259,7 +263,8 @@ function switchProjectTab(tab,slug,el){
     });
   }
   if(tab==='graph'){
-    h+='<div id="project-graph-view" style="width:100%;height:500px;background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;margin-bottom:12px"></div>';
+    h+='<div id="project-graph-view" style="width:100%;height:400px;background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;margin-bottom:12px"></div>';
+    h+='<div id="project-graph-legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:12px"></div>';
     ct.innerHTML=h;
     setTimeout(function(){renderProjectGraph(d);},200);
     return;
@@ -428,7 +433,7 @@ function showIndex(){
   document.getElementById('view-wiki').innerHTML=h;
 }
 
-function showPage(slug){window._wikiSlug=slug;var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
+function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slug});var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
   document.getElementById('view-wiki').classList.add('active');
   var pgoals=GOALS.filter(function(g){return g.page===slug;});
   var ptodos=TODOS.filter(function(t){return t.page_slug===slug;});
@@ -597,7 +602,9 @@ function renderDeliverables(){
 function renderGraph(){
   if(_graphInit){if(window._net)window._net.fit();return;}_graphInit=true;
   var GCOLORS={entity:'#4CAF50',concept:'#2196F3',comparison:'#FF9800',query:'#9C27B0',raw:'#607D8B',project:'#E91E63',goal:'#4CAF50',milestone:'#FF9800',okr:'#E91E63',todo:'#9C27B0',deliverable:'#00BCD4',reminder:'#FFC107'};
-  var lh='';for(var k in GCOLORS){lh+='<div><span style="background:'+GCOLORS[k]+'"></span> '+k+'</div>';}
+  var GTYPE_NAMES={page:'Paginas',goal:'Goals',todo:'Todo',deliverable:'Entregables',reminder:'Reminders'};
+  var lh='';var counts=(GRAPH.counts||{});
+  for(var group in counts){var color=GCOLORS[group]||'#888';var label=GTYPE_NAMES[group]||group;lh+='<div><span style="background:'+color+'"></span> '+label+' ('+counts[group]+')</div>';}
   document.getElementById('graph-legend').innerHTML=lh;
   var nodes=new vis.DataSet(GRAPH.nodes.map(function(n){return{id:n.id,label:n.label,color:{background:n.color,border:'#333'},font:{color:'#333',size:11},shape:'dot',size:18};}));
   var edges=new vis.DataSet(GRAPH.edges.map(function(e){return{from:e.from,to:e.to,color:{color:'#ccc',opacity:0.6},arrows:{to:{enabled:true,scaleFactor:0.5}}};}));
@@ -629,9 +636,24 @@ function renderProjectGraph(d){
   var eds=new vis.DataSet(edges);
   var container=document.getElementById('project-graph-view');
   var pnet=new vis.Network(container,{nodes:nds,edges:eds},{physics:{barnesHut:{gravitationalConstant:-2000,centralGravity:0.3,springLength:120,springConstant:0.04},maxVelocity:50,solver:'barnesHut',stabilization:{iterations:100}},interaction:{hover:true,zoomView:true,dragView:true},edges:{smooth:{type:'continuous'}}});
-  if(pnet)pnet.fit();}
+  if(pnet)pnet.fit();
+  var ptypes=[];
+  if(d.goals.length)ptypes.push({label:'Goals',count:d.goals.length,color:'#4CAF50'});
+  if(d.todos.length)ptypes.push({label:'Tareas',count:d.todos.length,color:'#9C27B0'});
+  if(d.rems.length)ptypes.push({label:'Reminders',count:d.rems.length,color:'#FFC107'});
+  ptypes.push({label:'Proyecto',count:1,color:'#E91E63'});
+  var plh='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-top:8px;">';
+  ptypes.forEach(function(pt){plh+='<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+pt.color+';margin-right:4px;"></span>'+pt.label+' ('+pt.count+')</div>';});
+  plh+='</div>';
+  var lgc=document.getElementById('project-graph-legend');if(lgc)lgc.innerHTML=plh;
+}
 loadBrains();
+setTimeout(function(){
+  function tryRestore(){if(!PAGES.length){setTimeout(tryRestore,200);return;}var hp=getHashParams();if(hp.project||hp.page||hp.tab)restoreFromHash();}
+  tryRestore();
+},500);
 setInterval(function(){if(!document.hidden)loadAll();},30000);
+window.addEventListener('popstate',restoreFromHash);
 </script>
 </body>
 </html>

@@ -191,7 +191,11 @@ def get_graph():
         rid = "r-"+r["id"]
         if rid not in nids: nids.add(rid); nodes.append({"id":rid,"label":r.get("title",""),"color":"#FFC107","group":"reminder"})
         if r.get("page") and r["page"] in pid_map: edges.append({"from":rid,"to":pid_map[r["page"]]})
-    return {"nodes":nodes,"edges":edges}
+    counts = {}
+    for n in nodes:
+        g = n.get("group", "unknown")
+        counts[g] = counts.get(g, 0) + 1
+    return {"nodes":nodes,"edges":edges,"counts":counts}
 
 
 
