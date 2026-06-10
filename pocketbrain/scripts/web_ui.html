@@ -100,7 +100,7 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <div id="status">● cargando...</div>
 </div>
 <div id="main">
-  <div id="view-todos" class="active"></div>
+  <div id="view-todos"></div>
   <div id="view-goals"></div>
   <div id="view-journal"></div>
   <div id="view-reminders"></div>
@@ -111,7 +111,7 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <div id="view-graph"><div id="graph-view"></div><div id="graph-legend"></div></div>
 </div>
 <script>
-var PAGES=[],GOALS=[],TODOS=[],DEPS=[],FILES=[],REMINDERS=[],GRAPH={nodes:[],edges:[]};
+var PAGES=[],GOALS=[],TODOS=[],DEPS=[],FILES=[],REMINDERS=[],GRAPH={nodes:[],edges:[]},LOGS=[];
 var pmap={},gmap={},JOURNAL=[];
 var currentContext='';
 var _todoFilter='',_goalFilter='',_goalStatusFilter='all',_reminderFilter='',_reminderStatusTab='today',_fileFilter='',_depFilter='',_wikiIndexTab='all';
@@ -144,7 +144,7 @@ function loadBrains(){api('/contexts').then(function(brains){var sel=document.ge
 
 function switchBrain(name){currentContext=name;_graphInit=false;PAGES=[];GOALS=[];TODOS=[];DEPS=[];FILES=[];REMINDERS=[];JOURNAL=[];loadAll();}
 
-function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
+function loadAll(){document.getElementById('status').textContent='● cargando...';Promise.all([api('/pages'),api('/goals'),api('/todos'),api('/deps'),api('/files'),api('/reminders'),api('/journal'),api('/graph'),api('/logs')]).then(function(results){PAGES=results[0];GOALS=results[1];TODOS=results[2];DEPS=results[3];FILES=results[4];REMINDERS=results[5];JOURNAL=results[6]||[];GRAPH=results[7]||{nodes:[],edges:[]};LOGS=results[8]||[];pmap={};PAGES.forEach(function(p){pmap[p.slug]=p;});gmap={};GOALS.forEach(function(g){gmap[g.id]=g;});buildSidebar();showCurrentView();document.getElementById('status').textContent='● live';}).catch(function(e){document.getElementById('status').textContent='● error';console.error(e);setTimeout(loadAll,2000);});}
 
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
@@ -163,7 +163,7 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'wiki\')" data-search="wiki">
 h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">◉ Graph</span><span class="nav-count">'+nc+'</span></a>';
 nav.innerHTML=h;}
 
-var _currentTab='todos',_currentProject=null;
+var _currentTab='projects',_currentProject=null;
 function showTab(tab){_currentTab=tab;_currentProject=null;showCurrentView();}
 function showProject(slug){_currentTab='project';_currentProject=slug;showCurrentView();}
 function switchProjectTab(tab,slug,el){
@@ -426,6 +426,12 @@ function showPage(slug){var p=pmap[slug];if(!p){document.getElementById('view-wi
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
   if(relCount)h+='<a href="#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div><div id="page-tab-content"></div>';
+  var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);
+  var meta2='<div style="margin-top:32px;border-top:1px solid var(--hairline);padding-top:16px;font-size:12px;color:var(--mute)"><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">'+(p.created?'<span><strong>Creado:</strong> '+p.created+'</span>':'')+(p.updated?'<span><strong>Actualizado:</strong> '+p.updated+'</span>':'')+(p.status?'<span><strong>Estado:</strong> '+p.status+'</span>':'')+(p.domain?'<span><strong>Dominio:</strong> '+p.domain+'</span>':'')+(p.tags&&p.tags.length?'<span><strong>Tags:</strong> '+p.tags.join(', ')+'</span>':'')+(p.comment?'<span><strong>Nota:</strong> '+p.comment+'</span>':'')+(p.started_date?'<span><strong>Iniciado:</strong> '+p.started_date+'</span>':'')+(p.completed_date?'<span><strong>Completado:</strong> '+p.completed_date+'</span>':'')+(p.cancelled_date?'<span><strong>Cancelado:</strong> '+p.cancelled_date+'</span>':'')+'</div>';
+  if(pageLogs.length){meta2+='<h2 style="font-size:14px;font-weight:600;margin:12px 0 8px;color:var(--ink)">Actividad reciente</h2>';pageLogs.forEach(function(l){meta2+='<div style="padding:4px 0;border-bottom:1px solid var(--hairline)"><strong>'+l.created+'</strong> · '+l.operation+(l.details?': '+l.details:'')+'</div>';});}
+  var rels='<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--hairline)"><div style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink)">Relaciones</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+(pgoals.length?'<a href="#" onclick="showTab(\'goals\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+pgoals.length+' goals</a>':'')+(ptodos.length?'<a href="#" onclick="showTab(\'todos\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+ptodos.length+' tareas</a>':'')+(prems.length?'<a href="#" onclick="showTab(\'reminders\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+prems.length+' reminders</a>':'')+(pjour.length?'<a href="#" onclick="showTab(\'journal\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+pjour.length+' journal</a>':'')+(bl.length?'<a href="#" onclick="showTab(\'wiki\');return false;" style="display:inline-block;background:var(--soft);padding:3px 10px;border-radius:9999px;font-size:11px">'+bl.length+' backlinks</a>':'')+'</div></div>';
+  h+=meta2+rels;
+  h+='</div>';
   document.getElementById('view-wiki').innerHTML=h;
   document.getElementById('view-wiki').scrollTop=0;
   window._pageData={slug:slug,p:p,goals:pgoals,todos:ptodos,rems:prems,jour:pjour,bl:bl};
@@ -440,7 +446,9 @@ function switchPageTab(tab,slug){
   var ct=document.getElementById('page-tab-content');if(!ct)return;
   var h='';
   if(tab==='content'){
+    h+='<div class="card md-content" style="margin-top:12px">';
     h+=mdToHtml(d.p.body||'');
+    h+='</div>';
   }
   if(tab==='backlinks'){
     d.bl.forEach(function(b){h+='<div class="card" style="cursor:pointer" onclick="showPage(\''+b.slug+'\')"><h3>'+b.title+'</h3></div>';});

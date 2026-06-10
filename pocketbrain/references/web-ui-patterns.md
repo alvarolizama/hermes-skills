@@ -199,3 +199,60 @@ h += '<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="
 ```
 
 Resultado: `[Icon] [Text]          [Badge]` — el badge se empuja a la derecha por `space-between`, mientras el texto permanece pegado al icono. Si falta `.nav-label`, el texto se distribuye en el espacio medio y no se ve a la izquierda.
+
+## Tab counts: todas las vistas con filtros o tabs
+
+Cualquier vista que tenga tabs de filtrado o categorías debe mostrar el conteo de elementos en cada tab. No solo el sidebar: también los tabs de contenido principal.
+
+### Ejemplos de vistas que necesitan conteos:
+
+- **Goals (general)**: `Todos (N) | Activos (N) | Terminados (N) | Cancelados (N)`
+- **Project detail**: `Contenido (N) | Goals (N) | Kanban (N) | Recordatorios (N) | Journal (N) | Archivos (N) | Entregables (N) | Graph (N)`
+- **Wiki index**: `Todos (N) | Proyectos (N) | Conceptos (N) | Entidades (N) | ...`
+- **Wiki page detail**: `Contenido (1) | Backlinks (N) | Relacionado (N)` — solo si hay contenido/backlinks/relacionados
+- **Project goals sub-tabs**: `Todos (N) | Activos (N) | Terminados (N) | Cancelados (N)` — dentro del tab Goals de un proyecto
+
+### Patrón: pre-computar counts antes de renderizar el HTML de tabs
+
+```js
+// GOALS view: contar ANTES de generar el HTML de los tabs
+var cAll = filtered.filter(function(g) { return !g.parent; }).length;
+var cActive = filtered.filter(function(g) { return !g.parent && (g.status === 'active' || g.status === 'planned'); }).length;
+var cCompleted = filtered.filter(function(g) { return !g.parent && g.status === 'completed'; }).length;
+var cCancelled = filtered.filter(function(g) { return !g.parent && g.status === 'cancelled'; }).length;
+// ... luego renderizar:
+h += '<a href="#" ...>Todos (' + cAll + ')</a>' + ...;
+```
+
+### Pitfall: key mismatch en dict de counts
+
+Cuando se genera un diccionario de counts para tabs, las keys deben coincidir EXACTAMENTE con las keys del array de tabs:
+
+```js
+// BUG: keys en español no coinciden con tab.k (en inglés)
+var counts = { todos: PAGES.length, proyectos: byType['project'], conceptos: byType['concept'], ... };
+// tabs.forEach: t.k = 'all', 'project', 'concept' ...  → counts[t.k] = undefined
+// Resultado: "Todos (undefined)"
+
+// FIX: keys del dict deben coincidir exactamente con t.k
+var counts = { all: PAGES.length, project: byType['project'], concept: byType['concept'], ... };
+```
+**Regla:** siempre usar `counts[t.k]` para verificar, no `counts[t.l]` (label). Los keys del dict deben ser el identificador del tab, no el texto mostrado.
+
+## Pitfall: carácter Unicode U+2019 (’) en archivos de código
+
+El `patch` tool con `replace_all=true` o copiar-pegar desde el chat pueden introducir el caracter Unicode U+2019 (Right Single Quotation Mark, `’`) en lugar de la comilla simple ASCII U+0027 (`'`). 
+El HTML no distingue, pero el JS sí: `var h = '...’;` → SyntaxError en el browser.
+
+**Síntoma:** `node --check` falla con `SyntaxError: Invalid or unexpected token` en una línea con comillas aparentemente normales. El caracter U+2019 es visualmente idéntico a U+0027 en la mayoría de las fonts.
+
+**Fix:** Si `node --check` falla en una línea con comillas, verificar con `hexdump` o `python3`:
+```python
+with open('web_ui.html','rb') as f:
+    data = f.read()
+    # buscar el caracter U+2019 (UTF-8: 0xE2 0x80 0x99)
+    if b'\xe2\x80\x99' in data:
+        print('Encontrado U+2019 at position', data.index(b'\xe2\x80\x99'))
+```
+**Prevention:** Nunca copiar código JS con comillas simples desde el editor de chat (puede re-encodificar apóstrofes). Siempre escribir el código directamente en el archivo. O usar `replace_all=true` con `old_string` y `new_string` que no contengan apóstrofos.
+

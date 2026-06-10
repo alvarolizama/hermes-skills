@@ -74,7 +74,8 @@ def get_pages():
             "status":pg.get("status","") or "","started_date":(pg.get("started_date","") or "")[:10],
             "completed_date":(pg.get("completed_date","") or "")[:10],
             "cancelled_date":(pg.get("cancelled_date","") or "")[:10],
-            "comment":pg.get("comment","") or ""})
+            "comment":pg.get("comment","") or "",
+            "created":(pg.get("created","") or "")[:10],"updated":(pg.get("updated","") or "")[:10]})
     return result
 
 def get_goals():

@@ -535,6 +535,36 @@ El usuario puede solicitar explícitamente que se **analice el código antes de 
 
 ---
 
+### Tab counts: conteos en TODOS los tabs de filtrado y navegación
+
+Cualquier vista que tenga tabs de categoría o filtrado debe mostrar el conteo de elementos en cada tab. No solo el sidebar: también los tabs de contenido principal (Goals, Wiki, Reminders, project detail, wiki page detail).
+
+**Pitfall: key mismatch en dict de counts** — al generar un objeto `counts` para iterar sobre tabs, las keys deben coincidir EXACTAMENTE con el identificador del tab (`t.k`), no con el label (`t.l`):
+```js
+// BUG: dict keys en español, tab keys en inglés
+var counts = { todos: PAGES.length, proyectos: byType['project'], ... };
+// tabs: [{k:'all', l:'Todos'}, {k:'project', l:'Proyectos'}, ...]
+// counts[t.k] → undefined para 'all', 'project' → "Todos (undefined)"
+
+// FIX: keys del dict = keys del tab array
+var counts = { all: PAGES.length, project: byType['project'], ... };
+```
+
+### Carácter Unicode U+2019 (’) en archivos de código
+
+El `patch` tool o copiar-pegar desde chat pueden introducir U+2019 (Right Single Quotation Mark) en lugar de la apóstrofo ASCII U+0027. Visualmente son idénticos pero el parser JS falla con `SyntaxError: Invalid or unexpected token`.
+
+**Fix:** Si `node --check` falla en una línea con comillas aparentemente correctas, buscar U+2019:
+```python
+with open('web_ui.html', 'rb') as f:
+    data = f.read()
+    if b'\xe2\x80\x99' in data:  # U+2019 encoded as UTF-8
+        print('Found at', data.index(b'\xe2\x80\x99'))
+```
+**Prevention:** No escribir apóstrofos en `new_string` del patch si puede evitarse. Preferir dobles comillas o concatenación.
+
+---
+
 ### Re-seeding de datos de demo: limpiar duplicados antes
 
 Si se llenan datos densos de demo sobre una base que ya tiene registros previos, **pages y goals duplicados** rompen los contadores del frontend (tarjetas de proyecto muestran más de la cuenta, dropdowns duplicados). Antes de re-seed:
