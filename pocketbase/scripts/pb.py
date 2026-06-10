@@ -2,18 +2,21 @@
 PocketBase helper library for Hermes agents.
 =============================================
 
-Lee automaticamente de las variables de entorno:
-  POCKETBASE_HOST, POCKETBASE_EMAIL, POCKETBASE_PASSWORD
+NO lee variables de entorno. Recibe credenciales explícitamente.
 
-Uso desde execute_code:
+Uso:
     import sys, os
     sys.path.insert(0, os.path.expanduser(
         '~/.hermes/skills/productivity/pocketbase/scripts'))
     from pb import PB
-    pb = PB()
+    pb = PB('http://localhost:8090', 'admin@example.com', 'secret')
     pb.auth()  # una vez
     pages = pb.list('wiki_pages', filter="page_type='concept'")
     pb.create('wiki_pages', {'title': 'Mi pagina', 'slug': 'mi-pagina', ...})
+
+O con el shortcut:
+    from pb import quick_pb
+    pb = quick_pb('http://localhost:8090', 'admin@example.com', 'secret')
 """
 
 import os
@@ -24,27 +27,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 
-def _load_env(path: str = None) -> None:
-    """Carga variables de ~/.hermes/.env si no están ya en el entorno."""
-    if os.environ.get('POCKETBASE_HOST'):
-        return  # ya están cargadas
-    path = path or os.path.expanduser('~/.hermes/.env')
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
-            key, _, val = line.partition('=')
-            key = key.strip()
-            val = val.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = val
-
-
-# Cargar env vars al importar el módulo
-_load_env()
+# ═══════════════════════════════════════════════════════════════════
+#  Este módulo NO lee variables de entorno.
+#  Las credenciales se pasan explícitamente a PB(host, email, password).
+#  Cada skill que lo use carga sus propias env vars y las pasa.
+# ═══════════════════════════════════════════════════════════════════
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -52,23 +39,27 @@ _load_env()
 # ─────────────────────────────────────────────────────────────────────
 
 class PB:
-    """Cliente PocketBase con configuración via variables de entorno.
+    """Cliente PocketBase — recibe credenciales explícitamente.
 
-    Args:
-        host:    URL del servidor (default: $POCKETBASE_HOST)
-        email:   Email del superusuario (default: $POCKETBASE_EMAIL)
-        password: Password del superusuario (default: $POCKETBASE_PASSWORD)
+    NO lee variables de entorno. Cada skill debe pasar host, email, password.
+
+    Uso:
+        pb = PB('http://localhost:8090', 'admin@example.com', 'secret')
+        pb.auth()
+        pages = pb.list('wiki_pages')
     """
 
     def __init__(
         self,
-        host: Optional[str] = None,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
+        host: str,
+        email: str = '',
+        password: str = '',
     ):
-        self.host = host or os.environ.get('POCKETBASE_HOST', 'http://localhost:8090')
-        self.email = email or os.environ.get('POCKETBASE_EMAIL', '')
-        self.password = password or os.environ.get('POCKETBASE_PASSWORD', '')
+        if not host:
+            raise ValueError("PB() requiere 'host'. Pásalo explícitamente.")
+        self.host = host
+        self.email = email
+        self.password = password
         self._token: Optional[str] = None
 
     # ── Auth ────────────────────────────────────────────────────────
@@ -81,7 +72,7 @@ class PB:
         """
         if not self.email or not self.password:
             raise ValueError(
-                "Faltan credenciales. Revisa POCKETBASE_EMAIL y POCKETBASE_PASSWORD en .env")
+                "Faltan credenciales. Pasa email y password a PB(host, email, password).")
         
         result = subprocess.run([
             "curl", "-s", "-X", "POST",
@@ -336,14 +327,19 @@ class PB:
 #  QUICK SHORTCUT
 # ─────────────────────────────────────────────────────────────────────
 
-def quick_pb() -> PB:
+def quick_pb(host: str, email: str = '', password: str = '') -> PB:
     """Crea y autentica un cliente PB en un solo paso.
-    
+
+    Args:
+        host:     URL del servidor PocketBase
+        email:    Email del superusuario
+        password: Password del superusuario
+
     Uso:
         from pb import quick_pb
-        pb = quick_pb()
+        pb = quick_pb('http://localhost:8090', 'admin@example.com', 'secret')
         records = pb.list('mi_coleccion')
     """
-    pb = PB()
+    pb = PB(host, email, password)
     pb.auth()
     return pb

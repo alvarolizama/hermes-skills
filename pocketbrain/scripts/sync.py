@@ -38,9 +38,9 @@ with open(env_path) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBASE_HOST"] = env["POCKETBASE_HOST"]
-os.environ["POCKETBASE_EMAIL"] = env["POCKETBASE_EMAIL"]
-os.environ["POCKETBASE_PASSWORD"] = env["POCKETBASE_PASSWORD"]
+os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
+os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
+os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
 from pb import PB, quick_pb
 
@@ -55,7 +55,7 @@ class SyncEngine:
     def __init__(self, output_dir: str, full: bool = False):
         self.output_dir = Path(output_dir).expanduser().resolve()
         self.full = full
-        self.pb = quick_pb()
+        self.pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
         self.state_file = self.output_dir / ".sync_state.json"
         self.state = self._load_state()
         self.stats = {"created": 0, "updated": 0, "skipped": 0, "attachments": 0}
@@ -353,7 +353,7 @@ class SyncEngine:
 
     # ── Page export ────────────────────────────────────────────────
 
-    def _write_page(self, page: dict, brain_dir: Path, brain_name: str):
+    def _write_page(self, page: dict, brain_dir: Path, context_name: str):
         """Escribe una página individual como archivo .md."""
         pt = page.get("page_type", "concept")
         slug = page.get("slug", "")
@@ -546,8 +546,8 @@ if __name__ == "__main__":
     engine = SyncEngine(output_dir=output, full=full)
 
     if brain_name:
-        brains = engine.pb.list("brains", filter=f"(name='{brain_name}')")
-        if not brains:
+        brains = engine.pb.list("contexts", filter=f"(name='{brain_name}')")
+        if not contexts:
             print(f"Brain '{brain_name}' not found.")
             sys.exit(1)
         engine.sync_brain(brains[0])

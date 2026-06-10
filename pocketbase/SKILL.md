@@ -1,7 +1,7 @@
 ---
 name: pocketbase
 description: "Interactuar con la API REST de PocketBase usando curl + Python subprocess. Incluye auth, records, collections, files, settings, logs, backups, health, batch, realtime y workflow de tareas."
-version: 1.0.0
+version: 2.0.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -12,13 +12,17 @@ metadata:
 
 ## Variables de entorno y contexto
 
-El skill lee estas variables del archivo `~/.hermes/.env`:
+El módulo `pb.py` **NO lee variables de entorno**. Recibe `host`, `email`, `password` como parámetros explícitos.
+Cada skill que lo use carga sus propias variables del `.env` y las pasa.
 
-| Variable | Descripción |
-|----------|-------------|
-| `POCKETBASE_HOST` | URL del servidor PocketBase (ej. `http://localhost:8090`) |
-| `POCKETBASE_EMAIL` | Email del superusuario (ej. `admin@example.com`) |
-| `POCKETBASE_PASSWORD` | Password del superusuario (desde Bitwarden Secrets Manager o directo) |
+Ejemplo:
+```python
+from pb import PB, quick_pb
+pb = quick_pb('http://localhost:8090', 'admin@example.com', 'secret')
+```
+
+El skill `pocketbase` tradicionalmente usaba `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD`,
+pero ahora la responsabilidad de cargar env vars es de cada skill consumidor.
 
 **Referencia oficial:** https://pocketbase.io/docs/api-records/
 
@@ -57,6 +61,7 @@ subprocess.run(..., env=os.environ)
 ### Regla de oro
 **NUNCA uses `{` o `}` en código Python que escribas mediante tools de Hermes.**
 Revisa dos veces antes de crear/editar skills, scripts, o archivos de configuración.
+Ver `references/hermes-pitfalls.md` para workarounds detallados.
 
 ### ⚠️ PATCH de colecciones → usar Import API
 
@@ -89,87 +94,6 @@ pb._request("PUT", "/api/collections/import", data={
 > **Cuidado:** El import API **sobrescribe** los campos. Si omites un atributo (ej. `autogeneratePattern` del ID, `onCreate`/`onUpdate` de autodate), se pierde. Preservar TODO.
 
 ---
-
----
-
-## ⚠️ Pitfall crítico: `{variable}` en templates
-
-**`write_file`, `patch` Y `skill_manage` interpretan `{...}` como placeholders de template.** Esto rompe cualquier código Python que use f-strings con variables entre llaves.
-
-```python
-# ❌ write_file/patch se COMEN {token} y rompen la sintaxis
-auth = f"Authorization: Bearer ***  # la } final desaparece, EOL error
-
-# ❌ TAMBIÉN FALLA en skill_manage patch
-"Authorization: Bearer *** + str(tok)  # mismo problema
-
-# ✅ OPCIÓN 1: Usar %s en vez de f-strings (SIN llaves)
-auth = "Authorization: Bearer *** % token
-
-# ✅ OPCIÓN 2: Concatenación sin llaves
-auth = "Authorization: Bearer *** + token
-
-# ✅ OPCIÓN 3: Escribir el archivo via heredoc en terminal()
-cat > /tmp/script.py << 'PYEOF'
-auth = f"Authorization: Bearer ***  # seguro dentro del heredoc
-PYEOF
-```
-
-**Regla**: Si escribes Python via `write_file`/`patch`/`skill_manage`, NUNCA uses `{variable}` en el código. Usa `%s`, `.format()` con keywords, o concatenación.
-
-Los tokens JWT de PocketBase contienen caracteres especiales (`.` , `-`, `_`, `+`, `/`) que **rompen la sintaxis `$(cat archivo)` en bash** y causan syntax errors. Las variables de shell con el token interpolado también fallan si el token tiene caracteres no alfanuméricos.
-
-**NO hagas esto:**
-```bash
-# ESTO FALLA si el token tiene caracteres especiales
-TOKEN=*** /tmp/pb_token.txt)
-curl -H "Authorization: Bearer $TOKEN" ...
-```
-
-### ✅ Enfoque recomendado: Python subprocess.run()
-
-Usa `execute_code` de Hermes con `subprocess.run()` — evita completamente el shell y sus problemas de escaping:
-
-```python
-import subprocess, json, os
-
-HOST = os.environ.get('POCKETBASE_HOST', 'http://localhost:8090')
-EMAIL = os.environ.get('POCKETBASE_EMAIL', '')
-PASSWORD=os.env...RD', '')
-
-# 1. Autenticar y obtener token
-result = subprocess.run([
-    "curl", "-s", "-X", "POST",
-    f"{HOST}/api/collections/_superusers/auth-with-password",
-    "-H", "Content-Type: application/json",
-    "-d", json.dumps({"identity": EMAIL, "password": PASSWORD})
-], capture_output=True, text=True)
-token = json.loads(result.stdout)['token']
-
-# 2. Usar el token en requests subsecuentes
-result = subprocess.run([
-    "curl", "-s",
-    f"{HOST}/api/collections/todos/records?perPage=50",
-    "-H", f"Authorization: Bearer ***
-], capture_output=True, text=True)
-data = json.loads(result.stdout)
-```
-
-### Enfoque alternativo: Script file
-
-Escribe el script a un archivo primero (sin interpolación directa en terminal):
-
-```python
-from hermes_tools import write_file, terminal
-
-script = f"""#!/bin/bash
-HOST="$POCKETBASE_HOST"
-TOKEN=*** /tmp/pb_token.txt)
-curl -s "$HOST/api/collections/todos/records" \\
-  -H "Authorization: Bearer ***...", script)
-# Luego ejecútalo
-terminal("bash /tmp/pb_query.sh")
-```
 
 ---
 

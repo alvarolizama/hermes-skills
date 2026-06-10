@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """PocketBrain Web — Servidor live. python3 brain_web.py [--port 8080] [--brain personal]"""
 import sys, os, json, re, http.server, urllib.parse
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -15,9 +16,9 @@ with open(p) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBASE_HOST"] = env["POCKETBASE_HOST"]
-os.environ["POCKETBASE_EMAIL"] = env["POCKETBASE_EMAIL"]
-os.environ["POCKETBASE_PASSWORD"] = env["POCKETBASE_PASSWORD"]
+os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
+os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
+os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -36,7 +37,7 @@ def parse_args():
     return bn, port
 
 def get_brain():
-    pb = quick_pb()
+    pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
     brain = Brain(BN, pb=pb)
     brain.orient()
     return brain
@@ -184,7 +185,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/graph": self.serve_json(get_graph())
         elif path == "/api/brain": self.serve_json({"name":BN})
         elif path == "/api/brains":
-            pb = quick_pb(); brains = pb.list("brains", perPage=50)
+            pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); brains = pb.list("contexts", perPage=50)
             self.serve_json([{"name":b["name"],"label":b.get("label",""),"id":b["id"]} for b in brains])
         else: self.send_response(404); self.end_headers()
     def serve_json(self, data):
@@ -326,6 +327,6 @@ setInterval(function(){if(!document.hidden)loadAll();},30000);
 if __name__ == "__main__":
     BN, PORT = parse_args()
     print("PocketBrain Web :: http://localhost:%d (brain: %s)" % (PORT, BN))
-    server = http.server.HTTPServer(("0.0.0.0", PORT), Handler)
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     try: server.serve_forever()
     except KeyboardInterrupt: print("\nStopped")

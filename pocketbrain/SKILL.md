@@ -1,12 +1,12 @@
 ---
 name: pocketbrain
-description: "Wiki/cerebro de conocimiento multi-cerebro sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 1.0.0
+description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
+version: 2.0.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
   hermes:
-    tags: [wiki, knowledge-base, pocketbase, brain, markdown]
+    tags: [wiki, knowledge-base, pocketbase, contexts, markdown]
     category: productivity
     related_skills: [pocketbase, llm-wiki]
 ---
@@ -19,7 +19,7 @@ Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
 ## Dependencia
 
 Usa `pocketbase` skill → módulo `pb.py`. Variables en `~/.hermes/.env`:
-`POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD`.
+`POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`. (independientes de POCKETBASE_*).
 
 ---
 
@@ -27,7 +27,8 @@ Usa `pocketbase` skill → módulo `pb.py`. Variables en `~/.hermes/.env`:
 
 ```bash
 # 1. Crear colecciones (una vez)
-python3 -c "from pb import quick_pb; from brain import setup_brains; setup_brains(quick_pb())"
+cd ~/.hermes/skills/productivity/pocketbrain/scripts
+python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
 # 2. Servidor web live
 python3 brain_web.py --brain personal
@@ -41,7 +42,7 @@ python3 sync.py --brain personal --full
 # 4. Desde el agente
 from brain import Brain
 brain = Brain('personal')
-brain.create_brain(label='Cerebro Personal')
+brain.create_context(label='Contexto Personal')
 brain.orient()
 ```
 
@@ -53,7 +54,7 @@ brain.orient()
 
 | Colección | Para |
 |-----------|------|
-| `brains` | Cerebros independientes |
+| `contexts` | Contextos independientes (personal, projects, etc.) |
 | `brain_pages` | Páginas markdown con `[[wikilinks]]` |
 | `brain_todos` | Tareas (backlog → today → done) |
 | `brain_goals` | Goals, milestones, OKRs con retrospectiva |
@@ -64,6 +65,38 @@ brain.orient()
 | `brain_tags`, `brain_domains` | Organización |
 | `brain_page_versions` | Historial de cambios |
 | `brain_log` | Bitácora con trazabilidad |
+
+---
+
+## ⚠️ Pitfalls
+
+### CREATION_ORDER: las dependencias mandan
+
+`setup_contexts()` crea las 12 colecciones en orden. Si una colección A tiene un campo relation a B, B debe crearse ANTES que A. El orden correcto es:
+
+```
+contexts → brain_domains → brain_tags → brain_pages → brain_goals
+→ brain_todos → brain_journal → brain_files → brain_deliverables
+→ brain_reminders → brain_log → brain_page_versions
+```
+
+**brain_goals va ANTES de brain_todos, brain_files y brain_deliverables** porque estos lo referencian con `goal`.
+
+### SELF_REF_FIELDS: relaciones autoreferenciadas
+
+`brain_goals` tiene campos `parent` y `goal` que apuntan a `brain_goals`. PocketBase rechaza crear una colección con campos relation a sí misma. La solución:
+
+1. El campo se **quita** del schema antes de `create_collection()`.
+2. Después de creada, se **agrega con PATCH** usando `update_collection()`.
+
+Las colecciones con self-refs se declaran en `SELF_REF_FIELDS` (diccionario en `brain.py`). Si agregas una nueva colección autoreferenciada, declárala ahí.
+
+### Naming: 'brain' en PocketBase ≠ 'brain' en el código
+
+El campo relation en PocketBase se llama `brain` (por legado) pero la colección padre es `contexts`. No confundir:
+- **Campo en PB**: `"brain"` (relation a `contexts`)
+- **Variable en Python**: `context_name`, `_context_id`
+- **Colección**: `contexts`
 
 ---
 
@@ -92,20 +125,21 @@ brain = Brain('personal')
 ## Clean / Reset
 
 ```python
-from brain import nuke_brain
+from brain import nuke_context, _pocketbrain_pb
+pb = _pocketbrain_pb()
 
-# Limpiar un cerebro (requiere confirmación explícita)
-stats = nuke_brain(pb, brain_name='personal', confirm='YES_DELETE_ALL')
+# Limpiar un contexto (requiere confirmación explícita)
+stats = nuke_context(pb, context_name='personal', confirm='YES_DELETE_ALL')
 # → {brain_log: 66, brain_todos: 11, brain_pages: 9, brain_goals: 8, ...}
 
 # Limpiar TODA la base de datos
-nuke_brain(pb, confirm='YES_DELETE_ALL')
-# → borra todo, incluyendo brains
+nuke_context(pb, confirm='YES_DELETE_ALL')
+# → borra todo, incluyendo contexts
 ```
 
 - Orden seguro: dependencias primero (hijos antes que padres)
 - Sin `confirm='YES_DELETE_ALL'` → lanza `ValueError`
-- `brain_name=None` → limpia todo
+- `context_name=None` → limpia todo
 
 ---
 
@@ -162,6 +196,9 @@ skill_view('pocketbrain', file_path='references/goals.md')
 
 # Flujos de trabajo diarios y semanales
 skill_view('pocketbrain', file_path='references/workflows.md')
+
+# Arquitectura de variables de entorno (POCKETBRAIN_* vs POCKETBASE_*)
+skill_view('pocketbrain', file_path='references/env-architecture.md')
 ```
 
 | Archivo | Cuándo cargarlo |
@@ -170,3 +207,4 @@ skill_view('pocketbrain', file_path='references/workflows.md')
 | `references/tracing.md` | Al revisar logs o configurar un nuevo perfil |
 | `references/goals.md` | Al trabajar con goals, milestones u OKRs |
 | `references/workflows.md` | Al iniciar una sesión de trabajo |
+| `references/env-architecture.md` | Al configurar credenciales o debuguear conexión |

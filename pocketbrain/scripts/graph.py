@@ -27,9 +27,9 @@ with open(env_path) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBASE_HOST"] = env["POCKETBASE_HOST"]
-os.environ["POCKETBASE_EMAIL"] = env["POCKETBASE_EMAIL"]
-os.environ["POCKETBASE_PASSWORD"] = env["POCKETBASE_PASSWORD"]
+os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
+os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
+os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -109,7 +109,7 @@ def build_graph(brain: Brain) -> dict:
                         "summary": (tp.get("summary", "") or "")[:100],
                     })
 
-    return {"nodes": nodes, "edges": edges, "brain": brain.brain_name}
+    return {"nodes": nodes, "edges": edges, "context": brain.context_name}
 
 
 # ═══════════════════════════════════════════════════════
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     brain_name, output = parse_args()
     output = output or os.path.expanduser(f"~/brain-graph-{brain_name}.html")
 
-    pb = quick_pb()
+    pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
     brain = Brain(brain_name, pb=pb)
     graph = build_graph(brain)
 

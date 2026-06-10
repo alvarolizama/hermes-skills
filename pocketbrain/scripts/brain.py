@@ -5,11 +5,11 @@ PocketBrain — Multi-brain knowledge base on PocketBase.
 Depends on pocketbase skill's pb.py module.
 
 Usage:
-    from brain import Brain, setup_brains
+    from brain import Brain, setup_contexts
     
     # First time: create the collections
     pb = quick_pb()
-    setup_brains(pb)
+    setup_contexts(pb)
     
     # Connect to a brain
     brain = Brain('personal')
@@ -29,14 +29,37 @@ from typing import Optional, Any
 sys.path.insert(0, os.path.expanduser('~/.hermes/skills/productivity/pocketbase/scripts'))
 from pb import PB, quick_pb
 
+# ── PocketBrain env loader ──────────────────────────────────────────
+
+def _load_pocketbrain_env():
+    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD del .env."""
+    env = {}
+    env_path = os.path.expanduser('~/.hermes/.env')
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    env[k.strip()] = v.strip().strip('"').strip("'")
+    return env
+
+def _pocketbrain_pb():
+    """Crea un PB autenticado usando POCKETBRAIN_* del .env."""
+    env = _load_pocketbrain_env()
+    host = env.get('POCKETBRAIN_HOST', 'http://localhost:8090')
+    email = env.get('POCKETBRAIN_EMAIL', '')
+    password = env.get('POCKETBRAIN_PASSWORD', '')
+    return quick_pb(host, email, password)
+
 
 # ═════════════════════════════════════════════════════════════════════
 #  SCHEMA
 # ═════════════════════════════════════════════════════════════════════
 
 BRAIN_SCHEMA = {
-    "brains": {
-        "name": "brains",
+    "contexts": {
+        "name": "contexts",
         "type": "base",
         "fields": [
             {"name": "name", "type": "text", "required": True, "unique": True},
@@ -51,7 +74,7 @@ BRAIN_SCHEMA = {
         "fields": [
             {"name": "name", "type": "text", "required": True},
             {"name": "label", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
         ],
     },
@@ -61,7 +84,7 @@ BRAIN_SCHEMA = {
         "fields": [
             {"name": "name", "type": "text", "required": True},
             {"name": "category", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
         ],
     },
@@ -71,7 +94,7 @@ BRAIN_SCHEMA = {
         "fields": [
             {"name": "title", "type": "text", "required": True},
             {"name": "slug", "type": "text", "required": True, "unique": True},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "domain", "type": "relation", "collectionId": "brain_domains",
              "cascadeDelete": False, "maxSelect": 1},
@@ -122,7 +145,7 @@ BRAIN_SCHEMA = {
             {"name": "started_date", "type": "date"},
             {"name": "completed_date", "type": "date"},
             {"name": "cancelled_date", "type": "date"},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": 1},
@@ -137,7 +160,7 @@ BRAIN_SCHEMA = {
             {"name": "title", "type": "text", "required": True},
             {"name": "body", "type": "text"},
             {"name": "date", "type": "date", "required": True},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "mood", "type": "select",
              "values": ["great", "meh", "bad"], "maxSelect": 1},
@@ -154,7 +177,7 @@ BRAIN_SCHEMA = {
             {"name": "name", "type": "text", "required": True},
             {"name": "page", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": 1},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "file", "type": "file", "maxSelect": 1, "maxSize": 0},
             {"name": "file_type", "type": "select",
@@ -171,7 +194,7 @@ BRAIN_SCHEMA = {
             {"name": "description", "type": "text"},
             {"name": "page", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": 1},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "file", "type": "file", "maxSelect": 1, "maxSize": 0},
             {"name": "version", "type": "text"},
@@ -192,7 +215,7 @@ BRAIN_SCHEMA = {
             {"name": "content", "type": "text"},
             {"name": "date", "type": "date", "required": True},
             {"name": "time", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": 1},
@@ -212,7 +235,7 @@ BRAIN_SCHEMA = {
              "values": ["planned", "active", "done", "cancelled"], "maxSelect": 1},
             {"name": "progress", "type": "number", "min": 0, "max": 100},
             {"name": "deadline", "type": "date"},
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": 1},
@@ -228,7 +251,7 @@ BRAIN_SCHEMA = {
         "name": "brain_log",
         "type": "base",
         "fields": [
-            {"name": "brain", "type": "relation", "collectionId": "brains",
+            {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "action", "type": "select", "required": True,
              "values": ["ingest", "update", "query", "lint", "create", "archive", "delete", "setup"],
@@ -241,7 +264,17 @@ BRAIN_SCHEMA = {
     },
 }
 
-CREATION_ORDER = ["brains", "brain_domains", "brain_tags", "brain_pages", "brain_log", "brain_page_versions", "brain_todos", "brain_journal", "brain_files", "brain_deliverables", "brain_goals", "brain_reminders"]
+CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_goals", "brain_todos", "brain_journal", "brain_files", "brain_deliverables", "brain_reminders", "brain_log", "brain_page_versions"]
+
+# Colecciones con campos self-reference que necesitan PATCH post-creación
+SELF_REF_FIELDS = {
+    "brain_goals": [
+        {"name": "parent", "type": "relation", "collectionId": "brain_goals",
+         "cascadeDelete": False, "maxSelect": 1},
+        {"name": "goal", "type": "relation", "collectionId": "brain_goals",
+         "cascadeDelete": False, "maxSelect": 1},
+    ],
+}
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -282,12 +315,12 @@ def extract_wikilinks(body: str) -> list:
 #  SETUP
 # ═════════════════════════════════════════════════════════════════════
 
-def nuke_brain(pb, brain_name: str = None, confirm: str = None):
+def nuke_context(pb, context_name: str = None, confirm: str = None):
     """Borra todos los datos de un cerebro o de toda la DB.
 
     Args:
         pb: Instancia PB autenticada.
-        brain_name: Nombre del cerebro a limpiar. Si es None, limpia TODO.
+        context_name: Nombre del contexto a limpiar. Si es None, limpia TODO.
         confirm: Debe ser 'YES_DELETE_ALL' para proceder.
 
     Returns:
@@ -296,13 +329,13 @@ def nuke_brain(pb, brain_name: str = None, confirm: str = None):
     if confirm != 'YES_DELETE_ALL':
         raise ValueError("Debes pasar confirm='YES_DELETE_ALL' para confirmar.")
 
-    brain_id = None
-    if brain_name:
-        brains = pb.list('brains', filter="(name='" + brain_name + "')")
-        if brains:
-            brain_id = brains[0]['id']
+    context_id = None
+    if context_name:
+        contexts = pb.list('contexts', filter="(name='" + context_name + "')")
+        if contexts:
+            context_id = contexts[0]['id']
         else:
-            raise ValueError("Cerebro '" + brain_name + "' no encontrado")
+            raise ValueError("Contexto '" + context_name + "' no encontrado")
 
     # Orden: dependencias primero (hijos antes que padres)
     order = [
@@ -315,16 +348,16 @@ def nuke_brain(pb, brain_name: str = None, confirm: str = None):
         'brain_journal',       # depende de brain_pages
         'brain_goals',         # depende de brain_pages (self-ref parent)
         'brain_pages',         # depende de brain_domains, brain_tags
-        'brain_tags',          # depende de brains
-        'brain_domains',       # depende de brains
+        'brain_tags',          # depende de contexts
+        'brain_domains',       # depende de contexts
     ]
 
     stats = {}
     for col in order:
         try:
-            if brain_id:
-                # Contar y borrar solo los de este cerebro
-                records = pb.all(col, filter="(brain='" + brain_id + "')", perPage=500)
+            if context_id:
+                # Contar y borrar solo los de este contexto
+                records = pb.all(col, filter="(brain='" + context_id + "')", perPage=500)
                 count = len(records)
                 for r in records:
                     pb.delete(col, r['id'])
@@ -336,19 +369,19 @@ def nuke_brain(pb, brain_name: str = None, confirm: str = None):
         except Exception as e:
             stats[col] = 'ERROR: ' + str(e)[:80]
 
-    # Si es limpieza total, también borrar brains
-    if not brain_name:
+    # Si es limpieza total, también borrar contexts
+    if not context_name:
         try:
-            count = len(pb.all('brains', perPage=500))
-            pb._request('DELETE', '/api/collections/brains/truncate')
-            stats['brains'] = count
+            count = len(pb.all('contexts', perPage=500))
+            pb._request('DELETE', '/api/collections/contexts/truncate')
+            stats['contexts'] = count
         except Exception as e:
-            stats['brains'] = 'ERROR: ' + str(e)[:80]
+            stats['contexts'] = 'ERROR: ' + str(e)[:80]
 
     return stats
 
 
-def setup_brains(pb: PB) -> dict:
+def setup_contexts(pb: PB) -> dict:
     """Crea las 9 colecciones del PocketBrain en PocketBase.
 
     Resuelve dinámicamente los IDs de las colecciones para las relaciones,
@@ -379,6 +412,11 @@ def setup_brains(pb: PB) -> dict:
 
         # Resolver collectionId placeholders en campos relation
         fields = copy.deepcopy(schema['fields'])
+        
+        # Quitar campos self-reference (se agregan con PATCH después)
+        self_ref_names = {f['name'] for f in SELF_REF_FIELDS.get(name, [])}
+        fields = [f for f in fields if f['name'] not in self_ref_names]
+        
         for field in fields:
             if field.get('type') == 'relation' and field.get('collectionId'):
                 ref_name = field['collectionId']
@@ -407,6 +445,24 @@ def setup_brains(pb: PB) -> dict:
         except Exception as e:
             results[name] = {"status": "error", "error": str(e)}
 
+    # Post-creation: PATCH self-referencing fields
+    for name in SELF_REF_FIELDS:
+        if name in collection_ids:
+            col_id = collection_ids[name]
+            patch_fields = []
+            for f in SELF_REF_FIELDS[name]:
+                field_copy = dict(f)
+                field_copy['collectionId'] = col_id
+                patch_fields.append(field_copy)
+            try:
+                existing = pb.get_collection(col_id)
+                current_fields = existing.get('fields', [])
+                updated_fields = current_fields + patch_fields
+                pb.update_collection(col_id, {'fields': updated_fields})
+                results[name]['self_ref_patched'] = True
+            except Exception as e:
+                results[name]['self_ref_patched'] = 'error: ' + str(e)[:80]
+
     return results
 
 
@@ -418,7 +474,7 @@ class Brain:
     """Cliente para un cerebro de conocimiento específico.
 
     Args:
-        brain_name: Nombre del cerebro ('personal', 'bravo', 'proyectos', etc.)
+        context_name: Nombre del contexto ('personal', 'projects', etc.)
         pb: Instancia PB opcional (si no, crea una nueva y autentica).
 
     Uso típico:
@@ -429,13 +485,13 @@ class Brain:
         report = brain.lint()                 # auditar
     """
 
-    def __init__(self, brain_name: str, pb: Optional[PB] = None,
+    def __init__(self, context_name: str, pb: Optional[PB] = None,
                  agent: str = 'chaos-manager', user: str = 'alvaro'):
-        self.brain_name = brain_name
-        self.pb = pb or quick_pb()
+        self.context_name = context_name
+        self.pb = pb or _pocketbrain_pb()
         self.agent = agent
         self.user = user
-        self._brain_id: Optional[str] = None
+        self._context_id: Optional[str] = None
         self._schema: Optional[dict] = None
         self._domain_cache: dict = {}   # name → id
         self._tag_cache: dict = {}      # name → id
@@ -447,36 +503,36 @@ class Brain:
 
         Llama esto al inicio de cada sesión antes de operar con un cerebro.
         """
-        brains = self.pb.list('brains', filter=f"(name='{self.brain_name}')")
-        if not brains:
+        contexts = self.pb.list('contexts', filter=f"(name='{self.context_name}')")
+        if not contexts:
             raise ValueError(
-                f"Cerebro '{self.brain_name}' no encontrado. "
-                f"Usa create_brain() primero."
+                f"Contexto '{self.context_name}' no encontrado. "
+                f"Usa create_context() primero."
             )
 
-        brain = brains[0]
-        self._brain_id = brain['id']
-        self._schema = brain.get('schema_config', {}) or {}
+        context = contexts[0]
+        self._context_id = context['id']
+        self._schema = context.get('schema_config', {}) or {}
 
         # Cachear dominios
         self._domain_cache = {}
         for d in self.pb.all('brain_domains',
-                             filter=f"(brain='{self._brain_id}')"):
+                             filter=f"(brain='{self._context_id}')"):
             self._domain_cache[d['name']] = d['id']
 
         # Cachear tags
         self._tag_cache = {}
         for t in self.pb.all('brain_tags',
-                             filter=f"(brain='{self._brain_id}')"):
+                             filter=f"(brain='{self._context_id}')"):
             self._tag_cache[t['name']] = t['id']
 
         # Contar páginas
         page_count = len(self.pb.list('brain_pages',
-            filter=f"(brain='{self._brain_id}' && archived=false)",
+            filter=f"(brain='{self._context_id}' && archived=false)",
             perPage=1, skipTotal=False))
 
         return {
-            'brain': brain,
+            'brain': context,
             'domain_count': len(self._domain_cache),
             'tag_count': len(self._tag_cache),
             'page_count': page_count,
@@ -485,7 +541,7 @@ class Brain:
 
     # ── Brain CRUD ───────────────────────────────────────────────
 
-    def create_brain(self, label: str, description: str = '',
+    def create_context(self, label: str, description: str = '',
                      schema_config: Optional[dict] = None) -> dict:
         """Crea un nuevo cerebro.
 
@@ -510,15 +566,15 @@ class Brain:
                 "citation_format": "^[source-slug]",
             },
         }
-        result = self.pb.create('brains', {
-            'name': self.brain_name,
+        result = self.pb.create('contexts', {
+            'name': self.context_name,
             'label': label,
             'description': description,
             'schema_config': schema_config or default_schema,
         })
-        self._brain_id = result['id']
+        self._context_id = result['id']
         self._schema = schema_config or default_schema
-        self.log('setup', description=f'Cerebro "{self.brain_name}" creado')
+        self.log('setup', description=f'Cerebro "{self.context_name}" creado')
         return result
 
     # ── Domain management ────────────────────────────────────────
@@ -529,7 +585,7 @@ class Brain:
             return self._domain_cache[name]
 
         existing = self.pb.list('brain_domains',
-            filter=f"(name='{name}' && brain='{self._brain_id}')")
+            filter=f"(name='{name}' && brain='{self._context_id}')")
         if existing:
             self._domain_cache[name] = existing[0]['id']
             return existing[0]['id']
@@ -537,7 +593,7 @@ class Brain:
         result = self.pb.create('brain_domains', {
             'name': name,
             'label': label or name,
-            'brain': self._brain_id,
+            'brain': self._context_id,
         })
         self._domain_cache[name] = result['id']
         return result['id']
@@ -550,7 +606,7 @@ class Brain:
             return self._tag_cache[name]
 
         existing = self.pb.list('brain_tags',
-            filter=f"(name='{name}' && brain='{self._brain_id}')")
+            filter=f"(name='{name}' && brain='{self._context_id}')")
         if existing:
             self._tag_cache[name] = existing[0]['id']
             return existing[0]['id']
@@ -558,7 +614,7 @@ class Brain:
         result = self.pb.create('brain_tags', {
             'name': name,
             'category': category,
-            'brain': self._brain_id,
+            'brain': self._context_id,
         })
         self._tag_cache[name] = result['id']
         return result['id']
@@ -586,7 +642,7 @@ class Brain:
             contradictions: Slugs de páginas en conflicto (coma-separados)
             related_slugs: Lista de slugs de páginas relacionadas
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         slug = slugify(title)
@@ -594,7 +650,7 @@ class Brain:
         data = {
             'title': title,
             'slug': slug,
-            'brain': self._brain_id,
+            'brain': self._context_id,
             'page_type': page_type,
             'body': body,
             'summary': summary or body[:200].split('\n')[0] if body else '',
@@ -704,9 +760,9 @@ class Brain:
                    include_archived: bool = False,
                    sort: str = '', per_page: int = 50) -> list:
         """Lista páginas con filtros opcionales."""
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
-        filters = [f"(brain='{self._brain_id}')"]
+        filters = [f"(brain='{self._context_id}')"]
         if not include_archived:
             filters.append("(archived=false)")
         if page_type:
@@ -743,12 +799,12 @@ class Brain:
         Returns:
             Lista de páginas ordenadas por relevancia descendente.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         # Traer todas las páginas activas del cerebro
         candidates = self.pb.all('brain_pages',
-            filter=f"(brain='{self._brain_id}' && archived=false)")
+            filter=f"(brain='{self._context_id}' && archived=false)")
 
         if not candidates:
             return []
@@ -785,7 +841,7 @@ class Brain:
 
         Calcula source_sha256 automáticamente si page_type='raw'.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         title = title or f"Ingest {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
@@ -804,7 +860,7 @@ class Brain:
     def log(self, action: str, page_id: Optional[str] = None,
             description: str = '', details: Optional[dict] = None) -> dict:
         """Registra una acción en el brain_log con trazabilidad."""
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         meta = details or {}
@@ -812,7 +868,7 @@ class Brain:
         meta['requested_by'] = self.user
 
         data = {
-            'brain': self._brain_id,
+            'brain': self._context_id,
             'action': action,
             'description': description,
             'details': meta,
@@ -824,7 +880,7 @@ class Brain:
     def recent_logs(self, limit: int = 30,
                     action: Optional[str] = None) -> list:
         """Últimas entradas del log."""
-        filters = [f"(brain='{self._brain_id}')"]
+        filters = [f"(brain='{self._context_id}')"]
         if action:
             filters.append(f"(action='{action}')")
         return self.pb.list('brain_log',
@@ -842,11 +898,11 @@ class Brain:
         Returns:
             Dict con issues categorizados y conteo resumen.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._brain_id}' && archived=false)",
+            filter=f"(brain='{self._context_id}' && archived=false)",
             expand='tags')
 
         report = {
@@ -950,7 +1006,7 @@ class Brain:
 
     def get_schema(self) -> dict:
         """Obtiene el schema_config del cerebro."""
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
         return self._schema or {}
 
@@ -958,7 +1014,7 @@ class Brain:
         """Actualiza el schema_config (merge superficial)."""
         current = self.get_schema()
         merged = {**current, **updates}
-        self.pb.update('brains', self._brain_id,
+        self.pb.update('brains', self._context_id,
                        {'schema_config': merged})
         self._schema = merged
         self.log('update', description='Schema actualizado')
@@ -981,15 +1037,15 @@ class Brain:
 
         Equivalente al index.md del llm-wiki original.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._brain_id}' && archived=false)",
+            filter=f"(brain='{self._context_id}' && archived=false)",
             sort='title')
 
         index = {
-            'brain': self.brain_name,
+            'brain': self.context_name,
             'total_pages': len(pages),
             'entity': [],
             'concept': [],
@@ -1052,10 +1108,10 @@ class Brain:
                     content: str = "",
                     status: str = "backlog",
                     owner: str = "alvaro") -> dict:
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
         data = {'title': title, 'content': content, 'status': status,
-                'domain': domain, 'owner': owner, 'brain': self._brain_id}
+                'domain': domain, 'owner': owner, 'brain': self._context_id}
         if page_slug:
             page = self._get_page(page_slug)
             if page:
@@ -1071,9 +1127,9 @@ class Brain:
               owner: Optional[str] = None,
               goal_id: Optional[str] = None,
               limit: int = 50) -> list:
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
-        filters = ["(brain='" + self._brain_id + "')"]
+        filters = ["(brain='" + self._context_id + "')"]
         if status: filters.append("(status='" + status + "')")
         if domain: filters.append("(domain='" + domain + "')")
         if owner: filters.append("(owner='" + owner + "')")
@@ -1147,7 +1203,7 @@ class Brain:
         Returns:
             El registro de brain_journal (creado si no existe).
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         date_str = self._journal_date_str(date_val)
@@ -1155,7 +1211,7 @@ class Brain:
 
         # Buscar si ya existe
         existing = self.pb.list('brain_journal',
-            filter="(brain='" + self._brain_id + "' && date='" + date_str + " 00:00:00.000Z')",
+            filter="(brain='" + self._context_id + "' && date='" + date_str + " 00:00:00.000Z')",
             perPage=1)
         if existing:
             return existing[0]
@@ -1165,7 +1221,7 @@ class Brain:
             'title': title,
             'body': '',
             'date': date_str + ' 00:00:00.000Z',
-            'brain': self._brain_id,
+            'brain': self._context_id,
         })
         self.log('create', description='Journal entry: ' + date_str)
         return entry
@@ -1213,14 +1269,14 @@ class Brain:
         Returns:
             Lista de entradas ordenadas por fecha ascendente.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         d_from = self._journal_date_str(from_date)
         d_to = self._journal_date_str(to_date)
 
         return self.pb.list('brain_journal',
-            filter="(brain='" + self._brain_id + "' && date>='" + d_from + " 00:00:00.000Z' && date<='" + d_to + " 00:00:00.000Z')",
+            filter="(brain='" + self._context_id + "' && date>='" + d_from + " 00:00:00.000Z' && date<='" + d_to + " 00:00:00.000Z')",
             sort='date',
             perPage=100)
 
@@ -1230,11 +1286,11 @@ class Brain:
         Divide el query en palabras y busca cada una de forma
         case-insensitive en title y body. Rankea por relevancia.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         candidates = self.pb.all('brain_journal',
-            filter="(brain='" + self._brain_id + "')")
+            filter="(brain='" + self._context_id + "')")
 
         terms = [t.lower() for t in query.split() if len(t) > 1]
         if not terms:
@@ -1263,7 +1319,7 @@ class Brain:
         """Adjunta un archivo a una pagina."""
         import subprocess
 
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         page = self._get_page(page_slug)
@@ -1281,7 +1337,7 @@ class Brain:
             "-H", auth,
             "-F", "name=" + name,
             "-F", "page=" + page["id"],
-            "-F", "brain=" + self._brain_id,
+            "-F", "brain=" + self._context_id,
             "-F", "file_type=" + file_type,
             "-F", "file=@" + filepath,
         ]
@@ -1332,7 +1388,7 @@ class Brain:
         """
         import subprocess
 
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         page = self._get_page(project_slug)
@@ -1349,7 +1405,7 @@ class Brain:
             "-H", auth,
             "-F", "title=" + title,
             "-F", "page=" + page["id"],
-            "-F", "brain=" + self._brain_id,
+            "-F", "brain=" + self._context_id,
             "-F", "version=" + version,
             "-F", "status=" + status,
             "-F", "description=" + description,
@@ -1412,7 +1468,7 @@ class Brain:
             "-H", auth,
             "-F", "title=" + old.get("title", ""),
             "-F", "page=" + old.get("page", ""),
-            "-F", "brain=" + old.get("brain", self._brain_id or ""),
+            "-F", "brain=" + old.get("brain", self._context_id or ""),
             "-F", "version=" + new_version,
             "-F", "status=draft",
             "-F", "description=" + old.get("description", ""),
@@ -1455,7 +1511,7 @@ class Brain:
             parent_id: ID del OKR padre (para key results).
             status: 'planned', 'active', 'done', 'cancelled'.
         """
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         data = {
@@ -1464,7 +1520,7 @@ class Brain:
             'description': description,
             'status': status,
             'progress': progress,
-            'brain': self._brain_id,
+            'brain': self._context_id,
         }
 
         if deadline:
@@ -1484,10 +1540,10 @@ class Brain:
                    type: Optional[str] = None,
                    status: Optional[str] = None) -> list:
         """Lista goals con filtros opcionales."""
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
-        filters = ["(brain='" + self._brain_id + "')"]
+        filters = ["(brain='" + self._context_id + "')"]
         if type:
             filters.append("(type='" + type + "')")
         if status:
@@ -1552,9 +1608,9 @@ class Brain:
     def create_reminder(self, title: str, date: str, time: str = '',
                         content: str = '', page_slug: Optional[str] = None) -> dict:
         """Crea un recordatorio."""
-        if not self._brain_id: self.orient()
+        if not self._context_id: self.orient()
         data = {'title': title, 'date': date + ' 00:00:00.000Z', 'time': time,
-                'content': content, 'brain': self._brain_id, 'done': False}
+                'content': content, 'brain': self._context_id, 'done': False}
         if page_slug:
             page = self._get_page(page_slug)
             if page: data['page'] = page['id']
@@ -1565,8 +1621,8 @@ class Brain:
     def reminders(self, done: Optional[bool] = None, date: str = '',
                   page_slug: str = '') -> list:
         """Lista recordatorios. date='today' para hoy."""
-        if not self._brain_id: self.orient()
-        f = ["(brain='" + self._brain_id + "')"]
+        if not self._context_id: self.orient()
+        f = ["(brain='" + self._context_id + "')"]
         if done is not None: f.append("(done=" + str(done).lower() + ")")
         if date:
             from datetime import date as dt
@@ -1603,7 +1659,7 @@ class Brain:
         """
         import subprocess
 
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
 
         filename = os.path.basename(filepath)
@@ -1625,7 +1681,7 @@ class Brain:
             "-H", f"Authorization: Bearer {token}",
             "-F", f"title={title}",
             "-F", f"slug={slug}",
-            "-F", f"brain={self._brain_id}",
+            "-F", f"brain={self._context_id}",
             "-F", "page_type=raw",
             "-F", f"source_sha256={file_hash}",
             "-F", f"attachment=@{filepath}",
@@ -1653,11 +1709,11 @@ class Brain:
 
     def _get_page(self, slug_or_id: str, expand: str = '') -> Optional[dict]:
         """Obtiene página por slug o ID."""
-        if not self._brain_id:
+        if not self._context_id:
             self.orient()
         # Buscar por slug primero
         pages = self.pb.list('brain_pages',
-            filter=f"(brain='{self._brain_id}' && slug='{slug_or_id}')",
+            filter=f"(brain='{self._context_id}' && slug='{slug_or_id}')",
             perPage=1, expand=expand)
         if pages:
             return pages[0]
