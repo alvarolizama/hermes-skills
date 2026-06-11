@@ -876,3 +876,4 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/realtime-fallback.md` | Al implementar notificaciones realtime: SSE vs heartbeat, toasts de cambio, status indicator |
 | `references/repo-maintenance.md` | Cómo mantener el repo sync: qué va y qué no va en el tap, screenshots, `.gitignore` |
 | `references/llm-wiki-comparison.md` | Mapeo completo de PocketBrain vs LLM Wiki de Karpathy — qué cubre y qué gaps persisten |
+| `references/llm-wiki-workflow.md` | Guía práctica de PocketBrain bajo paradigma LLM Wiki — ingest, calidad, mantenimiento, consulta |
