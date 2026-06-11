@@ -471,8 +471,7 @@ function renderGoalsView(typeFilter){
   h+='<div style="display:flex;gap:8px;margin:12px 0"><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
-    var chip=g.type==='okr'?'chip-okr':g.type==='milestone'?'chip-milestone':'chip-goal';
-    h+='<div class="card"><h3><span class="chip '+chip+'">'+g.type+'</span> '+g.title+'</h3><div style="font-size:12px;color:var(--mute)">'+g.status+(g.deadline?' · '+g.deadline:'')+'</div>';
+    h+='<div class="card"><h3>'+g.title+'</h3>';
 
     h+='</div>';
   });
@@ -753,7 +752,7 @@ function renderProjectsView(){
     var pgoals=GOALS.filter(function(g){return g.page===p.slug;}).length;
     var ptodos=TODOS.filter(function(t){return t.page_slug===p.slug;}).length;
     var statusBadge=p.status&&p.status!=='active'?' <span style="font-size:11px;color:var(--mute);background:var(--soft);padding:1px 8px;border-radius:9999px;margin-left:6px">'+p.status+'</span>':'';
-    h+='<div class="card" style="cursor:pointer" onclick="showProject(\''+p.slug+'\')"><h3>'+p.title+statusBadge+'</h3><div style="font-size:12px;color:var(--mute)">'+pgoals+' goals · '+ptodos+' tareas</div></div>';
+    h+='<div class="card" style="cursor:pointer" onclick="showProject(\''+p.slug+'\')"><h3>'+p.title+statusBadge+'</h3></div>';
   });
   if(!active.length)h+='<p style="color:var(--mute)">No hay proyectos en este contexto.</p>';
   document.getElementById('view-projects').innerHTML=h;
