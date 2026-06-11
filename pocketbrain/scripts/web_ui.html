@@ -141,6 +141,8 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <div id="view-type-plan" class="view"></div>
   <div id="view-type-note" class="view"></div>
   <div id="view-type-idea" class="view"></div>
+  <div id="view-type-file" class="view"></div>
+  <div id="view-type-deliverable" class="view"></div>
   <div id="view-reminders"></div>
   <div id="view-files"></div>
   <div id="view-deliverables"></div>
@@ -219,11 +221,13 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="jou
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_entity\')" data-search="entity"><span class="nav-label">'+icon('users',16)+'<span>Entidades</span></span><span class="nav-count">'+cnt('entity')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_concept\')" data-search="concept"><span class="nav-label">'+icon('document-text',16)+'<span>Conceptos</span></span><span class="nav-count">'+cnt('concept')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_plan\')" data-search="plan"><span class="nav-label">'+icon('calendar-days',16)+'<span>Planes</span></span><span class="nav-count">'+cnt('plan')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_note\')" data-search="note"><span class="nav-label">'+icon('clock',16)+'<span>Notas</span></span><span class="nav-count">'+cnt('note')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_file\')" data-search="file"><span class="nav-label">'+icon('document-text',16)+'<span>Files</span></span><span class="nav-count">'+cnt('file')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_deliverable\')" data-search="deliverable"><span class="nav-label">'+icon('cube',16)+'<span>Deliverables</span></span><span class="nav-count">'+cnt('deliverable')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 
@@ -342,7 +346,7 @@ function showCurrentView(){
   document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});
   document.querySelectorAll('#nav a.nav-link').forEach(function(a){a.classList.remove('active');});
   if(_currentTab==='project'&&_currentProject){renderProjectView(_currentProject);return;}
-  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',milestones:'view-milestones',type_entity:'view-type-entity',type_concept:'view-type-concept',type_comparison:'view-type-comparison',type_query:'view-type-query',type_raw:'view-type-raw',type_plan:'view-type-plan',type_note:'view-type-note',type_idea:'view-type-idea',graph:'view-graph',lint:'view-lint'};
+  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',milestones:'view-milestones',type_entity:'view-type-entity',type_concept:'view-type-concept',type_comparison:'view-type-comparison',type_query:'view-type-query',type_raw:'view-type-raw',type_plan:'view-type-plan',type_note:'view-type-note',type_idea:'view-type-idea',type_file:'view-type-file',type_deliverable:'view-type-deliverable',graph:'view-graph',lint:'view-lint'};
   var vid=views[_currentTab];if(!vid)return;
   document.getElementById(vid).classList.add('active');
   var sel='a.nav-link[onclick*="showTab(' + "'" + _currentTab + "'" + ')"]';
