@@ -99,7 +99,7 @@ BRAIN_SCHEMA = {
             {"name": "domain", "type": "relation", "collectionId": "brain_domains",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "okr", "reminder", "journal", "note", "idea"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea"], "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
             {"name": "confidence", "type": "select",

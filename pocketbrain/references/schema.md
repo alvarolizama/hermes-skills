@@ -33,7 +33,7 @@
 |-------|------|-------|
 | `title` | text (required) | |
 | `slug` | text (required, unique) | lowercase-hyphens |
-| `page_type` | select | entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, okr, reminder, journal |
+| `page_type` | select | entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, reminder, journal |
 | `body` | text | **Markdown puro** con `[[wikilinks]]` |
 | `summary` | text | |
 | `confidence` | select | high, medium, low |

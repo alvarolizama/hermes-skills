@@ -37,7 +37,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 15 page_types
+### Los 14 page_types
 
 | Tipo | Cuándo usarlo | Ejemplos |
 |------|---------------|----------|
@@ -53,7 +53,6 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `todo` | Tareas (backlog → this week → today → in progress → done) | "Revisar PR", "Comprar vuelos" |
 | `goal` | Goals, objetivos generales | "Mejorar rendimiento" |
 | `milestone` | Hitos con fecha límite | "Lanzar MVP", "Fecha de entrega" |
-| `okr` | OKRs con key results | "OKR Q1: 1000 usuarios" |
 | `reminder` | Recordatorios con fecha/hora | "Reunión 10am", "Pagar factura" |
 | `journal` | Diario, entrada por día | "Journal: 2026-06-10" |
 
