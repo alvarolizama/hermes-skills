@@ -402,11 +402,9 @@ function projectFilterOptions(current){var projects=PAGES.filter(function(p){ret
 function setTodoFilter(v){_todoFilter=v;renderTodosView();}
 function renderTodosView(){
   var filtered=TODOS;
-  if(_todoFilter==='noproject')filtered=TODOS.filter(function(t){return !t.page_slug;});
-  else if(_todoFilter)filtered=TODOS.filter(function(t){return t.page_slug===_todoFilter;});
-  var h='<div class="view-header"><h1>Todo</h1><select onchange="setTodoFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_todoFilter===''?' selected':'')+'>Todos</option><option value="noproject"'+(_todoFilter==='noproject'?' selected':'')+'>Sin proyecto</option>';
-  PAGES.filter(function(p){return p.page_type==='project';}).forEach(function(p){h+='<option value="'+p.slug+'"'+(_todoFilter===p.slug?' selected':'')+'>'+p.title+'</option>';});
-  h+='</select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' tareas</p><div class="kanban">';
+  if(_todoFilter==='project')filtered=TODOS.filter(function(t){return !!t.page_slug;});
+  else if(_todoFilter==='noproject')filtered=TODOS.filter(function(t){return !t.page_slug;});
+  var h='<div class="view-header"><h1>Todo</h1><select onchange="setTodoFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_todoFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_todoFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_todoFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' tareas</p><div class="kanban">';
   var ss=['backlog','this week','today','in progress','done','cancelled'];
   var sl={backlog:'Backlog','this week':'This Week',today:'Today','in progress':'In Progress',done:'Done',cancelled:'Cancelled'};
   var bs={};ss.forEach(function(s){bs[s]=[];});
@@ -456,8 +454,8 @@ function renderTypeView(type){
 function renderGoalsView(typeFilter){
   var filtered=GOALS;
   if(typeFilter)filtered=GOALS.filter(function(g){return g.type===typeFilter;});
-  if(_goalFilter==='noproject')filtered=filtered.filter(function(g){return !g.page_slug;});
-  else if(_goalFilter)filtered=filtered.filter(function(g){return g.page_slug===_goalFilter;});
+  if(_goalFilter==='project')filtered=filtered.filter(function(g){return !!g.page_slug;});
+  else if(_goalFilter==='noproject')filtered=filtered.filter(function(g){return !g.page_slug;});
   var cAll=filtered.filter(function(g){return !g.parent;}).length;
   var cActive=filtered.filter(function(g){return !g.parent&&(g.status==='active'||g.status==='planned');}).length;
   var cCompleted=filtered.filter(function(g){return !g.parent&&g.status==='completed';}).length;
@@ -509,8 +507,8 @@ function setFileFilter(v){_fileFilter=v;renderFiles();}
 function setDepFilter(v){_depFilter=v;renderDeliverables();}
 function renderRemindersView(){
   var filtered=REMINDERS;
-  if(_reminderFilter==='noproject')filtered=REMINDERS.filter(function(r){return !r.page_slug;});
-  else if(_reminderFilter)filtered=REMINDERS.filter(function(r){return r.page_slug===_reminderFilter;});
+  if(_reminderFilter==='project')filtered=REMINDERS.filter(function(r){return !!r.page_slug;});
+  else if(_reminderFilter==='noproject')filtered=REMINDERS.filter(function(r){return !r.page_slug;});
   var now=new Date();var today=now.toISOString().slice(0,10);
   var overdue=filtered.filter(function(r){return !r.done&&r.date<today;}).sort(function(a,b){return a.date.localeCompare(b.date);});
   var todayItems=filtered.filter(function(r){return !r.done&&r.date===today;}).sort(function(a,b){return(a.time||'').localeCompare(b.time||'');});
@@ -531,9 +529,7 @@ function renderRemindersView(){
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'done\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'all\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
   +'</div>';
-  h+='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option>';
-  PAGES.filter(function(p){return p.page_type==='project';}).forEach(function(p){h+='<option value="'+p.slug+'"'+(_reminderFilter===p.slug?' selected':'')+'>'+p.title+'</option>';});
-  h+='</select></div>';
+  h+='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_reminderFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
   var activeSet;
   if(_reminderStatusTab==='today')activeSet=todayItems;
   else if(_reminderStatusTab==='week')activeSet=thisWeek;
