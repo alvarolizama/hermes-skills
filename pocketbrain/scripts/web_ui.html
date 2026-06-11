@@ -133,12 +133,21 @@ h1{font-size:24px!important}h2{font-size:18px!important}
   <div id="view-todos"></div>
   <div id="view-goals"></div>
   <div id="view-journal"></div>
+  <div id="view-type-entity" class="view"></div>
+  <div id="view-type-concept" class="view"></div>
+  <div id="view-type-comparison" class="view"></div>
+  <div id="view-type-query" class="view"></div>
+  <div id="view-type-raw" class="view"></div>
+  <div id="view-type-plan" class="view"></div>
+  <div id="view-type-note" class="view"></div>
+  <div id="view-type-idea" class="view"></div>
   <div id="view-reminders"></div>
   <div id="view-files"></div>
   <div id="view-deliverables"></div>
   <div id="view-wiki"></div>
   <div id="view-projects"></div>
   <div id="view-graph"><div id="graph-view"></div><div id="graph-legend"></div></div>
+  <div id="view-milestones" class="view"></div>
   <div id="view-lint" class="view"></div>
 </div>
 <script>
@@ -341,6 +350,8 @@ function showCurrentView(){
   else if(_currentTab==='files')renderFiles();
   else if(_currentTab==='deliverables')renderDeliverables();
   else if(_currentTab==='wiki'){if(window._wikiSlug){showPage(window._wikiSlug);}else{showIndex();}}
+  else if(_currentTab && _currentTab.startsWith('type_')){var t=_currentTab.replace('type_','');renderTypeView(t);}
+  else if(_currentTab==='milestones'){document.getElementById('view-milestones').classList.add('active');renderGoalsView();}
   else if(_currentTab==='graph'){document.getElementById('view-graph').classList.add('active');setTimeout(renderGraph,300);}
   else if(_currentTab==='lint')renderLintView();
   document.getElementById('view-'+_currentTab).scrollTop=0;
@@ -372,6 +383,26 @@ function setProjGoalStatus(s){window._projGoalStatus=s; switchProjectTab('goals'
 function setProjReminderStatus(s){window._projReminderStatusTab=s; switchProjectTab('reminders', window._projectData.slug);}
 function setProjKanbanFilter(s){window._projKanbanFilter=s; switchProjectTab('kanban', window._projectData.slug);}
 function setGoalFilter(v){_goalFilter=v;renderGoalsView();}
+function renderTypeView(type){
+  var v=document.getElementById('view-type-'+type);
+  if(!v)return;
+  v.classList.add('active');
+  var labels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas'};
+  var pages=PAGES.filter(function(p){return p.page_type===type;});
+  pages.sort(function(a,b){return a.title.localeCompare(b.title);});
+  var h='<h1 style="margin-bottom:20px">'+labels[type]+' ('+pages.length+')</h1>';
+  pages.forEach(function(p){
+    var b='';if(p.confidence)b=' <span class="conf-badge conf-'+p.confidence+'">'+p.confidence+'</span>';
+    h+='<div class="card" style="cursor:pointer;margin-bottom:8px;padding:12px" onclick="showPage(\''+p.slug+'\')">';
+    h+='<h3>'+esc(p.title)+b+'</h3>';
+    if(p.summary)h+='<div style="font-size:12px;color:var(--mute);margin-top:4px">'+esc(p.summary.substring(0,120))+'</div>';
+    if(p.tags&&p.tags.length)h+='<div style="font-size:11px;color:var(--body);margin-top:4px">'+p.tags.join(', ')+'</div>';
+    h+='</div>';
+  });
+  if(!pages.length)h+='<p style="color:var(--mute)">No hay paginas de este tipo.</p>';
+  v.innerHTML=h;
+}
+
 function renderGoalsView(){
   var filtered=GOALS;
   if(_goalFilter==='noproject')filtered=GOALS.filter(function(g){return !g.page_slug;});
