@@ -37,7 +37,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 7 page_types
+### Los 13 page_types
 
 | Tipo | Cuándo usarlo | Ejemplos |
 |------|---------------|----------|
@@ -47,7 +47,15 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
 | `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need", "Video de microservicios" |
 | `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
-| `plan` | Roadmaps, specs, estrategias, presupuestos dentro de un proyecto | "Roadmap Q1", "Especificación técnica", "Presupuesto 2026" |
+| `plan` | Roadmaps, specs, estrategias, presupuestos | "Roadmap Q1", "Especificación técnica" |
+| `todo` | Tareas (backlog → this week → today → in progress → done) | "Revisar PR", "Comprar vuelos" |
+| `goal` | Goals, objetivos generales | "Mejorar rendimiento" |
+| `milestone` | Hitos con fecha límite | "Lanzar MVP", "Fecha de entrega" |
+| `okr` | OKRs con key results | "OKR Q1: 1000 usuarios" |
+| `reminder` | Recordatorios con fecha/hora | "Reunión 10am", "Pagar factura" |
+| `journal` | Diario, entrada por día | "Journal: 2026-06-10" |
+
+Todos los tipos viven en la misma colección `brain_pages`. Las funciones específicas (`create_todo()`, `create_goal()`, `create_reminder()`, `journal_write()`) internamente llaman a `create_page()` con el `page_type` adecuado.
 
 ### Raw sources: tipos de fuentes
 

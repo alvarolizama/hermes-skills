@@ -33,7 +33,7 @@
 |-------|------|-------|
 | `title` | text (required) | |
 | `slug` | text (required, unique) | lowercase-hyphens |
-| `page_type` | select | entity, concept, comparison, query, raw, project, **plan** |
+| `page_type` | select | entity, concept, comparison, query, raw, project, plan, todo, goal, milestone, okr, reminder, journal |
 | `body` | text | **Markdown puro** con `[[wikilinks]]` |
 | `summary` | text | |
 | `confidence` | select | high, medium, low |
@@ -44,6 +44,19 @@
 | `archived` | bool | |
 | `attachment` | file | PDF, imagen |
 | `related_pages` | relation → brain_pages (N:M) | Auto-link desde [[wikilinks]] |
+| `content` | text | Cuerpo alternativo (tareas) |
+| `status` | select | backlog, this week, today, in progress, done, cancelled, planned, active, draft |
+| `deadline` | date | Fecha límite (goals, milestones) |
+| `owner` | select | alvaro, chaos-manager, bravo-manager, etc. |
+| `date` | date | Fecha (reminders, journal) |
+| `time` | text | Hora (reminders) |
+| `done` | bool | Completado (reminders) |
+| `done_date` | date | Fecha de completado |
+| `mood` | select | great, meh, bad (journal) |
+| `started_date` | date | Iniciado (todos) |
+| `completed_date` | date | Completado (todos) |
+| `cancelled_date` | date | Cancelado |
+| `comment` | text | Comentario opcional |
 | `brain` | relation → brains | |
 | `domain` | relation → brain_domains | |
 | `goal` | relation → brain_goals | |
