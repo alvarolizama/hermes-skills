@@ -461,14 +461,21 @@ def suggest_page_type(title: str, body: str = '') -> str:
     # Idea: brainstorming, propuesta, sugerencia, idea
     idea_keywords = ['idea', 'brainstorm', 'lluvia', 'propuesta', 'suggestion',
                      'que tal si', 'what if', 'imagine', 'imagina']
-    if any(kw in t for kw in idea_keywords):
+    # Normalizar acentos en el título para matching
+    t_noacc = t.replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').replace('á','a')
+    if any(kw in t_noacc for kw in idea_keywords):
         return 'idea'
 
     # Entity: proper noun pattern (single word, capitalized, not a common term)
     # Heuristic: short title, no spaces, looks like a model/product name
     if len(title.split()) <= 3 and not any(kw in t for kw in ['que es', 'what is', 'como', 'how to', 'guia', 'guide']):
+        # Skip if title contains common concept/technical words
+        concept_words = ['cache', 'arquitectura', 'patron', 'pattern', 'algoritmo', 'algorithm',
+                         'protocolo', 'framework', 'libreria', 'librería', 'library',
+                         'distribuido', 'distributed', 'microservicio', 'api', 'base de datos']
+        if any(cw in t for cw in concept_words):
+            return 'concept'
         # Could be entity or concept — prefer entity for named things
-        # Check if it's a well-known name-like pattern
         common_verbs = ['implementar', 'build', 'create', 'usar', 'use', 'como']
         if not any(v in t for v in common_verbs):
             return 'entity'
