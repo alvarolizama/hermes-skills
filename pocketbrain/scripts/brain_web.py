@@ -174,7 +174,7 @@ def get_graph():
         slug = pg["slug"]
         if slug not in nids:
             nids.add(slug)
-            nodes.append({"id":slug,"label":pg.get("title",slug),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),"group":"page"})
+            nodes.append({"id":slug,"label":pg.get("title",slug),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),"group":pg.get("page_type","concept")})
         for link in extract_wikilinks(pg.get("body","") or ""):
             t = link.split("|")[0].strip()
             if t in smap and t != slug: edges.append({"from":slug,"to":t})
