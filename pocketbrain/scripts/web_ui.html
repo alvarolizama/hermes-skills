@@ -241,7 +241,7 @@ function switchProjectTab(tab,slug,el){
   if(el)el.classList.add('active');
   if(!el){
     var links=document.querySelectorAll('#view-todos .project-tabs a');
-    var map={content:0,goals:1,kanban:2,reminders:3,journal:4,files:5,deliverables:6,graph:7};
+    var map={content:0,goals:1,kanban:2,reminders:3,journal:4,plans:5,ideas:6,notes:7,files:8,deliverables:9,graph:10};
     if(links.length&&map[tab]!==undefined)links[map[tab]].classList.add('active');
   }
   var ct=document.getElementById('project-tab-content');if(!ct)return;
@@ -740,11 +740,28 @@ function renderProjectView(slug){
   var prems=REMINDERS.filter(function(r){return r.page_slug===slug;});
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var pfiles=FILES.filter(function(f){return f.page_slug===slug;});
-  var h='<div class="project-tabs"><a href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a><a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals ('+pgoals.length+')</a><a href="\#" onclick="switchProjectTab(\'kanban\',\''+slug+'\'); return false;">Kanban ('+ptodos.length+')</a><a href="\#" onclick="switchProjectTab(\'reminders\',\''+slug+'\'); return false;">Recordatorios ('+prems.length+')</a><a href="\#" onclick="switchProjectTab(\'journal\',\''+slug+'\'); return false;">Journal ('+pjour.length+')</a><a href="\#" onclick="switchProjectTab(\'files\',\''+slug+'\'); return false;">Archivos ('+pfiles.length+')</a><a href="\#" onclick="switchProjectTab(\'deliverables\',\''+slug+'\'); return false;">Entregables ('+pdeps.length+')</a><a href="\#" onclick="switchProjectTab(\'graph\',\''+slug+'\'); return false;">Graph ('+(1+pgoals.length+ptodos.length+prems.length)+')</a></div>';
+  // Related pages via wikilinks to this project
+  var pplanSlugs={},pideaSlugs={},pnoteSlugs={},pfileSlugs={},pdeliverableSlugs={};
+  var ptypes={plan:'pplanSlugs',idea:'pideaSlugs',note:'pnoteSlugs',file:'pfileSlugs',deliverable:'pdeliverableSlugs'};
+  var ppat=new RegExp('\\[\\['+slug+'\\]\\]|\\[\\['+slug+'\\|','i');
+  PAGES.forEach(function(pg){
+    if(pg.page_type==='project'||pg.slug===slug)return;
+    if(pg.body&&ppat.test(pg.body)){
+      var t=pg.page_type||'concept';
+      if(t==='plan')pplanSlugs[pg.slug]=pg.title;
+      else if(t==='idea')pideaSlugs[pg.slug]=pg.title;
+      else if(t==='note')pnoteSlugs[pg.slug]=pg.title;
+      else if(t==='file')pfileSlugs[pg.slug]=pg.title;
+      else if(t==='deliverable')pdeliverableSlugs[pg.slug]=pg.title;
+    }
+  });
+  var planKeys=Object.keys(pplanSlugs),ideaKeys=Object.keys(pideaSlugs),noteKeys=Object.keys(pnoteSlugs);
+  var fileKeys=Object.keys(pfileSlugs),delKeys=Object.keys(pdeliverableSlugs);
+  var h='<div class="project-tabs"><a href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a><a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals ('+pgoals.length+')</a><a href="\#" onclick="switchProjectTab(\'kanban\',\''+slug+'\'); return false;">Kanban ('+ptodos.length+')</a><a href="\#" onclick="switchProjectTab(\'reminders\',\''+slug+'\'); return false;">Recordatorios ('+prems.length+')</a><a href="\#" onclick="switchProjectTab(\'journal\',\''+slug+'\'); return false;">Journal ('+pjour.length+')</a><a href="\#" onclick="switchProjectTab(\'plans\',\''+slug+'\'); return false;">Planes ('+planKeys.length+')</a><a href="\#" onclick="switchProjectTab(\'ideas\',\''+slug+'\'); return false;">Ideas ('+ideaKeys.length+')</a><a href="\#" onclick="switchProjectTab(\'notes\',\''+slug+'\'); return false;">Notas ('+noteKeys.length+')</a><a href="\#" onclick="switchProjectTab(\'files\',\''+slug+'\'); return false;">Archivos ('+pfiles.length+')</a><a href="\#" onclick="switchProjectTab(\'deliverables\',\''+slug+'\'); return false;">Entregables ('+pdeps.length+')</a><a href="\#" onclick="switchProjectTab(\'graph\',\''+slug+'\'); return false;">Graph ('+(1+pgoals.length+ptodos.length+prems.length)+')</a></div>';
   h+='<div style="font-size:12px;color:var(--mute);margin-bottom:12px;display:flex;align-items:center;gap:8px"><a href="\#" onclick="showTab(\'projects\')" style="color:var(--ink);display:flex;align-items:center;gap:4px">'+icon('arrow-left',16)+' Proyectos</a></div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div id="project-tab-content"></div>';
   vp.innerHTML=h;vp.scrollTop=0;
-  window._projectData={slug:slug,goals:pgoals,todos:ptodos,rems:prems,jour:pjour,files:pfiles,deps:pdeps,p:p};
+  window._projectData={slug:slug,goals:pgoals,todos:ptodos,rems:prems,jour:pjour,files:pfiles,deps:pdeps,p:p,pplans:planKeys,pideas:ideaKeys,pnotes:noteKeys,pfiles:fileKeys,pdeliverables:delKeys};
   switchProjectTab('content',slug);
 }
 
