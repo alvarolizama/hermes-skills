@@ -216,24 +216,24 @@ var goalCount=PAGES.filter(function(p){return p.page_type==='goal';}).length;
 var msCount=PAGES.filter(function(p){return p.page_type==='milestone';}).length;
 var tc=TODOS.length,rc=REMINDERS.length,jc=JOURNAL.length,nc=(GRAPH.nodes||[]).length;
 function cnt(t){return PAGES.filter(function(p){return p.page_type===t;}).length;}
-h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals"><span class="nav-label">'+icon('flag',16)+'<span>Goals</span></span><span class="nav-count">'+goalCount+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'milestones\')" data-search="milestones"><span class="nav-label">'+icon('check-circle',16)+'<span>Milestones</span></span><span class="nav-count">'+msCount+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_plan\')" data-search="plan"><span class="nav-label">'+icon('calendar-days',16)+'<span>Planes</span></span><span class="nav-count">'+cnt('plan')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo"><span class="nav-label">'+icon('clipboard-document-list',16)+'<span>Todo</span></span><span class="nav-count">'+tc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders"><span class="nav-label">'+icon('bell',16)+'<span>Reminders</span></span><span class="nav-count">'+rc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_note\')" data-search="note"><span class="nav-label">'+icon('clock',16)+'<span>Notas</span></span><span class="nav-count">'+cnt('note')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal"><span class="nav-label">'+icon('book-open',16)+'<span>Journal</span></span><span class="nav-count">'+jc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_deliverable\')" data-search="deliverable"><span class="nav-label">'+icon('cube',16)+'<span>Entregables</span></span><span class="nav-count">'+cnt('deliverable')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_file\')" data-search="file"><span class="nav-label">'+icon('document-text',16)+'<span>Archivos</span></span><span class="nav-count">'+cnt('file')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_concept\')" data-search="concept"><span class="nav-label">'+icon('document-text',16)+'<span>Conceptos</span></span><span class="nav-count">'+cnt('concept')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_entity\')" data-search="entity"><span class="nav-label">'+icon('users',16)+'<span>Entidades</span></span><span class="nav-count">'+cnt('entity')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'goals\')" data-search="goals"><span class="nav-label">'+icon('flag',16)+'<span>Goals</span></span><span class="nav-count">'+goalCount+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'milestones\')" data-search="milestones"><span class="nav-label">'+icon('check-circle',16)+'<span>Milestones</span></span><span class="nav-count">'+msCount+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_plan\')" data-search="plan"><span class="nav-label">'+icon('calendar-days',16)+'<span>Planes</span></span><span class="nav-count">'+cnt('plan')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'todos\')" data-search="todo"><span class="nav-label">'+icon('clipboard-document-list',16)+'<span>Todo</span></span><span class="nav-count">'+tc+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders"><span class="nav-label">'+icon('bell',16)+'<span>Reminders</span></span><span class="nav-count">'+rc+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_note\')" data-search="note"><span class="nav-label">'+icon('clock',16)+'<span>Notas</span></span><span class="nav-count">'+cnt('note')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'journal\')" data-search="journal"><span class="nav-label">'+icon('book-open',16)+'<span>Journal</span></span><span class="nav-count">'+jc+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_deliverable\')" data-search="deliverable"><span class="nav-label">'+icon('cube',16)+'<span>Entregables</span></span><span class="nav-count">'+cnt('deliverable')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_file\')" data-search="file"><span class="nav-label">'+icon('document-text',16)+'<span>Archivos</span></span><span class="nav-count">'+cnt('file')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_concept\')" data-search="concept"><span class="nav-label">'+icon('document-text',16)+'<span>Conceptos</span></span><span class="nav-count">'+cnt('concept')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_entity\')" data-search="entity"><span class="nav-label">'+icon('users',16)+'<span>Entidades</span></span><span class="nav-count">'+cnt('entity')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
+h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 var _currentTab='projects',_currentProject=null;
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');}
 function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:tab});showCurrentView();closeSidebar();}
@@ -275,7 +275,7 @@ function switchProjectTab(tab,slug,el){
     var cAll=d.todos.length;
     var cNoGoal=d.todos.filter(function(t){return !t.goal_id;}).length;
     var cByGoal=d.todos.filter(function(t){return !!t.goal_id;}).length;
-    h+='<div class="project-tabs" style="margin-bottom:12px"><a href="#" onclick="event.preventDefault();setProjKanbanFilter(\'all\');return false;" class="'+(kf==='all'?'active':'')+'">Todas ('+cAll+')</a><a href="#" onclick="event.preventDefault();setProjKanbanFilter(\'no-goal\');return false;" class="'+(kf==='no-goal'?'active':'')+'">Sin Goal ('+cNoGoal+')</a><a href="#" onclick="event.preventDefault();setProjKanbanFilter(\'by-goal\');return false;" class="'+(kf==='by-goal'?'active':'')+'">Por Goal ('+cByGoal+')</a></div>';
+    h+='<div class="project-tabs" style="margin-bottom:12px"><a href="javascript:void(0)" onclick="event.preventDefault();setProjKanbanFilter(\'all\');return false;" class="'+(kf==='all'?'active':'')+'">Todas ('+cAll+')</a><a href="javascript:void(0)" onclick="event.preventDefault();setProjKanbanFilter(\'no-goal\');return false;" class="'+(kf==='no-goal'?'active':'')+'">Sin Goal ('+cNoGoal+')</a><a href="javascript:void(0)" onclick="event.preventDefault();setProjKanbanFilter(\'by-goal\');return false;" class="'+(kf==='by-goal'?'active':'')+'">Por Goal ('+cByGoal+')</a></div>';
     if(kf==='by-goal'){
       var gcols=[];
       d.goals.forEach(function(g){gcols.push({id:g.id,title:g.title,type:g.type,todos:[]});});
@@ -471,7 +471,7 @@ function renderGoalsView(typeFilter){
   var gt=typeFilter||'goal';
   var gl=gt.charAt(0).toUpperCase()+gt.slice(1)+(gt==='milestone'?'s':'s');
   var h='<div class="view-header"><h1>'+gl+'</h1><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
-  h+='<div class="project-tabs" style="margin:12px 0"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'all\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'active\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'completed\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'cancelled\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
+  h+='<div class="project-tabs" style="margin:12px 0"><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'all\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'all\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'active\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'active\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'completed\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'completed\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'cancelled\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
     h+='<div class="card"><h3>'+g.title+'</h3>';
@@ -530,12 +530,12 @@ function renderRemindersView(){
   var done=filtered.filter(function(r){return r.done;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var h='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_reminderFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
   h+='<div class="project-tabs" style="margin:12px 0">'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'today\';setHashParams({tab:\'reminders\',rstatus:\'today\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='today'?'active':'')+'">Hoy ('+todayItems.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'week\';setHashParams({tab:\'reminders\',rstatus:\'week\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='week'?'active':'')+'">Esta semana ('+thisWeek.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'future\';setHashParams({tab:\'reminders\',rstatus:\'future\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='future'?'active':'')+'">Próximos ('+future.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'overdue\';setHashParams({tab:\'reminders\',rstatus:\'overdue\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='overdue'?'active':'')+'">Atrasados ('+overdue.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'done\';setHashParams({tab:\'reminders\',rstatus:\'done\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'all\';setHashParams({tab:\'reminders\',rstatus:\'all\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'today\';setHashParams({tab:\'reminders\',rstatus:\'today\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='today'?'active':'')+'">Hoy ('+todayItems.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'week\';setHashParams({tab:\'reminders\',rstatus:\'week\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='week'?'active':'')+'">Esta semana ('+thisWeek.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'future\';setHashParams({tab:\'reminders\',rstatus:\'future\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='future'?'active':'')+'">Próximos ('+future.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'overdue\';setHashParams({tab:\'reminders\',rstatus:\'overdue\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='overdue'?'active':'')+'">Atrasados ('+overdue.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'done\';setHashParams({tab:\'reminders\',rstatus:\'done\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
+  +'<a href="javascript:void(0)" onclick="event.preventDefault();_reminderStatusTab=\'all\';setHashParams({tab:\'reminders\',rstatus:\'all\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
   +'</div>';
   var activeSet;
   if(_reminderStatusTab==='today')activeSet=todayItems;
@@ -609,7 +609,7 @@ function showIndex(){
   var counts={all:PAGES.length,project:(byType['project']||[]).length,concept:(byType['concept']||[]).length,entity:(byType['entity']||[]).length,comparison:(byType['comparison']||[]).length,query:(byType['query']||[]).length,raw:(byType['raw']||[]).length};
   var h='';
   h+='<div class="project-tabs" style="margin-bottom:20px">';
-  tabs.forEach(function(t){var isActive=_wikiIndexTab===t.k;h+='<a href="#" class="'+(isActive?'active':'')+'" onclick="event.preventDefault();_wikiIndexTab=\''+t.k+'\';showIndex();return false;">'+t.l+' ('+counts[t.k]+')</a>';});
+  tabs.forEach(function(t){var isActive=_wikiIndexTab===t.k;h+='<a href="javascript:void(0)" class="'+(isActive?'active':'')+'" onclick="event.preventDefault();_wikiIndexTab=\''+t.k+'\';showIndex();return false;">'+t.l+' ('+counts[t.k]+')</a>';});
   h+='</div>';
   var types=_wikiIndexTab==='all'?['project','concept','entity','comparison','query','raw']:[_wikiIndexTab];
   var total=types.reduce(function(s,t){return s+(byType[t]||[]).length;},0);
@@ -723,7 +723,7 @@ function mdToHtml(text){
       return'<span class="bl" title="'+target+'">'+alias+'</span>';
     }).replace(/\^\[([^\]]+)\]/g,function(_,slug){
       slug=slug.trim().toLowerCase().replace(/ /g,'-');
-      if(pmap[slug])return' <sup><a href="#" onclick="showPage(\''+slug+'\');return false" class="pm" title="'+slug+'">['+slug.substring(0,12)+']</a></sup>';
+      if(pmap[slug])return' <sup><a href="javascript:void(0)" onclick="showPage(\''+slug+'\');return false" class="pm" title="'+slug+'">['+slug.substring(0,12)+']</a></sup>';
       return' <sup><span class="pm pm-broken" title="'+slug+'">[?]</span></sup>';
     });
   }
