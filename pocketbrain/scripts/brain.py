@@ -151,47 +151,6 @@ BRAIN_SCHEMA = {
             {"name": "confidence", "type": "text"},
         ],
     },
-    "brain_todos": {
-        "name": "brain_todos",
-        "type": "base",
-        "fields": [
-            {"name": "title", "type": "text", "required": True},
-            {"name": "content", "type": "editor"},
-            {"name": "status", "type": "select", "required": True,
-             "values": ["backlog", "this week", "today", "in progress", "done", "cancelled"]},
-            {"name": "domain", "type": "select", "required": True,
-             "values": ["personal", "projects", "bravo"]},
-            {"name": "owner", "type": "select", "required": True,
-             "values": ["alvaro", "chaos-manager", "project-manager", "bravo-manager", "minion", "alv-bot", "bravo-bot", "ops-bot"]},
-            {"name": "comment", "type": "text"},
-            {"name": "started_date", "type": "date"},
-            {"name": "completed_date", "type": "date"},
-            {"name": "cancelled_date", "type": "date"},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "goal", "type": "relation", "collectionId": "brain_goals",
-             "cascadeDelete": False, "maxSelect": 1},
-        ],
-    },
-    "brain_journal": {
-        "name": "brain_journal",
-        "type": "base",
-        "fields": [
-            {"name": "title", "type": "text", "required": True},
-            {"name": "body", "type": "text"},
-            {"name": "date", "type": "date", "required": True},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "mood", "type": "select",
-             "values": ["great", "meh", "bad"], "maxSelect": 1},
-            {"name": "tags", "type": "relation", "collectionId": "brain_tags",
-             "cascadeDelete": False, "maxSelect": None},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-        ],
-    },
     "brain_files": {
         "name": "brain_files",
         "type": "base",
@@ -204,8 +163,6 @@ BRAIN_SCHEMA = {
             {"name": "file", "type": "file", "maxSelect": 1, "maxSize": 0},
             {"name": "file_type", "type": "select",
              "values": ["pdf", "image", "doc", "sheet", "other"], "maxSelect": 1},
-            {"name": "goal", "type": "relation", "collectionId": "brain_goals",
-             "cascadeDelete": False, "maxSelect": 1},
         ],
     },
     "brain_deliverables": {
@@ -225,47 +182,6 @@ BRAIN_SCHEMA = {
             {"name": "milestone", "type": "text"},
             {"name": "tags", "type": "relation", "collectionId": "brain_tags",
              "cascadeDelete": False, "maxSelect": None},
-            {"name": "goal", "type": "relation", "collectionId": "brain_goals",
-             "cascadeDelete": False, "maxSelect": 1},
-        ],
-    },
-    "brain_reminders": {
-        "name": "brain_reminders",
-        "type": "base",
-        "fields": [
-            {"name": "title", "type": "text", "required": True},
-            {"name": "content", "type": "text"},
-            {"name": "date", "type": "date", "required": True},
-            {"name": "time", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "done", "type": "bool"},
-            {"name": "done_date", "type": "date"},
-        ],
-    },
-    "brain_goals": {
-        "name": "brain_goals",
-        "type": "base",
-        "fields": [
-            {"name": "title", "type": "text", "required": True},
-            {"name": "description", "type": "text"},
-            {"name": "type", "type": "select", "required": True,
-             "values": ["goal", "milestone", "okr"], "maxSelect": 1},
-            {"name": "status", "type": "select", "required": True,
-             "values": ["planned", "active", "done", "cancelled"], "maxSelect": 1},
-            {"name": "deadline", "type": "date"},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "parent", "type": "relation", "collectionId": "brain_goals",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "tags", "type": "relation", "collectionId": "brain_tags",
-             "cascadeDelete": False, "maxSelect": None},
-            {"name": "goal", "type": "relation", "collectionId": "brain_goals",
-             "cascadeDelete": False, "maxSelect": 1},
         ],
     },
     "brain_log": {
@@ -285,19 +201,13 @@ BRAIN_SCHEMA = {
     },
 }
 
-CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_goals", "brain_todos", "brain_journal", "brain_files", "brain_deliverables", "brain_reminders", "brain_log", "brain_page_versions"]
+CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_files", "brain_deliverables", "brain_log", "brain_page_versions"]
 
 # Colecciones con campos self-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
     "brain_pages": [
         {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
          "cascadeDelete": False, "maxSelect": None},
-    ],
-    "brain_goals": [
-        {"name": "parent", "type": "relation", "collectionId": "brain_goals",
-         "cascadeDelete": False, "maxSelect": 1},
-        {"name": "goal", "type": "relation", "collectionId": "brain_goals",
-         "cascadeDelete": False, "maxSelect": 1},
     ],
 }
 
@@ -364,14 +274,10 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
 
     # Orden: dependencias primero (hijos antes que padres)
     order = [
-        'brain_page_versions',  # depende de brain_pages
         'brain_log',            # depende de brain_pages
-        'brain_todos',          # depende de brain_pages, brain_goals
         'brain_deliverables',  # depende de brain_pages
         'brain_files',         # depende de brain_pages
-        'brain_reminders',     # depende de brain_pages
-        'brain_journal',       # depende de brain_pages
-        'brain_goals',         # depende de brain_pages (self-ref parent)
+        'brain_page_versions',  # depende de brain_pages
         'brain_pages',         # depende de brain_domains, brain_tags
         'brain_tags',          # depende de contexts
         'brain_domains',       # depende de contexts
@@ -1454,8 +1360,8 @@ class Brain:
         d_from = self._journal_date_str(from_date)
         d_to = self._journal_date_str(to_date)
 
-        return self.pb.list('brain_journal',
-            filter="(brain='" + self._context_id + "' && date>='" + d_from + " 00:00:00.000Z' && date<='" + d_to + " 00:00:00.000Z')",
+        return self.pb.list('brain_pages',
+            filter=f"(brain='{self._context_id}' && page_type='journal' && date>='{d_from}' && date<='{d_to}')",
             sort='date',
             perPage=100)
 
@@ -1468,8 +1374,8 @@ class Brain:
         if not self._context_id:
             self.orient()
 
-        candidates = self.pb.all('brain_journal',
-            filter="(brain='" + self._context_id + "')")
+        candidates = self.pb.all('brain_pages',
+            filter=f"(brain='{self._context_id}' && page_type='journal')")
 
         terms = [t.lower() for t in query.split() if len(t) > 1]
         if not terms:
