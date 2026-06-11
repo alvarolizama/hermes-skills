@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
-description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 2.15.0
+description: "Segundo cerebro digital sobre PocketBase — todas las entidades (entity, concept, todo, goal, reminder, journal, file, etc.) como page_types en brain_pages. Web UI live con sidebar por tipo, grafos, auto-linking, auto-backlinks y trazabilidad."
+version: 2.20.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -15,125 +15,192 @@ metadata:
 Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
 Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
 
-## Flujo de trabajo para el agente
+## Flujo de trabajo para el agente — LLM Wiki compliance
 
-Este skill está diseñado para que el agente **infiera y organice solo**, pero que **pregunte cuando tenga dudas reales**.
+PocketBrain es un LLM Wiki. Cada página tiene un page_type, relaciones trazables, y metadatos completos. El agente debe **entender, clasificar, relacionar y persistir** datos siguiendo un proceso estructurado.
 
-### Regla de oro: infiere primero, pregunta si hay ambigüedad
+### PASO 0 — Entender el contenido ANTES de guardar
 
-**Regla #0: SIEMPRE busca primero.** Antes de crear cualquier página, usa `brain.search()` para verificar si ya existe contenido similar. Si existe, actualiza la página existente con `brain.update_page()` o `brain.append_to_page()`. No dupliques.
+Cuando el usuario te pida guardar algo, NO crees páginas de inmediato. Primero:
 
-- Si el título tiene "vs" o el cuerpo tiene tablas → `comparison`
-- Si el título termina con "?" o es una pregunta → `query`
-- Si es una fuente externa (URL, paper) → `raw`
-- Si es una persona, empresa, producto o modelo conocido → `entity`
-- Si es un tema, técnica o idea general → `concept`
-- Si tiene fechas, tareas y entregables → `project`
+1. **Lee y procesa** el contenido completo. Identifica:
+   - Entidades (personas, empresas, productos, modelos, lenguajes)
+   - Conceptos (técnicas, patrones, ideas generales)
+   - Acciones (tareas, proyectos, planes, metas)
+   - Eventos (reuniones, fechas, recordatorios)
+   - Relaciones entre todo lo anterior
 
-**Solo pregunta al usuario si:**
-- No puedes distinguir entre `entity` y `concept` (ej. nombre ambiguo)
-- No sabes en qué `domain` categorizarlo
-- El usuario te pide explícitamente que decidas
+2. **Determina el page_type** usando la tabla de inferencia abajo
+3. **Busca existentes** con `brain.search()` antes de crear nada nuevo
+
+**Regla #0: SIEMPRE busca primero.** Antes de crear cualquier página, usa `brain.search()` para verificar si ya existe contenido similar. Si existe, actualiza la página existente con `brain.update_page()` o `brain.append_to_page()`. **Nunca dupliques información.**
+
+### PASO 1 — Inferir page_type
+
+Usa esta tabla de decisión para determinar el tipo correcto:
+
+| Señal en el contenido | page_type | Ejemplo de título |
+|-----------------------|-----------|-------------------|
+| Es una persona, empresa, producto, lenguaje, framework conocido | `entity` | "Álvaro Lizama", "OpenAI", "Elixir", "Phoenix" |
+| Es un tema, técnica, disciplina, patrón de diseño | `concept` | "Arquitectura hexagonal", "CI/CD", "Machine Learning" |
+| Tiene "vs" en el título o tablas comparativas en el body | `comparison` | "React vs Vue", "PostgreSQL vs MySQL" |
+| Termina con "?" o es una pregunta que se responde | `query` | "¿Cómo optimizar consultas SQL?" |
+| Es una fuente externa (artículo, paper, video, URL, PDF) | `raw` | "Paper Attention Is All You Need" |
+| Tiene presupuesto, roadmaps, estrategias, especificaciones | `plan` | "Roadmap Q1 2026", "Estrategia de marketing" |
+| Es una nota rápida, apunte, minuta de reunión, observación | `note` | "Nota reunión diseño", "Apunte sobre Rust" |
+| Es una idea, brainstorming, propuesta, "qué tal si..." | `idea` | "Idea: app de fitness", "Qué tal si hacemos X?" |
+| Tiene personas asignadas, fechas, entregables, estados | `project` | "Lanzar MVP 2026", "Migración a Kubernetes" |
+| Es una tarea individual que puede tener status (backlog→done) | `todo` | "Revisar PR #42", "Comprar vuelos a Japón" |
+| Es un objetivo general amplio, sin fecha fija | `goal` | "Mejorar rendimiento del equipo" |
+| Es un hito con fecha límite específica | `milestone` | "Lanzar MVP antes del 30 Sep", "Beta cerrada" |
+| Es un recordatorio con fecha y hora | `reminder` | "Reunión 10am con cliente", "Pagar factura luz" |
+| Es una entrada de diario, bitácora del día | `journal` | "Journal 2026-06-10" |
+| Es un archivo adjunto (PDF, imagen, doc) | `file` | "Diagrama arquitectura v2.pdf" |
+| Es un entregable versionado | `deliverable` | "Specs API v1.0", "Release notes v2.3" |
+
+> **Auto-suggest:** si no pasas `page_type`, se infiere solo via `suggest_page_type()`. Por ejemplo, `create_page(title="Nota reunión diseño")` → `page_type='note'` porque el título contiene "nota". Si quieres forzar un tipo, pásalo explícitamente.
+
+**Si hay ambigüedad real** (ej. "Álvaro" podría ser entity o concept): pregunta al usuario.
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 16 page_types
+### PASO 2 — Buscar contenido previo (evitar duplicados)
 
-| Tipo | Cuándo usarlo | Ejemplos |
-|------|---------------|----------|
-| `entity` | Personas, empresas, productos, modelos | "OpenAI", "GPT-4o", "AWS" |
-| `concept` | Temas, técnicas, ideas, patrones | "Arquitectura microservicios", "Cache distribuido" |
-| `comparison` | Comparativas side-by-side | "React vs Vue", "PostgreSQL vs MySQL" |
-| `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
-| `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need" |
-| `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
-| `plan` | Roadmaps, specs, estrategias, presupuestos | "Roadmap Q1", "Especificación técnica" |
-| `note` | Notas rápidas, apuntes, meeting notes | "Nota reunión diseño", "Apunte sobre Rust" |
-| `idea` | Ideas, brainstorming, propuestas | "Idea: app de fitness", "Qué tal si...?" |
-| `todo` | Tareas (backlog → this week → today → in progress → done) | "Revisar PR", "Comprar vuelos" |
-| `goal` | Goals, objetivos generales | "Mejorar rendimiento" |
-| `milestone` | Hitos con fecha límite | "Lanzar MVP", "Fecha de entrega" |
-| `reminder` | Recordatorios con fecha/hora | "Reunión 10am", "Pagar factura" |
-| `journal` | Diario, entrada por día | "Journal: 2026-06-10" |
-| `file` | Archivos adjuntos (PDFs, imágenes, docs) | "Diagrama arquitectura.pdf" |
-| `deliverable` | Entregables versionados | "Specs v2", "Release notes v1.0" |
+```python
+# Siempre buscar ANTES de crear
+existing = brain.search("GPT-4o")
+if existing:
+    brain.append_to_page(existing[0]['slug'], "- Nueva info: ...")
+    # Si la info contradice lo existente, agregar nota de contestación
+else:
+    brain.create_page(title="GPT-4o", ...)
+```
 
-> **Auto-suggest:** si no pasas `page_type`, se infiere solo via `suggest_page_type()`. Por ejemplo, `create_page(title="Nota reunión diseño")` → `page_type='note'` porque el título contiene "nota". Si quieres forzar un tipo, pásalo explícitamente: `create_page(title="Mi idea", page_type='idea')`.
+Busca con términos clave, no solo el título exacto. Ej: "arquitectura microservicios" también encuentra "microservicios arquitectura", "event-driven microservices".
 
-Todos los tipos viven en la misma colección `brain_pages`. Las funciones específicas (`create_todo()`, `create_goal()`, `create_reminder()`, `journal_write()`) internamente llaman a `create_page()` con el `page_type` adecuado.
+### PASO 3 — Relacionar con [[wikilinks]]
 
-### Raw sources: tipos de fuentes
-
-Las páginas con `page_type='raw'` capturan distintas categorías de fuentes. Identifícalas por el contenido:
-
-| Categoría | Cómo detectarlo | Método de ingesta |
-|-----------|----------------|-------------------|
-| `raw:article` | Artículo web, blog post, newsletter | `ingest_text()` con `source_url` |
-| `raw:paper` | Paper académico, PDF, arXiv | `ingest_file()` — sube el PDF como attachment |
-| `raw:video` | Transcripción de video, charla | `ingest_text()` con link al video en body |
-| `raw:file` | Documento, spreadsheet, imagen | `ingest_file()` — sube el archivo como attachment |
-| `raw:note` | Nota propia, borrador, idea suelta | `ingest_text()` sin `source_url` |
-
-Todas se guardan como `page_type='raw'`. La categoría se registra en los `tags`. El archivo físico se sube automáticamente via `ingest_file()`.
-
-### Cómo se linkean las páginas
+Todo contenido debe estar linkeado con su contexto:
 
 1. **`[[wikilinks]]` en el body** — los slugs existentes se resuelven solos y se guardan en `related_pages`
 2. **Auto-backlinks** — si creas `[[gpt-4o]]` en una página, `gpt-4o` recibe un backlink automático
 3. **`related_slugs`** — slugs adicionales manuales si el body no cubre todas las relaciones
+4. **`^[ref-slug]`** — referencias a fuentes (raw pages)
 
-**Siempre** usa `[[slug]]` cuando menciones otra página. No pongas texto plano si puedes linkear.
-
-### Cómo organizar
+**Siempre** usa `[[slug]]` cuando menciones otra página. No pongas texto plano si puedes linkear. Ejemplos:
 
 ```python
-# Domain: agrupa por área
-domain="investigacion"     # papers, descubrimientos
-domain="proyectos"         # iniciativas concretas
-domain="learning"          # aprendizaje personal
-domain="bravo"             # trabajo en Bravo
+# BIEN: linkeado
+body = "[[OpenAI]] lanzó [[GPT-4o]], un modelo [[multimodal]] que compite con [[Claude]]."
 
-# Tags: descriptivos, consistentes
-tags=["machine-learning", "nlp", "transformers"]
-
-# Confidence: sé honesto
-confidence='high'    # múltiples fuentes confiables
-confidence='medium'  # bien documentado, hay debate
-confidence='low'     # fuente única, especulación
+# MAL: texto plano sin links
+body = "OpenAI lanzó GPT-4o, un modelo multimodal que compite con Claude."
 ```
 
-### Flujo completo
+Reglas de linking:
+- Toda mención a una entidad conocida → `[[slug]]`
+- Toda mención a un concepto relevante → `[[slug]]`
+- Links a proyectos que mencionas → `[[slug-del-proyecto]]`
+- ^[slug] para referencias a fuentes (raw pages)
+
+### PASO 4 — Gestión de proyectos (goals, milestones, todos, reminders)
+
+Cuando el contenido involucre ejecución, usa el sistema de proyectos:
+
+```
+proyecto (page_type='project')
+  ├── goals (objetivos amplios, sin fecha)
+  ├── milestones (hitos con deadline)
+  ├── todos (tareas con status: backlog→this week→today→in progress→done)
+  ├── reminders (recordatorios con fecha/hora)
+  ├── ideas (propuestas relacionadas)
+  ├── plans (roadmaps, specs)
+  ├── notes (apuntes del proyecto)
+  ├── deliverables (entregables versionados)
+  └── files (archivos adjuntos)
+```
+
+**Flujo de proyecto:**
+```python
+# 1. Crear el proyecto
+brain.create_page("Migración K8s", page_type="project", domain="bravo")
+
+# 2. Definir goals y milestones
+brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30",
+                  related_slugs=["migracion-k8s"])  # relaciona al proyecto
+
+# 3. Crear tareas
+brain.create_todo("Configurar CI/CD para K8s", domain="bravo",
+                  related_slugs=["migracion-k8s"])
+brain.move_todo(todo_id, "in progress")
+
+# 4. Agendar recordatorios (reuniones, fechas límite)
+brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
+                      related_slugs=["migracion-k8s"])
+```
+
+**Para goals, usa el tipo correcto:**
+- `goal` → objetivo amplio sin fecha: "Mejorar rendimiento"
+- `milestone` → hito con deadline: "Lanzar MVP 30 Sep"
+- `okr` → OKR con key results: "OKR Q3: Reducir latencia 50%"
+
+**Para todos, usa el sistema kanban integrado:**
+- `backlog` → ideas pendientes de priorizar
+- `this week` → comprometido para esta semana
+- `today` → arrancando hoy
+- `in progress` → en ejecución
+- `done` → completado
+- `cancelled` → cancelado
+
+### PASO 5 — Organizar por domain y tags
 
 ```python
-# 0. BUSCAR primero: evitar duplicados
+# Domain: agrupa por área de la vida/trabajo
+domain="investigacion"     # papers, descubrimientos técnicos
+domain="proyectos"         # iniciativas personales concreto
+domain="learning"          # aprendizaje, cursos, lecturas
+domain="bravo"             # trabajo en Bravo (CTO)
+domain="personal"          # vida personal, viajes, salud
+domain="finanzas"          # inversiones, presupuestos
+
+# Tags: descriptivos, consistentes, en inglés
+tags=["machine-learning", "nlp", "transformers"]
+tags=["elixir", "phoenix", "ecto"]
+tags=["devops", "kubernetes", "cicd"]
+
+# Confidence: sé honesto sobre la certeza
+confidence='high'    # múltiples fuentes confiables, experiencia directa
+confidence='medium'  # bien documentado, hay debate, fuente única confiable
+confidence='low'     # fuente única, especulación, inferencia propia
+```
+
+### Resumen del flujo completo
+
+```python
+# 0. ENTENDER: leer, procesar, identificar entidades y relaciones
+
+# 1. BUSCAR: evitar duplicados
 existing = brain.search("GPT-4o")
 if existing:
-    # Ya existe — actualizar en vez de crear
-    brain.append_to_page(existing[0]['slug'], "- Nueva info: ...")
+    brain.append_to_page(existing[0]['slug'], "- Nueva info: [[link-a-otra-pagina]]")
 else:
-    # No existe — crear
-
-# 1. INGEST: fuente externa
-brain.ingest_text(text=contenido, title="Paper X", source_url="...")
-
-# 2. CREAR: páginas de conocimiento linkeadas
-brain.create_page(
-    title="GPT-4o",
-    body="[[OpenAI]] lanzó GPT-4o...\nVs [[Claude 3.5 Sonnet]]...\n^[paper-x]",
-    confidence='high',
-    domain="investigacion",
-    tags=["multimodal"]
-)
-# → page_type='entity' (auto-suggest), related_pages automático, backlinks automáticos
+    # 2. CREAR: con wikilinks y metadatos
+    brain.create_page(
+        title="GPT-4o",
+        body="[[OpenAI]] lanzó GPT-4o...\nVs [[Claude 3.5 Sonnet]]...\n^[paper-x]",
+        page_type="entity",           # inferido o explícito
+        confidence='high',
+        domain="investigacion",
+        tags=["multimodal", "llm"]
+    )
+    # → related_pages automático, backlinks automáticos
 
 # 3. MANTENER: lint periódico
 report = brain.lint()
 if report['summary']['broken_links']:
-    # Corregir typos o crear páginas faltantes
-    pass
+    corregir_typos_o_crear_paginas()
 if report['summary']['orphans']:
-    # Agregar [[wikilinks]] desde otras páginas
-    pass
+    agregar_links_desde_paginas_relacionadas()
 ```
 
 ### Links rotos: manéjalos solo, no preguntes
@@ -143,21 +210,7 @@ Si `broken_links` aparece:
 2. **Página faltante** → créala con `create_page()`, confidence='low'
 3. **No sabes** → créala igual con body mínimo, no bloquees el flujo
 
-### Duda sobre page_type: guía rápida
-
-| El contenido es... | page_type |
-|---|---|
-| Producto/empresa/persona/modelo | `entity` |
-| Tema o técnica | `concept` |
-| Comparativa | `comparison` |
-| Pregunta respondida | `query` |
-| Fuente externa (paper, artículo) | `raw` |
-| Proyecto con fechas y tareas | `project` |
-
-Si aún así tienes duda, **pregunta**: "¿Esto va como entity o concept?"
-
 ---
-
 
 ## Operaciones principales
 
@@ -179,7 +232,7 @@ brain.get_goal_tree()
 
 # Proyectos
 brain.create_page("App Móvil", page_type="project")
-brain.create_deliverable("app-movil", file, title="Specs", version="v1")
+brain.create_deliverable("app-movil", filepath="/tmp/specs.pdf", title="Specs", version="v1")
 
 # Diario
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
@@ -196,17 +249,14 @@ brain.recent_logs(20)  # trazabilidad
 
 ---
 
-
 ## Setup
 
-## Dependencia
+### Dependencia
 
 Usa `pocketbase` skill → módulo `pb.py`. Variables en `~/.hermes/.env`:
 `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`. (independientes de POCKETBASE_*).
 
----
-
-## Quick Start
+### Quick Start
 
 ```bash
 # 1. Crear colecciones (una vez)
@@ -228,9 +278,6 @@ brain = Brain('personal')
 brain.create_context(label='Contexto Personal')
 brain.orient()
 ```
-
----
-
 
 ---
 
@@ -259,12 +306,18 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/env-architecture.md` | Variables de entorno POCKETBRAIN_* |
 | `references/repo-maintenance.md` | Mantener repo sync con skill runtime |
 | `references/tracing.md` | Trazabilidad con brain_log |
+| `references/collection-unification.md` | Como migrar colecciones a brain_pages y agregar nuevos tipos al sidebar |
+| `references/ui-filter-pattern.md` | Filtro Todos/Con proyecto/Sin proyecto en type views, basado en [[wikilinks]] al body |
+| `references/schema-update.md` | Como actualizar colecciones en PocketBase existentes |
 
 ### Changelogs
 
 | Version | Cambios |
 |---------|--------|
-| v2.15.0 | Auto-linking, auto-suggest page_type, auto-backlinks, build_backlinks() |
+| v2.21.0 | Hash URL para toda navegacion sub-tab (switchProjectTab/switchPageTab/goal status/reminder status). restoreFromHash restaura gstatus/rstatus/ptab/wtab. Pitfall: restoreFromHash debe actualizarse al agregar nuevos hash params. |
+| v2.20.0 | Minimalist cards (title only, no chips/status/metadata). Sidebar `;return false` en todos los onclicks. Pitfall: read_file() corrompe archivos si se escribe de vuelta. |
+| v2.18.0 | Filter select: Todo y Reminders cambian a Todos/Con proyecto/Sin proyecto. Fix goal filter else-if bug ('project' atrapado por else-if generico). Actualizado ui-filter-pattern.md con page_slug filter y pitfall. |
+| v2.17.0 | fix: showPage() desactiva vistas previas antes de activar view-wiki para evitar stacking. |
 | v2.14.0 | LLM Wiki gaps: metadata sidebar, confidence badges, provenance markers, archived toggle, lint view, detect_drift, validate_frontmatter, archive_old, rotate_log |
 | v2.13.0 | Live status indicator, change toasts, heartbeat polling |
 | v2.12.0 | Goal progress removed, status-only goals |
@@ -272,25 +325,40 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | v2.10.0 | URL deep-linking, graph legends, consistent branding |
 | v2.9.x | UI refactor: sidebar, tabs, Heroicons, wiki page layout, project view, lint |
 
-### Scripts
-
-| Script | Ruta |
-|--------|------|
-| `brain_web.py` | Servidor web live en localhost:8899 |
-| `brain.py` | Cliente Python (Brain class) |
-| `sync.py` | Export a markdown con frontmatter YAML |
-| `graph.py` | Grafo HTML standalone per-contexto |
-| `validate_ui.py` | Valida web_ui.html con node --check |
-
 ### Pitfalls
 
 - **CREATION_ORDER**: las relaciones mandan. Ver setup_contexts() en brain.py.
 - **Self-ref fields**: brain_goals.parent y brain_pages.related_pages se agregan con PATCH post-creacion.
 - **Naming**: campo relation en PB se llama brain (legado) pero coleccion padre es contexts.
+- **`_get_page()` returns error dicts on 404, not None**: PocketBase devuelve `{"data":{}, "message":"not found", "status":404}` cuando una página no existe. La función `_get_page()` lo retorna directamente. **Siempre verifica `'id' in result` antes de usar cualquier campo del dict retornado.** Usa `page = self._get_page(slug); if page and 'id' in page:` como patrón.
+- **PocketBase schema updates**: `setup_contexts()` solo CREA colecciones que no existen. No actualiza colecciones existentes con nuevos campos o valores. Para actualizar una colección existente:
+  1. Usar `pb.import_collections()` con el schema completo (requiere resolver IDs de relaciones a pbc_xxx)
+  2. O usar `pb.update_collection(id, {'fields': ...})` agregando campos uno por uno
+  3. O borrar la colección con `pb.delete_collection(name)` y recrear con `setup_contexts()` (pierde datos)
+  Ver `references/schema-update.md`.
 - **Mass renames**: verificar 4 clases de referencias. Ver references/cli-migration.md.
+- **showPage() debe desactivar vistas previas**: `showPage()` renderiza en `view-wiki` pero no llama a `showCurrentView()`. Si una vista previa (project, type view, etc.) sigue activa, su `display:block` se mantiene y el contenido de `view-wiki` se renderiza **debajo**. Fix: agregar `document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});` al inicio de `showPage()`, ANTES de activar `view-wiki`. Verificar con `curl -s http://localhost:PORT/ | sed -n '597,601p'` que la línea esté presente en el HTML servido.
+- **Zombie server process after restart**: al editar `web_ui.html` y reiniciar `brain_web.py`, el proceso OLD puede quedar vivo escuchando en el mismo puerto y sirviendo la versión vieja. `process(action='kill')` puede fallar silenciosamente. Siempre verificar con `lsof -i :PORT` y `kill -9 PID` si es necesario. Confirmar con `curl -s http://localhost:PORT/ | grep -n 'document.querySelectorAll.*remove.*active'` que el fix está siendo servido.
+- **read_file + write_file corrompe archivos**: Hermes `read_file()` devuelve contenido con prefijos de línea (`LINE_NUM|content`). Si haces `content = result['content']` y luego `write_file(path, content)`, los prefijos de línea se escriben al archivo, corrompiéndolo. **Solución**: NUNCA escribir `result['content']` de vuelta. Usar `terminal()` para leer/escribir, o `execute_code()` que maneja archivos directamente con `open()`. Para parchar web_ui.html, usar `patch` tool (el más seguro) o escribir un script Python a /tmp/ y ejecutarlo.\n- **switchProjectTab sections sin handler**: en `renderProjectView()` se agregan tabs (milestones, ideas, plans, notes) que linkean a `switchProjectTab()`. Si no existe un bloque `if(tab==='...')` en `switchProjectTab`, el tab se clickea y el `#project-tab-content` queda vacío sin mensaje. **Regla**: por cada tab que agregues en `renderProjectView()`, agrega un handler correspondiente en `switchProjectTab()` con `if(!items.length)h+='<p>No hay X.</p>'`.```
+- **Filter select consistency**: Todo y Reminders views usaban per-project dropdown (`<option value="slug">Nombre</option>`) en vez del patrón estándar `Todos / Con proyecto / Sin proyecto` que usan Goals y type views. **Regla**: todas las vistas usan el mismo select de 3 opciones. El mechanismo de filtrado varía (body wikilinks vs page_slug), pero el HTML del select es idéntico. Ver `references/ui-filter-pattern.md`.
+- **Goal filter else-if bug**: `renderGoalsView()` tenía `else if(_goalFilter) filtered = ...` que atrapa el valor `'project'` y ejecuta `page_slug === 'project'` (nunca match). El fix es `else if(_goalFilter==='noproject')`. Ver `references/ui-filter-pattern.md` para el patrón correcto.
+- **Goal filter chaining**: en `renderGoalsView()`, `_goalFilter` y `typeFilter` se aplican secuencialmente. Si `_goalFilter` usa `GOALS.filter` en vez de `filtered.filter`, el typeFilter previo se pierde y filtra sobre el array completo. Siempre encadenar: `filtered = GOALS.filter(...)` primero, luego `filtered = filtered.filter(...)`.
+- **browser_vision poco confiable para detectar stacking de vistas**: el modelo de visión puede reportar "se ve solo una vista" cuando en realidad hay dos divs con `display:block` apilados. Para verificar stacking, usar `browser_console` con expresión `document.querySelectorAll('#main > div.active').length` para contar vistas activas, o inspeccionar el HTML servido con curl.
+- **Layout unificado: H1 + select en view-header, tabs debajo**: todas las vistas tienen el H1 y el *filter select* juntos en `view-header` (select a la derecha del H1). Los *status tabs* van debajo en `div.project-tabs` con `margin:12px 0`. NO poner status tabs inline con el H1. Ver `references/ui-filter-pattern.md` seccion "Layout correcto".
+- **Cards minimalistas (solo titulo)**: en listas de proyectos, goals, milestones y type views, las cards deben mostrar solo el titulo. Sin chips de tipo (goal/milestone/okr), sin contadores de tareas, sin status/deadline. Solo `<h3>title</h3>`.
+- **Sidebar onclicks con return false**: todos los `<a href="#" class="nav-link">` del sidebar deben tener `;return false` al final del onclick para que el sidebar se cierre en mobile. Si no, el `href="#"` puede causar navegacion antes de que JS ejecute `closeSidebar()`.
+- **renderTypeView usa `var h=` no `h+=` para la primera linea**: `renderTypeView()` asigna `var h=...` mientras que las otras vistas usan `h+=...` despues de `var h=...`. Al hacer patch, diferenciar entre `var h=` (primera linea) y `h+=` (concatenacion).
+- **Toda navegacion debe generar hash URL**: cada vez que se agrega un sub-tab o filtro, debe llamar a `setHashParams()` para reflejar el estado en la URL. Puntos clave: `switchProjectTab()`, `switchPageTab()`, goal status tabs, reminder status tabs. Si agregas un nuevo sub-tab, agrega `setHashParams` en el template Y actualiza `restoreFromHash()`.
+- **restoreFromHash debe manejar sub-tabs**: al anadir un nuevo parametro hash (ptab, wtab, gstatus, rstatus), `restoreFromHash()` debe restaurarlo. Los sub-tabs que dependen de datos async (project, wiki page) usan `setTimeout` para esperar que los datos esten disponibles.
+- **vis.js destruye innerHTML del contenedor**: cuando se inicializa vis.Network en un contenedor (<div id="graph-view">), vis.js reemplaza el innerHTML del contenedor con sus propios elementos SVG/Canvas. Cualquier elemento hijo (como leyendas, controles) debe ser hermano de graph-view, no hijo. Ver web_ui.html: view-graph > graph-view + graph-legend.
+- **CDN script bloquea inline script**: <script src="..."> sin async/defer bloquea la ejecucion de scripts inline posteriores hasta que el CDN se descarga. Si el CDN es inaccesible, el script inline NUNCA se ejecuta y la pagina se queda en Cargando. Solucion: agregar async al CDN, o servir vis.js localmente.
+- **node --check debe saltar scripts CDN**: al validar web_ui.html, extraer el SEGUNDO <script> tag (el inline, sin src). El primero suele ser el CDN de vis.js. Usar html.split('<script>')[2].split('</script>')[0] en vez de regex que empareje el primero.
 
 ### Workflow notes (Alvaro's style)
 
 - **"commit"** = commit inmediato sin discusion. git add + commit, reporta el hash.
 - **Terse, directo, sin branding.** UI limpia sin texto de producto.
 - **Diff contra runtime antes de editar repo.** Sync primero.
+- **Siempre verificar visualmente** después de cambios UI. No decir "jala" sin ver screenshot.
+- **`--no-gpg-sign`** en commits. GPG key no disponible en este entorno.
+- **Layout UI preferido**: el *filter select* (Todos/Con proyecto/Sin proyecto) va dentro del `view-header` a la DERECHA del H1. Los *status tabs* (Todos/Activos/Terminados) van debajo en `div.project-tabs` con `margin:12px 0`. NO mover el select debajo del H1 (eso fue un error mio).
