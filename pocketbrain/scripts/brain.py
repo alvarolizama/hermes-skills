@@ -171,7 +171,7 @@ BRAIN_SCHEMA = {
     },
 }
 
-CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_files", "brain_deliverables", "brain_log", "brain_page_versions"]
+CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
 
 # Colecciones con campos self-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
@@ -649,14 +649,14 @@ class Brain:
             # Soporte para alias [[target|alias]]
             link_slug = link_slug.split('|')[0].strip()
             linked = self._get_page(link_slug)
-            if linked:
+            if linked and 'id' in linked:
                 linked_page_ids.append(linked['id'])
 
         # Si se pasaron related_slugs, resolverlos también
         if related_slugs:
             for rs in related_slugs:
                 rp = self._get_page(rs)
-                if rp and rp['id'] not in linked_page_ids:
+                if rp and 'id' in rp and rp['id'] not in linked_page_ids:
                     linked_page_ids.append(rp['id'])
 
         data = {
@@ -1363,7 +1363,7 @@ class Brain:
         if mood:
             updates['mood'] = mood
         if tags:
-            updates['related_slugs'] = tags
+            updates['tags'] = [self.get_or_create_tag(t) for t in tags]
         return self.update_page(entry['slug'], **updates)
 
     def journal_range(self, from_date, to_date) -> list:
@@ -1930,6 +1930,6 @@ class Brain:
         ids = []
         for slug in slugs:
             page = self._get_page(slug)
-            if page:
+            if page and 'id' in page:
                 ids.append(page['id'])
         return ids
