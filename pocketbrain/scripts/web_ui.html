@@ -310,8 +310,10 @@ function switchProjectTab(tab,slug,el){
     });
   }
   if(tab==='graph'){
+    h+='<div style="position:relative">';
     h+='<div id="project-graph-view" style="width:100%;height:400px;background:var(--canvas);border:1px solid var(--hairline);border-radius:12px;margin-bottom:12px"></div>';
-    h+='<div id="project-graph-legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-bottom:12px"></div>';
+    h+='<div id="project-graph-legend" style="position:absolute;bottom:0;right:0;background:var(--canvas);border:1px solid var(--hairline);border-radius:8px;padding:8px 12px;font-size:11px;z-index:10;display:none"></div>';
+    h+='</div>';
     ct.innerHTML=h;
     setTimeout(function(){renderProjectGraph(d);},200);
     return;
@@ -767,7 +769,7 @@ function renderProjectGraph(d){
   var plh='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-top:8px;">';
   ptypes.forEach(function(pt){plh+='<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+pt.color+';margin-right:4px;"></span>'+pt.label+' ('+pt.count+')</div>';});
   plh+='</div>';
-  var lgc=document.getElementById('project-graph-legend');if(lgc)lgc.innerHTML=plh;
+  var lgc=document.getElementById('project-graph-legend');if(lgc){lgc.innerHTML=plh;lgc.style.display='block';}
 }
 loadBrains();
 setTimeout(function(){
