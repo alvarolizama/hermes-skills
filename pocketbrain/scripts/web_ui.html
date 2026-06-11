@@ -352,7 +352,8 @@ function showCurrentView(){
   try{document.querySelector(sel).classList.add('active');}catch(e){}
   if(_currentTab==='projects')renderProjectsView();
   if(_currentTab==='todos')renderTodosView();
-  else if(_currentTab==='goals')renderGoalsView();
+  else if(_currentTab==='goals'){document.getElementById('view-goals').classList.add('active');renderGoalsView('goal');}
+  else if(_currentTab==='milestones'){document.getElementById('view-milestones').classList.add('active');renderGoalsView('milestone');}
   else if(_currentTab==='journal')renderJournalView();
   else if(_currentTab==='reminders')renderRemindersView();
   else if(_currentTab==='files')renderFiles();
@@ -395,31 +396,27 @@ function renderTypeView(type){
   var v=document.getElementById('view-type-'+type);
   if(!v)return;
   v.classList.add('active');
-  var labels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas','file':'Files','deliverable':'Deliverables'};
-  var hasFilter=(type==='plan'||type==='note'||type==='idea');
-  var filterKey='_projFilter_'+type;
-  var currentFilter=window[filterKey]||'';
-  var projects=PAGES.filter(function(p){return p.page_type==='project';});
-  var pages=PAGES.filter(function(p){return p.page_type===type;});
-  if(currentFilter){
-    pages=pages.filter(function(p){
-      var body=(p.body||'').toLowerCase();
-      return body.indexOf('[['+currentFilter+']]')>=0;
-    });
-  }
+  var labels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas','file':'Archivos','deliverable':'Entregables'};
+  var filtKey='_tpF_'+type;
+  var filt=window[filtKey]||'';
+  var allP=PAGES.filter(function(p){return p.page_type===type;});
+  var projS={};PAGES.filter(function(p){return p.page_type==='project';}).forEach(function(pr){projS[pr.slug]=pr.title;});
+  var pages=allP;
+  if(filt==='project')pages=allP.filter(function(p){return p.body&&Object.keys(projS).some(function(ps){return p.body.indexOf('[['+ps+']]')>=0||p.body.indexOf('[['+ps+'|')>=0;});});
+  else if(filt==='noproject')pages=allP.filter(function(p){return !p.body||!Object.keys(projS).some(function(ps){return p.body.indexOf('[['+ps+']]')>=0||p.body.indexOf('[['+ps+'|')>=0;});});
   pages.sort(function(a,b){return a.title.localeCompare(b.title);});
-  var h='<h1 style="margin-bottom:20px">'+labels[type]+' ('+pages.length+')</h1>';
-  if(hasFilter&&projects.length){
-    h+='<div style="margin-bottom:16px"><select onchange="window.'+filterKey+'=this.value;renderTypeView(\''+type+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value="">Todos los proyectos</option>';
-    projects.forEach(function(p){
-      h+='<option value="'+p.slug+'"'+(currentFilter===p.slug?' selected':'')+'>'+p.title+'</option>';
-    });
-    h+='</select></div>';
-  }
+  var h='<div class="view-header"><h1>'+labels[type]+' ('+pages.length+' de '+allP.length+')</h1>';
+  h+='<select onchange="window.\''+filtKey+'\'=this.value;renderTypeView(\''+type+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">';
+  h+='<option value=""'+(filt===''?' selected':'')+'>Todos</option>';
+  h+='<option value="project"'+(filt==='project'?' selected':'')+'>Con proyecto</option>';
+  h+='<option value="noproject"'+(filt==='noproject'?' selected':'')+'>Sin proyecto</option>';
+  h+='</select></div>';
   pages.forEach(function(p){
     var b='';if(p.confidence)b=' <span class="conf-badge conf-'+p.confidence+'">'+p.confidence+'</span>';
+    var pn='';
+    if(p.body){var fo=Object.keys(projS).find(function(ps){return p.body.indexOf('[['+ps+']]')>=0||p.body.indexOf('[['+ps+'|')>=0;});if(fo)pn='<span style="font-size:11px;color:var(--body);margin-left:8px">\\u2192 '+esc(projS[fo])+'</span>';}
     h+='<div class="card" style="cursor:pointer;margin-bottom:8px;padding:12px" onclick="showPage(\''+p.slug+'\')">';
-    h+='<h3>'+esc(p.title)+b+'</h3>';
+    h+='<h3>'+esc(p.title)+b+pn+'</h3>';
     if(p.summary)h+='<div style="font-size:12px;color:var(--mute);margin-top:4px">'+esc(p.summary.substring(0,120))+'</div>';
     if(p.tags&&p.tags.length)h+='<div style="font-size:11px;color:var(--body);margin-top:4px">'+p.tags.join(', ')+'</div>';
     h+='</div>';
@@ -428,8 +425,9 @@ function renderTypeView(type){
   v.innerHTML=h;
 }
 
-function renderGoalsView(){
+function renderGoalsView(typeFilter){
   var filtered=GOALS;
+  if(typeFilter)filtered=GOALS.filter(function(g){return g.type===typeFilter;});
   if(_goalFilter==='noproject')filtered=GOALS.filter(function(g){return !g.page_slug;});
   else if(_goalFilter)filtered=GOALS.filter(function(g){return g.page_slug===_goalFilter;});
   var cAll=filtered.filter(function(g){return !g.parent;}).length;
@@ -441,9 +439,9 @@ function renderGoalsView(){
   else if(_goalStatusFilter==='cancelled')filtered=filtered.filter(function(g){return g.status==='cancelled';});
   var parents=filtered.filter(function(g){return !g.parent;});
   var h='<div class="project-tabs" style="margin-bottom:12px"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div>';
-  h+='<div class="view-header"><h1>Goals</h1><select onchange="setGoalFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option>';
-  PAGES.filter(function(p){return p.page_type==='project';}).forEach(function(p){h+='<option value="'+p.slug+'"'+(_goalFilter===p.slug?' selected':'')+'>'+p.title+'</option>';});
-  h+='</select></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' goals</p>';
+  var gt=typeFilter||'goal';
+  var gl=gt.charAt(0).toUpperCase()+gt.slice(1)+(gt==='milestone'?'s':'s');
+  h+='<div class="view-header"><h1>'+gl+'</h1><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
     var chip=g.type==='okr'?'chip-okr':g.type==='milestone'?'chip-milestone':'chip-goal';
