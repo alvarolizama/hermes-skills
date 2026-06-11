@@ -99,7 +99,7 @@ BRAIN_SCHEMA = {
             {"name": "domain", "type": "relation", "collectionId": "brain_domains",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "okr", "reminder", "journal"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "okr", "reminder", "journal", "note", "idea"], "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
             {"name": "confidence", "type": "select",
@@ -451,6 +451,18 @@ def suggest_page_type(title: str, body: str = '') -> str:
                      'design doc', 'diseno', 'arquitectura', 'propuesta', 'proposal']
     if any(kw in t for kw in plan_keywords):
         return 'plan'
+
+    # Note: notas, apuntes, meeting notes, ideas sueltas
+    note_keywords = ['note', 'nota', 'apunte', 'meeting', 'reunion', 'talk', 'charla',
+                     'memoria', 'minutes', 'minuta']
+    if any(kw in t for kw in note_keywords):
+        return 'note'
+
+    # Idea: brainstorming, propuesta, sugerencia, idea
+    idea_keywords = ['idea', 'brainstorm', 'lluvia', 'propuesta', 'suggestion',
+                     'que tal si', 'what if', 'imagine', 'imagina']
+    if any(kw in t for kw in idea_keywords):
+        return 'idea'
 
     # Entity: proper noun pattern (single word, capitalized, not a common term)
     # Heuristic: short title, no spaces, looks like a model/product name

@@ -37,7 +37,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 13 page_types
+### Los 15 page_types
 
 | Tipo | Cuándo usarlo | Ejemplos |
 |------|---------------|----------|
@@ -45,9 +45,11 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `concept` | Temas, técnicas, ideas, patrones | "Arquitectura microservicios", "Cache distribuido" |
 | `comparison` | Comparativas side-by-side | "React vs Vue", "PostgreSQL vs MySQL" |
 | `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
-| `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need", "Video de microservicios" |
+| `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need" |
 | `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
 | `plan` | Roadmaps, specs, estrategias, presupuestos | "Roadmap Q1", "Especificación técnica" |
+| `note` | Notas rápidas, apuntes, meeting notes | "Nota reunión diseño", "Apunte sobre Rust" |
+| `idea` | Ideas, brainstorming, propuestas | "Idea: app de fitness", "Qué tal si...?" |
 | `todo` | Tareas (backlog → this week → today → in progress → done) | "Revisar PR", "Comprar vuelos" |
 | `goal` | Goals, objetivos generales | "Mejorar rendimiento" |
 | `milestone` | Hitos con fecha límite | "Lanzar MVP", "Fecha de entrega" |
