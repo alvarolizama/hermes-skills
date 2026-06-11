@@ -169,9 +169,9 @@ class SyncEngine:
     # ── Journal export ──────────────────────────────────────────────
 
     def _write_journal(self, context_id: str, brain_dir: Path):
-        """Exporta brain_journal a journal.md."""
-        entries = self.pb.all("brain_journal",
-            filter="(brain='" + context_id + "')",
+        """Exporta journal entries de brain_pages a journal.md."""
+        entries = self.pb.all("brain_pages",
+            filter="(brain='" + context_id + "' && page_type='journal')",
             sort="date", perPage=500)
 
         if not entries:
@@ -205,9 +205,10 @@ class SyncEngine:
     # ── Todos export ────────────────────────────────────────────────
 
     def _write_todos(self, context_id: str, brain_dir: Path):
-        """Exporta brain_todos a todos.md agrupado por status."""
-        todos = self.pb.all("brain_todos",
-            filter="(brain='" + context_id + "')",
+        """Exporta todos de brain_pages (page_type='todo') a todos.md agrupado por status."""
+        todos = self.pb.all("brain_pages",
+            filter="(brain='" + context_id + "' && page_type='todo')",
+            expand="domain",
             perPage=500)
 
         if not todos:
@@ -237,9 +238,11 @@ class SyncEngine:
             lines.append("")
             for t in items:
                 title = t.get("title", "?")
-                domain = t.get("domain", "?")
+                # domain is a relation in brain_pages, extract name via expand
+                dom_exp = t.get("expand", {}).get("domain", {})
+                domain = dom_exp.get("name", "") if isinstance(dom_exp, dict) else t.get("domain", "?")
                 owner = t.get("owner", "?")
-                content = (t.get("content", "") or "")[:200]
+                content = (t.get("body", "") or "")[:200]  # body maps to old content field
                 comment = t.get("comment", "") or ""
                 started = (t.get("started_date", "") or "")[:10]
                 completed = (t.get("completed_date", "") or "")[:10]
@@ -273,10 +276,10 @@ class SyncEngine:
     # ── Files export ─────────────────────────────────────────────────
 
     def _write_files(self, context_id: str, brain_dir: Path):
-        """Descarga archivos adjuntos de brain_files."""
-        files = self.pb.all("brain_files",
-            filter="(brain='" + context_id + "')",
-            expand="page", perPage=500)
+        """Descarga archivos adjuntos de brain_pages (page_type='file')."""
+        files = self.pb.all("brain_pages",
+            filter="(brain='" + context_id + "' && page_type='file' && attachment!='')",
+            expand="related_pages", perPage=500)
 
         if not files:
             return
@@ -286,24 +289,25 @@ class SyncEngine:
         os.environ["SYNC_T"] = t
         downloaded = 0
         for f_rec in files:
-            filename = f_rec.get("file", "")
+            filename = f_rec.get("attachment", "")
             if not filename:
                 continue
+
+            # Get parent page slug from related_pages
             page_slug = ""
-            page_expand = f_rec.get("expand", {}).get("page")
-            if isinstance(page_expand, dict):
-                page_slug = page_expand.get("slug", "")
+            rel = f_rec.get("expand", {}).get("related_pages", [])
+            if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
+                page_slug = rel[0].get("slug", "")
 
             if page_slug:
-                dest_dir = context_dir / "files" / page_slug
+                dest_dir = brain_dir / "files" / page_slug
             else:
-                dest_dir = context_dir / "files"
+                dest_dir = brain_dir / "files"
             dest_dir.mkdir(parents=True, exist_ok=True)
 
             host = self.pb.host
-            url = host + "/api/files/brain_files/" + f_rec["id"] + "/" + filename
+            url = host + "/api/files/brain_pages/" + f_rec["id"] + "/" + filename
             out = str(dest_dir / filename)
-            # Use shell to expand SYNC_T env var
             subprocess.run(
                 "curl -s -o " + out + " " + url + " -H " + chr(34) + "Authorization: Bearer $SYNC_T" + chr(34),
                 shell=True, capture_output=True, env=os.environ)

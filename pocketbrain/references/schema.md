@@ -1,8 +1,8 @@
 # PocketBrain — Schema completo
 
-12 colecciones. Todo campo, tipo y relación.
+6 colecciones. Todo campo, tipo y relación.
 
-## 1. `brains` — Cerebros
+## 1. `contexts` — Cerebros
 
 | Campo | Tipo |
 |-------|------|
@@ -17,7 +17,7 @@
 |-------|------|
 | `name` | text (required) |
 | `label` | text |
-| `brain` | relation → brains |
+| `brain` | relation → contexts |
 
 ## 3. `brain_tags` — Taxonomía
 
@@ -25,15 +25,39 @@
 |-------|------|
 | `name` | text (required) |
 | `category` | text |
-| `brain` | relation → brains |
+| `brain` | relation → contexts |
 
-## 4. `brain_pages` — Conocimiento
+## 4. `brain_pages` — Conocimiento (unificado)
+
+Todas las entidades se guardan en `brain_pages`. El campo `page_type` discrimina el tipo:
+
+| page_type | Uso |
+|-----------|-----|
+| `entity` | Personas, empresas, productos, lenguajes |
+| `concept` | Temas, técnicas, patrones |
+| `comparison` | Tablas comparativas, "vs" |
+| `query` | Preguntas respondidas |
+| `raw` | Fuentes externas, papers, URLs |
+| `project` | Proyectos con roadmaps |
+| `plan` | Roadmaps, specs, estrategias |
+| `note` | Notas rápidas, minutas |
+| `idea` | Brainstorming, propuestas |
+| `todo` | Tareas con status kanban |
+| `goal` | Objetivos amplios sin fecha |
+| `milestone` | Hitos con deadline |
+| `okr` | OKR con key results |
+| `reminder` | Recordatorios con fecha/hora |
+| `journal` | Entradas de diario, bitácora |
+| `file` | Archivos adjuntos |
+| `deliverable` | Entregables versionados |
+
+### Campos de brain_pages
 
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `title` | text (required) | |
 | `slug` | text (required, unique) | lowercase-hyphens |
-| `page_type` | select | entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, reminder, journal, file, deliverable |
+| `page_type` | select | 17 valores (ver tabla arriba) |
 | `body` | text | **Markdown puro** con `[[wikilinks]]` |
 | `summary` | text | |
 | `confidence` | select | high, medium, low |
@@ -45,9 +69,9 @@
 | `attachment` | file | PDF, imagen |
 | `file_type` | select | pdf, image, doc, sheet, other |
 | `version` | text | Versión del entregable |
-| `related_pages` | relation → brain_pages (N:M) | Auto-link desde [[wikilinks]] |
-| `content` | text | Cuerpo alternativo (tareas) |
-| `status` | select | backlog, this week, today, in progress, done, cancelled, planned, active, draft |
+| `related_pages` | relation → brain_pages (N:M) | Auto-link desde `[[wikilinks]]` |
+| `content` | text | Cuerpo alternativo |
+| `status` | select | backlog, this week, today, in progress, done, cancelled, planned, active, completed, draft, review, final |
 | `deadline` | date | Fecha límite (goals, milestones) |
 | `owner` | select | alvaro, chaos-manager, bravo-manager, etc. |
 | `date` | date | Fecha (reminders, journal) |
@@ -58,10 +82,9 @@
 | `started_date` | date | Iniciado (todos) |
 | `completed_date` | date | Completado (todos) |
 | `cancelled_date` | date | Cancelado |
-| `comment` | text | Comentario opcional |
-| `brain` | relation → brains | |
+| `comment` | text | Comentario opcional (deliverables: milestone) |
+| `brain` | relation → contexts | |
 | `domain` | relation → brain_domains | |
-| `goal` | relation → brain_goals | |
 | `tags` | relation → brain_tags (N:M) | |
 
 ## 5. `brain_page_versions` — Historial
@@ -81,92 +104,21 @@
 
 | Campo | Tipo |
 |-------|------|
-| `brain` | relation → brains |
+| `brain` | relation → contexts |
 | `action` | select: ingest, update, query, lint, create, archive, delete, setup |
 | `page` | relation → brain_pages |
 | `description` | text |
 | `details` | json |
 
-## 7. `brain_todos` — Tareas
+---
 
-| Campo | Tipo |
-|-------|------|
-| `title` | text (required) |
-| `content` | editor |
-| `status` | select: backlog, this week, today, in progress, done, cancelled |
-| `domain` | select: personal, projects, bravo |
-| `owner` | select: alvaro, chaos-manager, project-manager, bravo-manager, minion, alv-bot, bravo-bot, ops-bot |
-| `comment` | text |
-| `started_date` | date |
-| `completed_date` | date |
-| `cancelled_date` | date |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-| `goal` | relation → brain_goals |
+## Historial de unificación
 
-## 8. `brain_goals` — Goals, Milestones, OKRs
-
-| Campo | Tipo |
-|-------|------|
-| `title` | text (required) |
-| `description` | text |
-| `type` | select: goal, milestone, okr |
-| `status` | select: planned, active, done, cancelled |
-| `progress` | number (0-100) |
-| `deadline` | date |
-| `retrospective` | text |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-| `parent` | relation → brain_goals |
-| `tags` | relation → brain_tags |
-
-## 9. `brain_reminders` — Recordatorios
-
-| Campo | Tipo |
-|-------|------|
-| `title` | text (required) |
-| `content` | text |
-| `date` | date (required) |
-| `time` | text |
-| `done` | bool |
-| `done_date` | date |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-
-## 10. `brain_journal` — Diario
-
-| Campo | Tipo |
-|-------|------|
-| `title` | text (required) |
-| `body` | text |
-| `date` | date (required) |
-| `mood` | select: great, meh, bad |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-| `tags` | relation → brain_tags |
-
-## 11. `brain_deliverables` — Entregables
-
-| Campo | Tipo |
-|-------|------|
-| `title` | text (required) |
-| `description` | text |
-| `version` | text |
-| `status` | select: draft, review, final, archived |
-| `milestone` | text |
-| `file` | file |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-| `goal` | relation → brain_goals |
-| `tags` | relation → brain_tags |
-
-## 12. `brain_files` — Archivos
-
-| Campo | Tipo |
-|-------|------|
-| `name` | text (required) |
-| `file` | file |
-| `file_type` | select: pdf, image, doc, sheet, other |
-| `brain` | relation → brains |
-| `page` | relation → brain_pages |
-| `goal` | relation → brain_goals |
+| Colección legacy | Equivalente actual en brain_pages | Migración |
+|------------------|-----------------------------------|-----------|
+| `brain_todos` | `page_type='todo'` | ✅ Unificado |
+| `brain_goals` | `page_type='goal'\|'milestone'\|'okr'` | ✅ Unificado |
+| `brain_reminders` | `page_type='reminder'` | ✅ Unificado |
+| `brain_journal` | `page_type='journal'` | ✅ Unificado |
+| `brain_deliverables` | `page_type='deliverable'` | ✅ Unificado v2.22.0 |
+| `brain_files` | `page_type='file'` | ✅ Unificado v2.22.0 |

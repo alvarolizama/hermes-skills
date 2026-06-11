@@ -95,7 +95,7 @@ def get_goals():
             if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
                 ps = rel[0].get("slug", "")
             result.append({
-                "id": p["id"], "title": p.get("title", ""), "type": pt,
+                "id": p["id"], "slug": p.get("slug", ""), "title": p.get("title", ""), "type": pt,
                 "status": p.get("status", "planned"),
                 "deadline": (p.get("deadline", "") or "")[:10],
                 "description": p.get("body", "") or "",

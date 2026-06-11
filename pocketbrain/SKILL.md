@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
-description: "Segundo cerebro digital sobre PocketBase — todas las entidades (entity, concept, todo, goal, reminder, journal, file, etc.) como page_types en brain_pages. Web UI live con sidebar por tipo, grafos, auto-linking, auto-backlinks y trazabilidad."
-version: 2.20.0
+description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundario."
+version: 2.23.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -12,8 +12,65 @@ metadata:
 
 # PocketBrain — Segundo cerebro digital
 
-Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
-Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
+Knowledge base multi-cerebro sobre PocketBase. **Prioridad #1: responder en la conversación con markdown.** La web UI es secundaria.
+
+## Cómo responder al usuario
+
+Cuando el usuario pregunte sobre datos en PocketBrain, responde **directo en la conversación** con markdown formateado. No le digas "ve a la web", no le compartas links de la UI. La conversación ES la interfaz.
+
+### Patrones de respuesta
+
+**Listar entidades con tabla:**
+```markdown
+## Proyectos (3)
+| Proyecto | Dominio | Goals | Tareas |
+|----------|---------|-------|--------|
+| PocketBrain | projects | 4 | 10 |
+| Viaje a Japon 2026 | personal | 2 | 5 |
+| Rediseno web Bravo | bravo | 1 | 3 |
+```
+
+**Detalle de una página con metadata:**
+```markdown
+## GPT-4o
+**Tipo:** entity · **Confianza:** high · **Dominio:** investigacion
+**Tags:** multimodal, llm
+
+OpenAI lanzó GPT-4o, un modelo multimodal...
+
+**Relaciones:**
+- → [[openai]]
+- → [[claude-35-sonnet]]
+```
+
+**Status de tareas con columna visual:**
+```markdown
+## Todo (10)
+| Tarea | Status | Proyecto |
+|-------|--------|----------|
+| Revisar PR #42 | ✅ done | PocketBrain |
+| Configurar CI/CD | 🔄 in progress | K8s |
+| Comprar vuelos | ⏳ backlog | Viaje Japon |
+```
+
+**Dashboard rápido de un contexto:**
+```markdown
+## Resumen: personal
+- **Páginas:** 45 activas
+- **Proyectos:** 3 · **Goals:** 4 · **Milestones:** 4
+- **Todo:** 10 (3 in progress, 4 backlog, 3 done)
+- **Reminders:** 8 (2 hoy, 3 esta semana)
+- **Journal:** 7 entradas
+```
+
+### Reglas de respuesta
+
+1. **Markdown first** — tablas, listas, code blocks, headings. Nunca texto plano.
+2. **Nunca derivar a la web UI** — la respuesta debe ser autónoma en el chat.
+3. **Contar todo** — siempre muestra conteos: "10 tareas", "4 milestones", etc.
+4. **Relaciones visibles** — si una página tiene links, goals, tareas, muéstra los conteos.
+5. **Si no hay datos, dilo claro** — "No hay milestones en este proyecto." en vez de dejar el espacio vacío.
+6. **Agrupa por tipo** — usa headings para separar entidades, conceptos, tareas, etc.
 
 ## Flujo de trabajo para el agente — LLM Wiki compliance
 
@@ -251,15 +308,21 @@ brain.recent_logs(20)  # trazabilidad
 
 ## Setup
 
-### Dependencia
+### Dependencias
 
-Usa `pocketbase` skill → módulo `pb.py`. Variables en `~/.hermes/.env`:
-`POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`. (independientes de POCKETBASE_*).
+| Dependencia | Uso | Cómo se resuelve |
+|-------------|-----|------------------|
+| `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
+| `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
+| `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
 
 ### Quick Start
 
 ```bash
-# 1. Crear colecciones (una vez)
+# 0. Verificar dependencias
+which curl || brew install curl
+
+# 1. Crear las 6 colecciones (una vez)
 cd ~/.hermes/skills/productivity/pocketbrain/scripts
 python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
@@ -290,7 +353,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/auto-linking.md` | Auto-link de wikilinks, auto-suggest page_type, auto-backlinks |
 | `references/llm-wiki-workflow.md` | Flujo LLM Wiki: ingest, calidad, mantenimiento, consulta |
 | `references/llm-wiki-comparison.md` | Mapeo PocketBrain vs LLM Wiki de Karpathy |
-| `references/schema.md` | Detalle de las 12 colecciones y sus campos |
+| `references/schema.md` | Detalle de las 6 colecciones y sus campos, historial de unificación |
+| `references/schema-audit.md` | Auditoría de integridad del schema: checklist 10 puntos para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
 | `references/goals.md` | Sistema de goals, milestones y OKRs |
 | `references/web-ui.md` | Navegación y vistas del servidor web live |
 | `references/web-ui-patterns.md` | Refactor frontend: tabs, progreso, toasts, markdown |
@@ -314,7 +378,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
-| v2.21.0 | Hash URL para toda navegacion sub-tab (switchProjectTab/switchPageTab/goal status/reminder status). restoreFromHash restaura gstatus/rstatus/ptab/wtab. Pitfall: restoreFromHash debe actualizarse al agregar nuevos hash params. |
+| v2.23.0 | Markdown-first: prioridad responder al usuario en conversación con tablas/listas/status. Reglas de respuesta para el agente. Web UI es secundaria. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0).
 | v2.20.0 | Minimalist cards (title only, no chips/status/metadata). Sidebar `;return false` en todos los onclicks. Pitfall: read_file() corrompe archivos si se escribe de vuelta. |
 | v2.18.0 | Filter select: Todo y Reminders cambian a Todos/Con proyecto/Sin proyecto. Fix goal filter else-if bug ('project' atrapado por else-if generico). Actualizado ui-filter-pattern.md con page_slug filter y pitfall. |
 | v2.17.0 | fix: showPage() desactiva vistas previas antes de activar view-wiki para evitar stacking. |
@@ -328,7 +392,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 ### Pitfalls
 
 - **CREATION_ORDER**: las relaciones mandan. Ver setup_contexts() en brain.py.
-- **Self-ref fields**: brain_goals.parent y brain_pages.related_pages se agregan con PATCH post-creacion.
+- **Self-ref fields**: brain_pages.related_pages (auto-relación) se agrega con PATCH post-creación.
 - **Naming**: campo relation en PB se llama brain (legado) pero coleccion padre es contexts.
 - **`_get_page()` returns error dicts on 404, not None**: PocketBase devuelve `{"data":{}, "message":"not found", "status":404}` cuando una página no existe. La función `_get_page()` lo retorna directamente. **Siempre verifica `'id' in result` antes de usar cualquier campo del dict retornado.** Usa `page = self._get_page(slug); if page and 'id' in page:` como patrón.
 - **PocketBase schema updates**: `setup_contexts()` solo CREA colecciones que no existen. No actualiza colecciones existentes con nuevos campos o valores. Para actualizar una colección existente:
@@ -350,8 +414,12 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **renderTypeView usa `var h=` no `h+=` para la primera linea**: `renderTypeView()` asigna `var h=...` mientras que las otras vistas usan `h+=...` despues de `var h=...`. Al hacer patch, diferenciar entre `var h=` (primera linea) y `h+=` (concatenacion).
 - **Toda navegacion debe generar hash URL**: cada vez que se agrega un sub-tab o filtro, debe llamar a `setHashParams()` para reflejar el estado en la URL. Puntos clave: `switchProjectTab()`, `switchPageTab()`, goal status tabs, reminder status tabs. Si agregas un nuevo sub-tab, agrega `setHashParams` en el template Y actualiza `restoreFromHash()`.
 - **restoreFromHash debe manejar sub-tabs**: al anadir un nuevo parametro hash (ptab, wtab, gstatus, rstatus), `restoreFromHash()` debe restaurarlo. Los sub-tabs que dependen de datos async (project, wiki page) usan `setTimeout` para esperar que los datos esten disponibles.
+- **href=\"#\" resetea el hash después de setHashParams()**: los links del sidebar y navegación usaban `href="#"` con onclick handlers. El browser procesa `#` DESPUÉS de que el onclick termina, sobrescribiendo el hash que `history.replaceState/acaba de poner con `setHashParams()`. **Fix**: usar `href="javascript:void(0)"` en vez de `href="#"`. Verificado con `location.hash` después de click.
+- **Graph screenshot requiere fit() manual**: vis.js physics puede dejar nodos dispersos fuera del viewport. Antes de tomar screenshot, ejecutar `window._net.setOptions({physics:{enabled:false}}); window._net.fit();`. Si aún se ve vacío, probar `window._net.moveTo({scale:0.08})`. Verificar con `'nodes=' + GRAPH.nodes.length + ' edges=' + GRAPH.edges.length` que los datos existen.
 - **vis.js destruye innerHTML del contenedor**: cuando se inicializa vis.Network en un contenedor (<div id="graph-view">), vis.js reemplaza el innerHTML del contenedor con sus propios elementos SVG/Canvas. Cualquier elemento hijo (como leyendas, controles) debe ser hermano de graph-view, no hijo. Ver web_ui.html: view-graph > graph-view + graph-legend.
-- **CDN script bloquea inline script**: <script src="..."> sin async/defer bloquea la ejecucion de scripts inline posteriores hasta que el CDN se descarga. Si el CDN es inaccesible, el script inline NUNCA se ejecuta y la pagina se queda en Cargando. Solucion: agregar async al CDN, o servir vis.js localmente.
+- **Goals/Milestones cards no tienen onclick**: `renderGoalsView()` renderiza `<div class=\"card\"><h3>'+g.title+'</h3></div>` sin onclick handler. Fix: agregar `slug` en `get_goals()` de brain_web.py, y en la card poner `onclick=\"showPage(\\'+g.slug+'\\')\"` con `cursor:pointer`, `padding:12px`, y `esc(g.title)`. Ver references/web-ui-patterns.md.
+- **Wikilink href=\"\\#\" en mdToHtml resetea hash**: los `[[wikilinks]]` en el body se renderizan como `<a href=\"\\\\#\" class=\"wl\" ...>`, mismo bug del `href=#` que resetea el hash después de `setHashParams()`. Fix: cambiar `href=\"\\\\#\"` → `href=\"javascript:void(0)\"` en `mdToHtml()`.
+- **CDN script bloquea inline script
 - **node --check debe saltar scripts CDN**: al validar web_ui.html, extraer el SEGUNDO <script> tag (el inline, sin src). El primero suele ser el CDN de vis.js. Usar html.split('<script>')[2].split('</script>')[0] en vez de regex que empareje el primero.
 
 ### Workflow notes (Alvaro's style)

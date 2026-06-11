@@ -468,13 +468,13 @@ function renderGoalsView(typeFilter){
   else if(_goalStatusFilter==='completed')filtered=filtered.filter(function(g){return g.status==='completed';});
   else if(_goalStatusFilter==='cancelled')filtered=filtered.filter(function(g){return g.status==='cancelled';});
   var parents=filtered.filter(function(g){return !g.parent;});
-  var gt=typeFilter||'goal';
+  var gt=typeFilter||'goal';window._goalTypeFilter=gt;
   var gl=gt.charAt(0).toUpperCase()+gt.slice(1)+(gt==='milestone'?'s':'s');
   var h='<div class="view-header"><h1>'+gl+'</h1><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
-  h+='<div class="project-tabs" style="margin:12px 0"><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'all\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'all\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'active\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'active\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'completed\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'completed\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'cancelled\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
+  h+='<div class="project-tabs" style="margin:12px 0"><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'all\';setHashParams({tab:window._goalTypeFilter===\'milestone\'?\'milestones\':\'goals\',gstatus:\'all\'});renderGoalsView(window._goalTypeFilter);return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'active\';setHashParams({tab:window._goalTypeFilter===\'milestone\'?\'milestones\':\'goals\',gstatus:\'active\'});renderGoalsView(window._goalTypeFilter);return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'completed\';setHashParams({tab:window._goalTypeFilter===\'milestone\'?\'milestones\':\'goals\',gstatus:\'completed\'});renderGoalsView(window._goalTypeFilter);return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="javascript:void(0)" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';setHashParams({tab:window._goalTypeFilter===\'milestone\'?\'milestones\':\'goals\',gstatus:\'cancelled\'});renderGoalsView(window._goalTypeFilter);return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
-    h+='<div class="card"><h3>'+g.title+'</h3>';
+    h+='<div class="card" style="cursor:pointer;margin-bottom:8px;padding:12px" onclick="showPage(\''+g.slug+'\')"><h3>'+esc(g.title)+'</h3>';
 
     h+='</div>';
   });
@@ -635,12 +635,12 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
   var prems=REMINDERS.filter(function(r){return r.page_slug===slug;});
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var bl=p.backlinks||[];
-  var h='<div class="project-tabs"><a href=\#" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
-  if(bl.length)h+='<a href=\#" onclick="switchPageTab(\'backlinks\',\''+slug+'\'); return false;">Backlinks ('+bl.length+')</a>';
+  var h='<div class="project-tabs"><a href="javascript:void(0)" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
+  if(bl.length)h+='<a href="javascript:void(0)" onclick="switchPageTab(\'backlinks\',\''+slug+'\'); return false;">Backlinks ('+bl.length+')</a>';
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
-  if(relCount)h+='<a href=\#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
+  if(relCount)h+='<a href="javascript:void(0)" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div>';
-  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href=\#" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
+  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href="javascript:void(0)" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div class="wiki-layout-page"><div class="wiki-left">';
   h+='<div id="page-tab-content"></div>';
   var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);

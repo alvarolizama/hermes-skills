@@ -120,7 +120,8 @@ BRAIN_SCHEMA = {
             {"name": "content", "type": "text"},
             {"name": "status", "type": "select",
              "values": ["backlog", "this week", "today", "in progress", "done",
-                        "cancelled", "planned", "active", "completed", "draft"],
+                        "cancelled", "planned", "active", "completed", "draft",
+                        "review", "final"],
              "maxSelect": 1, "required": False},
             {"name": "deadline", "type": "date"},
             {"name": "owner", "type": "select",
@@ -281,7 +282,7 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
 
 
 def setup_contexts(pb: PB) -> dict:
-    """Crea las 9 colecciones del PocketBrain en PocketBase.
+    """Crea las 6 colecciones del PocketBrain en PocketBase.
 
     Resuelve dinámicamente los IDs de las colecciones para las relaciones,
     ya que PocketBase requiere IDs reales (pbc_xxx) en collectionId, no nombres.
@@ -1423,9 +1424,11 @@ class Brain:
 
     def attach_file(self, page_slug: str, filepath: str,
                     name: str = '', file_type: str = 'other') -> dict:
-        """Adjunta un archivo a una pagina."""
-        import subprocess
+        """Adjunta un archivo a una pagina como pagina type='file'.
 
+        Crea una brain_page con page_type='file' y attachment,
+        linkeada a la pagina via related_slugs.
+        """
         if not self._context_id:
             self.orient()
 
@@ -1434,44 +1437,31 @@ class Brain:
             raise ValueError("Pagina '" + page_slug + "' no encontrada")
 
         name = name or os.path.basename(filepath)
-        host = self.pb.host
-        token = self.pb.get_token()
-        url = host + "/api/collections/brain_files/records"
-        auth = "Authorization: Bearer " + token
 
-        args = [
-            "curl", "-s", "-X", "POST", url,
-            "-H", auth,
-            "-F", "name=" + name,
-            "-F", "page=" + page["id"],
-            "-F", "brain=" + self._context_id,
-            "-F", "file_type=" + file_type,
-            "-F", "file=@" + filepath,
-        ]
-
-        result = subprocess.run(args, capture_output=True, text=True)
-        data = json.loads(result.stdout)
-
-        if "id" not in data:
-            raise RuntimeError("File attach failed: " + str(data))
-
-        self.log("create", page_id=page["id"],
-                 description="Attached file: " + name)
-        return data
+        return self.create_page(
+            title=name,
+            body='',
+            page_type='file',
+            file_type=file_type,
+            related_slugs=[page_slug],
+            filepath=filepath,
+        )
 
 
     def list_files(self, page_slug: str) -> list:
-        """Lista archivos adjuntos a una pagina."""
+        """Lista archivos adjuntos a una pagina (brain_pages con page_type='file')."""
+        if not self._context_id:
+            self.orient()
         page = self._get_page(page_slug)
         if not page:
             return []
-        return self.pb.list("brain_files",
-            filter="(page='" + page["id"] + "')",
+        return self.pb.list("brain_pages",
+            filter=f"(brain='{self._context_id}' && page_type='file' && archived=false && related_pages?='{page['id']}')",
             perPage=100)
 
     def delete_file(self, file_id: str) -> bool:
-        """Elimina un archivo adjunto."""
-        return self.pb.delete("brain_files", file_id)
+        """Elimina un archivo adjunto (soft delete archiving the brain_page)."""
+        return self.pb.update("brain_pages", file_id, {"archived": True})
 
     # ── Deliverables ─────────────────────────────────────────────
 
@@ -1481,7 +1471,7 @@ class Brain:
                            description: str = '',
                            milestone: str = '',
                            tags: Optional[list] = None) -> dict:
-        """Crea un entregable versionado para un proyecto.
+        """Crea un entregable versionado para un proyecto en brain_pages.
 
         Args:
             project_slug: Slug del proyecto (page_type: project).
@@ -1493,8 +1483,6 @@ class Brain:
             milestone: Fase del proyecto (ej. 'MVP', 'Fase 1').
             tags: Lista de nombres de tags.
         """
-        import subprocess
-
         if not self._context_id:
             self.orient()
 
@@ -1502,100 +1490,67 @@ class Brain:
         if not page:
             raise ValueError("Proyecto '" + project_slug + "' no encontrado")
 
-        host = self.pb.host
-        token = self.pb.get_token()
-        url = host + "/api/collections/brain_deliverables/records"
-        auth = "Authorization: Bearer %s" % token
-
-        args = [
-            "curl", "-s", "-X", "POST", url,
-            "-H", auth,
-            "-F", "title=" + title,
-            "-F", "page=" + page["id"],
-            "-F", "brain=" + self._context_id,
-            "-F", "version=" + version,
-            "-F", "status=" + status,
-            "-F", "description=" + description,
-            "-F", "milestone=" + milestone,
-            "-F", "file=@" + filepath,
-        ]
-
-        if tags:
-            for t in tags:
-                tid = self.get_or_create_tag(t)
-                args += ["-F", "tags=" + tid]
-
-        result = subprocess.run(args, capture_output=True, text=True)
-        data = json.loads(result.stdout)
-
-        if "id" not in data:
-            raise RuntimeError("Deliverable create failed: " + str(data))
-
-        self.log("create", page_id=page["id"],
-                 description="Deliverable: " + title + " " + version)
-        return data
+        # Milestone se guarda en comment (brain_pages no tiene campo milestone)
+        return self.create_page(
+            title=title,
+            body=description or '',
+            page_type='deliverable',
+            version=version,
+            status=status,
+            comment=milestone,
+            tags=tags,
+            related_slugs=[project_slug],
+            filepath=filepath,
+        )
 
     def list_deliverables(self, project_slug: str,
                           status: Optional[str] = None) -> list:
-        """Lista entregables de un proyecto."""
-        page = self._get_page(project_slug)
-        if not page:
-            return []
-
-        f = "(page='" + page["id"] + "')"
+        """Lista entregables de un proyecto desde brain_pages."""
+        if not self._context_id:
+            self.orient()
+        filters = [f"(brain='{self._context_id}' && page_type='deliverable' && archived=false)"]
+        if project_slug:
+            proj = self._get_page(project_slug)
+            if proj:
+                filters.append(f"(related_pages?='{proj['id']}')")
         if status:
-            f = "(page='" + page["id"] + "' && status='" + status + "')"
-
-        return self.pb.list("brain_deliverables", filter=f, perPage=100)
+            filters.append(f"(status='{status}')")
+        return self.pb.list("brain_pages",
+            filter="&&".join(filters) if len(filters) > 1 else filters[0],
+            expand="related_pages",
+            perPage=100)
 
     def version_deliverable(self, deliverable_id: str,
                             filepath: str, new_version: str) -> dict:
-        """Sube una nueva version de un entregable.
+        """Sube una nueva version de un entregable (en brain_pages).
 
         Crea un NUEVO registro con el mismo titulo pero nueva version.
         La version anterior se marca como 'archived'.
         """
-        import subprocess
-
-        old = self.pb.get("brain_deliverables", deliverable_id)
+        old = self.pb.get("brain_pages", deliverable_id)
         if not old:
             raise ValueError("Deliverable no encontrado")
 
         # Archivar version anterior
-        self.pb.update("brain_deliverables", deliverable_id, {"status": "archived"})
+        self.pb.update("brain_pages", deliverable_id, {"archived": True})
 
         # Crear nueva version
-        host = self.pb.host
-        token = self.pb.get_token()
-        url = host + "/api/collections/brain_deliverables/records"
-        auth = "Authorization: Bearer %s" % token
-
-        args = [
-            "curl", "-s", "-X", "POST", url,
-            "-H", auth,
-            "-F", "title=" + old.get("title", ""),
-            "-F", "page=" + old.get("page", ""),
-            "-F", "brain=" + old.get("brain", self._context_id or ""),
-            "-F", "version=" + new_version,
-            "-F", "status=draft",
-            "-F", "description=" + old.get("description", ""),
-            "-F", "milestone=" + old.get("milestone", ""),
-            "-F", "file=@" + filepath,
-        ]
-
-        result = subprocess.run(args, capture_output=True, text=True)
-        data = json.loads(result.stdout)
-
-        if "id" not in data:
-            raise RuntimeError("Version failed: " + str(data))
-
-        self.log("create", page_id=old.get("page"),
-                 description="Deliverable v" + new_version + ": " + old.get("title", ""))
-        return data
+        return self.create_page(
+            title=old.get("title", ""),
+            body=old.get("body", ""),
+            page_type='deliverable',
+            version=new_version,
+            status='draft',
+            related_slugs=self._slugs_from_related(old),
+            filepath=filepath,
+        )
 
     def update_deliverable(self, deliverable_id: str, **updates) -> dict:
-        """Actualiza metadata de un entregable (status, milestone, etc.)."""
-        return self.pb.update("brain_deliverables", deliverable_id, updates)
+        """Actualiza metadata de un entregable (status, milestone, etc.) en brain_pages."""
+        # Map 'milestone' kwarg to 'comment' since brain_pages uses comment for milestone
+        if 'milestone' in updates:
+            updates['comment'] = updates.pop('milestone')
+        return self.update_page(deliverable_id, **updates)
 
     # ── Goals / Milestones / OKRs ──────────────────────────────
 
@@ -1933,3 +1888,12 @@ class Brain:
             if page and 'id' in page:
                 ids.append(page['id'])
         return ids
+
+    def _slugs_from_related(self, page: dict) -> list:
+        """Extrae slugs de related_pages expandidas de un registro."""
+        expanded = page.get('expand', {}).get('related_pages', []) or []
+        if not expanded:
+            return []
+        if isinstance(expanded[0], dict):
+            return [r.get('slug', '') for r in expanded if r.get('slug')]
+        return []
