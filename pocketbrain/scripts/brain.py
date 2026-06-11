@@ -99,7 +99,7 @@ BRAIN_SCHEMA = {
             {"name": "domain", "type": "relation", "collectionId": "brain_domains",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea", "file", "deliverable"], "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
             {"name": "confidence", "type": "select",
@@ -112,6 +112,9 @@ BRAIN_SCHEMA = {
              "cascadeDelete": False, "maxSelect": None},
             {"name": "archived", "type": "bool"},
             {"name": "attachment", "type": "file", "maxSelect": 1, "maxSize": 0},
+            {"name": "file_type", "type": "select",
+             "values": ["pdf", "image", "doc", "sheet", "other"], "maxSelect": 1, "required": False},
+            {"name": "version", "type": "text"},
             {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": None},
             {"name": "content", "type": "text"},
@@ -149,39 +152,6 @@ BRAIN_SCHEMA = {
             {"name": "change_summary", "type": "text"},
             {"name": "page_type", "type": "text"},
             {"name": "confidence", "type": "text"},
-        ],
-    },
-    "brain_files": {
-        "name": "brain_files",
-        "type": "base",
-        "fields": [
-            {"name": "name", "type": "text", "required": True},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "file", "type": "file", "maxSelect": 1, "maxSize": 0},
-            {"name": "file_type", "type": "select",
-             "values": ["pdf", "image", "doc", "sheet", "other"], "maxSelect": 1},
-        ],
-    },
-    "brain_deliverables": {
-        "name": "brain_deliverables",
-        "type": "base",
-        "fields": [
-            {"name": "title", "type": "text", "required": True},
-            {"name": "description", "type": "text"},
-            {"name": "page", "type": "relation", "collectionId": "brain_pages",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-            {"name": "file", "type": "file", "maxSelect": 1, "maxSize": 0},
-            {"name": "version", "type": "text"},
-            {"name": "status", "type": "select",
-             "values": ["draft", "review", "final", "archived"], "maxSelect": 1},
-            {"name": "milestone", "type": "text"},
-            {"name": "tags", "type": "relation", "collectionId": "brain_tags",
-             "cascadeDelete": False, "maxSelect": None},
         ],
     },
     "brain_log": {
@@ -275,8 +245,6 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
     # Orden: dependencias primero (hijos antes que padres)
     order = [
         'brain_log',            # depende de brain_pages
-        'brain_deliverables',  # depende de brain_pages
-        'brain_files',         # depende de brain_pages
         'brain_page_versions',  # depende de brain_pages
         'brain_pages',         # depende de brain_domains, brain_tags
         'brain_tags',          # depende de contexts
@@ -644,7 +612,9 @@ class Brain:
                     status: str = '', owner: str = '',
                     deadline: str = '', date: str = '', time: str = '',
                     done: bool = False, mood: str = '',
-                    content: str = '') -> dict:
+                    content: str = '',
+                    filepath: str = '', file_type: str = '',
+                    version: str = '') -> dict:
         """Crea una página de conocimiento.
 
         Args:
@@ -732,7 +702,40 @@ class Brain:
         if content:
             data['content'] = content
 
-        page = self.pb.create('brain_pages', data)
+        if file_type:
+            data['file_type'] = file_type
+        if version:
+            data['version'] = version
+
+        # Si hay filepath, hacer multipart upload via curl
+        if filepath:
+            import subprocess
+            host = self.pb.host
+            token = self.pb.get_token()
+            url = f"{host}/api/collections/brain_pages/records"
+            args = ["curl", "-s", "-X", "POST", url,
+                    "-H", f"Authorization: Bearer {token}",
+                    "-F", f"title={title}",
+                    "-F", f"slug={slug}",
+                    "-F", f"brain={self._context_id}",
+                    "-F", f"page_type={effective_page_type}",
+                    "-F", f"body={body or ''}",
+                    "-F", f"attachment=@{filepath}",
+            ]
+            if file_type: args += ["-F", f"file_type={file_type}"]
+            if version: args += ["-F", f"version={version}"]
+            if status: args += ["-F", f"status={status}"]
+            if owner: args += ["-F", f"owner={owner}"]
+            if domain: args += ["-F", f"domain={self.get_or_create_domain(domain)}"]
+            if linked_page_ids:
+                for lid in linked_page_ids: args += ["-F", f"related_pages={lid}"]
+            result = subprocess.run(args, capture_output=True, text=True)
+            data_resp = json.loads(result.stdout)
+            if 'id' not in data_resp:
+                raise RuntimeError(f"File upload failed: {data_resp}")
+            page = data_resp
+        else:
+            page = self.pb.create('brain_pages', data)
         page_id = page.get('id')
 
         # Auto-backlinks: agregar esta página al related_pages de cada página linkeada

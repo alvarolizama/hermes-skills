@@ -128,26 +128,34 @@ def get_todos():
 
 def get_deps():
     brain = get_brain()
-    deps = brain.pb.all("brain_deliverables", filter="(brain='" + brain._context_id + "')", expand="page")
+    pages = brain.pb.all("brain_pages",
+        filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id),
+        expand="related_pages")
     result = []
-    for d in deps:
-        pg = d.get("expand",{}).get("page",{})
-        result.append({"id":d["id"],"title":d.get("title",""),"version":d.get("version",""),
-            "status":d.get("status","draft"),
-            "page_slug":pg.get("slug","") if isinstance(pg,dict) else "",
-            "page_title":pg.get("title","") if isinstance(pg,dict) else "",
-            "milestone":d.get("milestone","") or ""})
+    for p in pages:
+        rel = p.get("expand",{}).get("related_pages",[])
+        ps = ""; pt = ""
+        if rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
+            ps = rel[0].get("slug",""); pt = rel[0].get("title","")
+        result.append({"id":p["id"],"title":p.get("title",""),"version":p.get("version",""),
+            "status":p.get("status","draft"),
+            "page_slug":ps,"page_title":pt,
+            "milestone":p.get("milestone","") or ""})
     return result
 
 def get_files():
     brain = get_brain()
-    files = brain.pb.all("brain_files", filter="(brain='" + brain._context_id + "')", expand="page")
+    pages = brain.pb.all("brain_pages",
+        filter="(brain='{}' && page_type='file' && archived=false)".format(brain._context_id),
+        expand="related_pages")
     result = []
-    for f in files:
-        pg = f.get("expand",{}).get("page",{})
-        result.append({"id":f["id"],"name":f.get("name",""),"file_type":f.get("file_type","other"),
-            "page_slug":pg.get("slug","") if isinstance(pg,dict) else "",
-            "page_title":pg.get("title","") if isinstance(pg,dict) else ""})
+    for p in pages:
+        rel = p.get("expand",{}).get("related_pages",[])
+        ps = ""; pt = ""
+        if rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
+            ps = rel[0].get("slug",""); pt = rel[0].get("title","")
+        result.append({"id":p["id"],"name":p.get("title",""),"file_type":p.get("file_type","other"),
+            "page_slug":ps,"page_title":pt})
     return result
 
 def get_reminders():
@@ -204,7 +212,7 @@ def get_graph():
         goals.extend(brain.pb.all("brain_pages",
             filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt)))
     todos = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id))
-    deps = brain.pb.all("brain_deliverables", filter="(brain='" + brain._context_id + "')")
+    deps = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id))
     reminders = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id))
     nodes, edges, nids = [], [], set()
     for pg in pages:
