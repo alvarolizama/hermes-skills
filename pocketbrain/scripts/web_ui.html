@@ -232,6 +232,7 @@ h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_entity
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
+h+='<a href=\"javascript:void(0)\" class=\"nav-link\" onclick=\"showIndex()\" data-search=\"wiki all\"><span class=\"nav-label\">'+icon('home',16)+'<span>Wiki</span></span><span class=\"nav-count\">'+PAGES.length+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 var _currentTab='projects',_currentProject=null;
@@ -640,7 +641,7 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
   if(relCount)h+='<a href="javascript:void(0)" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
   h+='</div>';
-  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href="javascript:void(0)" onclick="showIndex()" style="color:var(--ink)">← Wiki</a> · '+p.page_type+'</div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
+  h+='<div style="font-size:12px;color:var(--mute);margin-bottom:8px"><a href="javascript:void(0)" onclick="showIndex()" style="color:var(--ink)">← Todos</a> · <a href=\"javascript:void(0)\" onclick=\"showTab(\'type_\'+p.page_type)\" style=\"color:var(--ink)\">'+p.page_type+'</a> '+p.title+'</div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div class="wiki-layout-page"><div class="wiki-left">';
   h+='<div id="page-tab-content"></div>';
   var pageLogs=LOGS.filter(function(l){return l.page===p.id;}).slice(0,10);
