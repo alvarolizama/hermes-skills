@@ -404,7 +404,7 @@ function renderTodosView(){
   var filtered=TODOS;
   if(_todoFilter==='project')filtered=TODOS.filter(function(t){return !!t.page_slug;});
   else if(_todoFilter==='noproject')filtered=TODOS.filter(function(t){return !t.page_slug;});
-  var h='<div class="view-header"><h1>Todo</h1></div><div style="display:flex;gap:8px;margin:12px 0"><select onchange="setTodoFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_todoFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_todoFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_todoFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' tareas</p><div class="kanban">';
+  var h='<div class="view-header"><h1>Todo</h1><select onchange="setTodoFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_todoFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_todoFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_todoFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' tareas</p><div class="kanban">';
   var ss=['backlog','this week','today','in progress','done','cancelled'];
   var sl={backlog:'Backlog','this week':'This Week',today:'Today','in progress':'In Progress',done:'Done',cancelled:'Cancelled'};
   var bs={};ss.forEach(function(s){bs[s]=[];});
@@ -431,8 +431,7 @@ function renderTypeView(type){
   if(filt==='project')pages=allP.filter(function(p){return p.body&&Object.keys(projS).some(function(ps){return p.body.indexOf('[['+ps+']]')>=0||p.body.indexOf('[['+ps+'|')>=0;});});
   else if(filt==='noproject')pages=allP.filter(function(p){return !p.body||!Object.keys(projS).some(function(ps){return p.body.indexOf('[['+ps+']]')>=0||p.body.indexOf('[['+ps+'|')>=0;});});
   pages.sort(function(a,b){return a.title.localeCompare(b.title);});
-  var h='<div class="view-header"><h1>'+labels[type]+' ('+pages.length+' de '+allP.length+')</h1></div>';
-  h+='<div style="display:flex;gap:8px;margin:12px 0"><select onchange="window.\''+filtKey+'\'=this.value;renderTypeView(\''+type+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">';
+  var h='<div class="view-header"><h1>'+labels[type]+' ('+pages.length+' de '+allP.length+')</h1><select onchange="window.\''+filtKey+'\'=this.value;renderTypeView(\''+type+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">';
   h+='<option value=""'+(filt===''?' selected':'')+'>Todos</option>';
   h+='<option value="project"'+(filt==='project'?' selected':'')+'>Con proyecto</option>';
   h+='<option value="noproject"'+(filt==='noproject'?' selected':'')+'>Sin proyecto</option>';
@@ -466,9 +465,8 @@ function renderGoalsView(typeFilter){
   var parents=filtered.filter(function(g){return !g.parent;});
   var gt=typeFilter||'goal';
   var gl=gt.charAt(0).toUpperCase()+gt.slice(1)+(gt==='milestone'?'s':'s');
-  var h='<div class="view-header"><h1>'+gl+'</h1></div>';
-  h+='<div class="project-tabs" style="margin:12px 0"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div>';
-  h+='<div style="display:flex;gap:8px;margin:12px 0"><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
+  var h='<div class="view-header"><h1>'+gl+'</h1><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
+  h+='<div class="project-tabs" style="margin:12px 0"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
     h+='<div class="card"><h3>'+g.title+'</h3>';
@@ -525,7 +523,7 @@ function renderRemindersView(){
   thisWeek.sort(function(a,b){return a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'');});
   future.sort(function(a,b){return a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'');});
   var done=filtered.filter(function(r){return r.done;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  var h='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1></div>';
+  var h='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_reminderFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
   h+='<div class="project-tabs" style="margin:12px 0">'
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'today\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='today'?'active':'')+'">Hoy ('+todayItems.length+')</a>'
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'week\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='week'?'active':'')+'">Esta semana ('+thisWeek.length+')</a>'
@@ -534,7 +532,6 @@ function renderRemindersView(){
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'done\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
   +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'all\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
   +'</div>';
-  h+='<div style="display:flex;gap:8px;margin:12px 0"><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_reminderFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
   var activeSet;
   if(_reminderStatusTab==='today')activeSet=todayItems;
   else if(_reminderStatusTab==='week')activeSet=thisWeek;
@@ -801,7 +798,7 @@ function renderFiles(){
   var filtered=FILES;
   if(_fileFilter==='project')filtered=FILES.filter(function(f){return !!f.page_slug;});
   else if(_fileFilter==='noproject')filtered=FILES.filter(function(f){return !f.page_slug;});
-  var h='<div class="view-header"><h1>Files</h1></div><div style="display:flex;gap:8px;margin:12px 0"><select onchange="setFileFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_fileFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_fileFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_fileFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' archivos</p>';
+  var h='<div class="view-header"><h1>Files</h1><select onchange="setFileFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_fileFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_fileFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_fileFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' archivos</p>';
   if(!filtered.length)h+='<p>No hay archivos.</p>';
   else filtered.forEach(function(f){h+='<div class="card"><h3>'+f.name+'</h3><div style="font-size:12px;color:var(--mute)">'+(f.file_type||'otro')+(f.page_title?' · '+f.page_title:'')+'</div></div>';});
   document.getElementById('view-files').innerHTML=h;
@@ -810,7 +807,7 @@ function renderDeliverables(){
   var filtered=DEPS;
   if(_depFilter==='project')filtered=DEPS.filter(function(d){return !!d.page_slug;});
   else if(_depFilter==='noproject')filtered=DEPS.filter(function(d){return !d.page_slug;});
-  var h='<div class="view-header"><h1>Deliverables</h1></div><div style="display:flex;gap:8px;margin:12px 0"><select onchange="setDepFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_depFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_depFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_depFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' entregables</p>';
+  var h='<div class="view-header"><h1>Deliverables</h1><select onchange="setDepFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_depFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_depFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_depFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div><p style="color:var(--mute);margin-bottom:16px">'+filtered.length+' entregables</p>';
   if(!filtered.length)h+='<p>No hay entregables.</p>';
   else filtered.forEach(function(d){h+='<div class="card"><h3>'+d.title+' <span class="chip" style="background:var(--soft);color:var(--mute)">'+d.status+'</span></h3><div style="font-size:12px;color:var(--mute)">'+(d.version?'v'+d.version:'')+(d.page_title?' · '+d.page_title:'')+'</div></div>';});
   document.getElementById('view-deliverables').innerHTML=h;
