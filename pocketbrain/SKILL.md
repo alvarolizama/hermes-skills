@@ -21,6 +21,8 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 ### Regla de oro: infiere primero, pregunta si hay ambigüedad
 
+**Regla #0: SIEMPRE busca primero.** Antes de crear cualquier página, usa `brain.search()` para verificar si ya existe contenido similar. Si existe, actualiza la página existente con `brain.update_page()` o `brain.append_to_page()`. No dupliques.
+
 - Si el título tiene "vs" o el cuerpo tiene tablas → `comparison`
 - Si el título termina con "?" o es una pregunta → `query`
 - Si es una fuente externa (URL, paper) → `raw`
@@ -43,8 +45,22 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `concept` | Temas, técnicas, ideas, patrones | "Arquitectura microservicios", "Cache distribuido" |
 | `comparison` | Comparativas side-by-side | "React vs Vue", "PostgreSQL vs MySQL" |
 | `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
-| `raw` | Fuentes originales (artículos, papers) | "Paper Attention Is All You Need" |
+| `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need", "Video de microservicios" |
 | `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
+
+### Raw sources: tipos de fuentes
+
+Las páginas con `page_type='raw'` capturan distintas categorías de fuentes. Identifícalas por el contenido:
+
+| Categoría | Cómo detectarlo | Método de ingesta |
+|-----------|----------------|-------------------|
+| `raw:article` | Artículo web, blog post, newsletter | `ingest_text()` con `source_url` |
+| `raw:paper` | Paper académico, PDF, arXiv | `ingest_file()` — sube el PDF como attachment |
+| `raw:video` | Transcripción de video, charla | `ingest_text()` con link al video en body |
+| `raw:file` | Documento, spreadsheet, imagen | `ingest_file()` — sube el archivo como attachment |
+| `raw:note` | Nota propia, borrador, idea suelta | `ingest_text()` sin `source_url` |
+
+Todas se guardan como `page_type='raw'`. La categoría se registra en los `tags`. El archivo físico se sube automáticamente via `ingest_file()`.
 
 ### Cómo se linkean las páginas
 
@@ -75,8 +91,16 @@ confidence='low'     # fuente única, especulación
 ### Flujo completo
 
 ```python
+# 0. BUSCAR primero: evitar duplicados
+existing = brain.search("GPT-4o")
+if existing:
+    # Ya existe — actualizar en vez de crear
+    brain.append_to_page(existing[0]['slug'], "- Nueva info: ...")
+else:
+    # No existe — crear
+
 # 1. INGEST: fuente externa
-brain.ingest_text(text=contenido, title="Paper X", source_url="...", page_type='raw')
+brain.ingest_text(text=contenido, title="Paper X", source_url="...")
 
 # 2. CREAR: páginas de conocimiento linkeadas
 brain.create_page(
