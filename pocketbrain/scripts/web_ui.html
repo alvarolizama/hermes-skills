@@ -213,7 +213,6 @@ var msCount=PAGES.filter(function(p){return p.page_type==='milestone';}).length;
 var tc=TODOS.length,rc=REMINDERS.length,jc=JOURNAL.length,nc=(GRAPH.nodes||[]).length;
 function cnt(t){return PAGES.filter(function(p){return p.page_type===t;}).length;}
 h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals"><span class="nav-label">'+icon('flag',16)+'<span>Goals</span></span><span class="nav-count">'+goalCount+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'milestones\')" data-search="milestones"><span class="nav-label">'+icon('check-circle',16)+'<span>Milestones</span></span><span class="nav-count">'+msCount+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
