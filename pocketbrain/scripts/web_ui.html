@@ -202,7 +202,11 @@ function loadAll(){updateStatus('syncing');Promise.all([api('/pages'),api('/goal
 
 function getHashParams(){var hash=location.hash||'';if(!hash||hash==='#')return{};var p={},parts=hash.substring(1).split('&');parts.forEach(function(x){var kv=x.split('=');if(kv.length===2)p[kv[0]]=decodeURIComponent(kv[1]);});return p;}
 function setHashParams(p){var parts=[];for(var k in p){if(p[k])parts.push(k+'='+encodeURIComponent(p[k]));}history.replaceState(null,'','#'+parts.join('&'));}
-function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='project';_currentProject=hp.project;showCurrentView();}else if(hp.page){_currentTab='wiki';window._wikiSlug=hp.page;showCurrentView();}else if(hp.tab){_currentTab=hp.tab;_currentProject=null;showCurrentView();}}
+function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='project';_currentProject=hp.project;showCurrentView();}else if(hp.page){_currentTab='wiki';window._wikiSlug=hp.page;showCurrentView();}else if(hp.tab){_currentTab=hp.tab;_currentProject=null;showCurrentView();}
+  if(hp.gstatus){_goalStatusFilter=hp.gstatus;}
+  if(hp.rstatus){_reminderStatusTab=hp.rstatus;}
+  if(hp.ptab){setTimeout(function(){var d=window._projectData;if(d)switchProjectTab(hp.ptab,d.slug);},100);}
+  if(hp.wtab){setTimeout(function(){var d=window._pageData;if(d)switchPageTab(hp.wtab,hp.page);},100);}}
 
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
@@ -236,6 +240,7 @@ function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:ta
 function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();closeSidebar();}
 function switchProjectTab(tab,slug,el){
   var d=window._projectData;if(!d)return;
+  setHashParams({project:slug,ptab:tab});
     document.querySelectorAll('.project-tabs a').forEach(function(a){a.classList.remove('active');});
   if(el)el.classList.add('active');
   if(!el){
@@ -466,7 +471,7 @@ function renderGoalsView(typeFilter){
   var gt=typeFilter||'goal';
   var gl=gt.charAt(0).toUpperCase()+gt.slice(1)+(gt==='milestone'?'s':'s');
   var h='<div class="view-header"><h1>'+gl+'</h1><select onchange="_goalFilter=this.value;renderGoalsView(\''+gt+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_goalFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_goalFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_goalFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
-  h+='<div class="project-tabs" style="margin:12px 0"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
+  h+='<div class="project-tabs" style="margin:12px 0"><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'all\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'all\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='all'?'active':'')+'">Todos ('+cAll+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'active\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'active\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='active'?'active':'')+'">Activos ('+cActive+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'completed\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'completed\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='completed'?'active':'')+'">Terminados ('+cCompleted+')</a><a href="#" onclick="event.preventDefault();_goalStatusFilter=\'cancelled\';setHashParams({tab:gt===\'milestone\'?\'milestones\':\'goals\',gstatus:\'cancelled\'});renderGoalsView();return false;" class="'+(_goalStatusFilter==='cancelled'?'active':'')+'">Cancelados ('+cCancelled+')</a></div><p style="color:var(--mute);margin-bottom:20px">'+parents.length+' '+gt+'s</p>';
   parents.forEach(function(g){
     var kids=GOALS.filter(function(k){return k.parent===g.id;});
     h+='<div class="card"><h3>'+g.title+'</h3>';
@@ -525,12 +530,12 @@ function renderRemindersView(){
   var done=filtered.filter(function(r){return r.done;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var h='<div class="view-header"><h1>'+icon('bell',16)+' Reminders</h1><select onchange="setReminderFilter(this.value)" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value=""'+(_reminderFilter===''?' selected':'')+'>Todos</option><option value="project"'+(_reminderFilter==='project'?' selected':'')+'>Con proyecto</option><option value="noproject"'+(_reminderFilter==='noproject'?' selected':'')+'>Sin proyecto</option></select></div>';
   h+='<div class="project-tabs" style="margin:12px 0">'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'today\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='today'?'active':'')+'">Hoy ('+todayItems.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'week\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='week'?'active':'')+'">Esta semana ('+thisWeek.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'future\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='future'?'active':'')+'">Próximos ('+future.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'overdue\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='overdue'?'active':'')+'">Atrasados ('+overdue.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'done\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
-  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'all\';renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'today\';setHashParams({tab:\'reminders\',rstatus:\'today\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='today'?'active':'')+'">Hoy ('+todayItems.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'week\';setHashParams({tab:\'reminders\',rstatus:\'week\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='week'?'active':'')+'">Esta semana ('+thisWeek.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'future\';setHashParams({tab:\'reminders\',rstatus:\'future\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='future'?'active':'')+'">Próximos ('+future.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'overdue\';setHashParams({tab:\'reminders\',rstatus:\'overdue\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='overdue'?'active':'')+'">Atrasados ('+overdue.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'done\';setHashParams({tab:\'reminders\',rstatus:\'done\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='done'?'active':'')+'">Completados ('+done.length+')</a>'
+  +'<a href="#" onclick="event.preventDefault();_reminderStatusTab=\'all\';setHashParams({tab:\'reminders\',rstatus:\'all\'});renderRemindersView();return false;" class="'+(_reminderStatusTab==='all'?'active':'')+'">Todos ('+filtered.length+')</a>'
   +'</div>';
   var activeSet;
   if(_reminderStatusTab==='today')activeSet=todayItems;
@@ -678,6 +683,7 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
 
 function switchPageTab(tab,slug){
   var d=window._pageData;if(!d)return;
+  setHashParams({tab:'wiki',page:slug,wtab:tab});
   document.querySelectorAll('#view-wiki .project-tabs a').forEach(function(a){a.classList.remove('active');});
   var links=document.querySelectorAll('#view-wiki .project-tabs a');
   var idx={content:0,backlinks:1,related:2};
