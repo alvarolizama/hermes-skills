@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 2.13.0
+version: 2.14.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -14,6 +14,17 @@ metadata:
 
 Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
 Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
+
+## Novedades v2.14.0 (LLM Wiki gaps — metadata, índices, provenance, lint UI)
+
+- **Metadata sidebar mejorado**: wiki page detail ahora muestra `source_url` (link), `source_sha256` (monospace truncado), `contested` (⚠ rojo con borde), `contradictions` en el sidebar derecho.
+- **Confidence badges en índice**: `showIndex()` muestra badges de color por nivel de confianza (verde high, amarillo medium, rojo low) junto al título de cada página.
+- **Provenance markers**: `^[slug]` en markdown se renderiza como link de cita en superscript. Si el slug existe, link funcional; si no, `[?]` en rojo.
+- **Archived toggle**: checkbox "Mostrar archivadas" en el índice. Al marcarlo, fetch a `/api/pages?archived=1` y muestra páginas archivadas. Backend endpoint actualizado para aceptar query param `archived`.
+- **Lint view en web UI**: sidebar link ✅ + tabla de resultados con conteos (huérfanos, broken links, confianza baja, contested, oversized, tags inválidos, drift, frontmatter). Listas detalladas clickeables. Botón "Refrescar" que llama a `/api/lint`.
+- **Endpoint `/api/lint`**: ejecuta `brain.lint()` y devuelve JSON completo.
+- **Nuevos métodos brain.py**: `detect_drift()` (SHA256 diff en páginas raw), `validate_frontmatter()` (campos requeridos por page_type), `archive_old()` (auto-archive con dry_run), `rotate_log()` (archiva brain_log cuando excede threshold).
+- **Referencia**: `references/llm-wiki-comparison.md` documenta el mapeo completo vs Karpathy's LLM Wiki.
 
 ## Novedades v2.13.0 (live status + change toasts)
 
@@ -42,11 +53,13 @@ La versión de PocketBase actual devuelve `404 {"message":"File not found."}` al
 - El sidebar ahora muestra `Tipo`, `Confianza`, `Goals`, `Tareas`, `Backlinks` junto con los campos existentes (`Creado`, `Actualizado`, `Estado`, etc.).
 - Patrón: si el usuario dice "ponlo en el sidebar derecho", mover metadata del `.meta` central al `wiki-right`.
 
-## Workflow notes ( user's style )
+## Workflow notes (Álvaro's style)
 
 **"commit" = commit inmediato, sin discusión.** Cuando Álvaro dice "commit" (o "commit nada mas"), no expliques qué vas a hacer ni pases plan detallado. Copia runtime → repo, `git add`, `git commit -m "..."`, reporta el hash. Él espera acción, no conversación.
 
 **Terse, directo, sin branding.** Álvaro prefiere UI limpia sin texto de producto (quitó "PocketBrain" del sidebar). Las instrucciones son tajantes: "quita esto", "pon esto allá", "dale". Cumplir sin parafrasear.
+
+**Diff contra runtime antes de editar repo.** El runtime (`~/.hermes/skills/`) puede estar adelantado al repo (`~/Repos/personal/hermes-skills/`). Antes de tocar cualquier archivo en el repo, correr `diff -r` contra la versión instalada. Si hay diferencias, sync primero (runtime → repo), commit, y luego editar.
 
 ## Novedades v2.9.10 (tabs consistency above headers)
 
@@ -862,3 +875,4 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/browser-debugging.md` | Al debuggear UI sin screenshots: verificar DOM/estructura con `browser_console`, detectar U+2019 en archivos |
 | `references/realtime-fallback.md` | Al implementar notificaciones realtime: SSE vs heartbeat, toasts de cambio, status indicator |
 | `references/repo-maintenance.md` | Cómo mantener el repo sync: qué va y qué no va en el tap, screenshots, `.gitignore` |
+| `references/llm-wiki-comparison.md` | Mapeo completo de PocketBrain vs LLM Wiki de Karpathy — qué cubre y qué gaps persisten |
