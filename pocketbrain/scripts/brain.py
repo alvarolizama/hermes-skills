@@ -714,7 +714,12 @@ class Brain:
                     domain: Optional[str] = None, tags: Optional[list] = None,
                     summary: str = '', confidence: Optional[str] = None,
                     source_url: str = '', source_sha256: str = '',
-                    contested: bool = False, contradictions: str = '') -> dict:
+                    contested: bool = False, contradictions: str = '',
+                    related_slugs: Optional[list] = None,
+                    status: str = '', owner: str = '',
+                    deadline: str = '', date: str = '', time: str = '',
+                    done: bool = False, mood: str = '',
+                    content: str = '') -> dict:
         """Crea una página de conocimiento.
 
         Args:
@@ -783,6 +788,24 @@ class Brain:
             data['tags'] = [self.get_or_create_tag(t) for t in tags]
         if linked_page_ids:
             data['related_pages'] = linked_page_ids
+
+        # Nuevos campos opcionales
+        if status:
+            data['status'] = status
+        if owner:
+            data['owner'] = owner
+        if deadline:
+            data['deadline'] = deadline
+        if date:
+            data['date'] = date
+        if time:
+            data['time'] = time
+        if done:
+            data['done'] = True
+        if mood:
+            data['mood'] = mood
+        if content:
+            data['content'] = content
 
         page = self.pb.create('brain_pages', data)
         page_id = page.get('id')
@@ -1381,69 +1404,35 @@ class Brain:
         return self.journal(date.today())
 
     def journal(self, date_val) -> dict:
-        """Obtiene o crea una entrada del diario para una fecha.
-
-        Args:
-            date_val: Fecha (string 'YYYY-MM-DD', date, o datetime).
-
-        Returns:
-            El registro de brain_journal (creado si no existe).
-        """
-        if not self._context_id:
-            self.orient()
-
         date_str = self._journal_date_str(date_val)
         title = "Journal: " + date_str
-
-        # Buscar si ya existe
-        existing = self.pb.list('brain_journal',
-            filter="(brain='" + self._context_id + "' && date='" + date_str + " 00:00:00.000Z')",
-            perPage=1)
-        if existing:
-            return existing[0]
-
-        # Crear nueva entrada
-        entry = self.pb.create('brain_journal', {
-            'title': title,
-            'body': '',
-            'date': date_str + ' 00:00:00.000Z',
-            'brain': self._context_id,
-        })
-        self.log('create', description='Journal entry: ' + date_str)
-        return entry
+        existing = self.list_pages(page_type='journal')
+        for p in existing:
+            pd = (p.get('date', '') or '')[:10]
+            if pd == date_str or pd == date_str[:10]:
+                return p
+        return self.create_page(
+            title=title,
+            body='',
+            page_type='journal',
+            date=date_str,
+        )
 
     def journal_write(self, body: str, date_val=None,
                       mood: Optional[str] = None,
                       tags: Optional[list] = None,
                       append: bool = False) -> dict:
-        """Escribe en el diario.
-
-        Args:
-            body: Contenido markdown a escribir.
-            date_val: Fecha (default: hoy).
-            mood: 'great', 'meh', o 'bad' (opcional).
-            tags: Lista de nombres de tags (opcional).
-            append: Si True, agrega al body existente en vez de reemplazar.
-
-        Returns:
-            El registro actualizado.
-        """
         entry = self.journal(date_val)
-
         updates = {}
         if append and entry.get('body'):
             updates['body'] = entry['body'] + '\n\n' + body
         else:
             updates['body'] = body
-
         if mood:
             updates['mood'] = mood
         if tags:
-            updates['tags'] = [self.get_or_create_tag(t) for t in tags]
-
-        result = self.pb.update('brain_journal', entry['id'], updates)
-        self.log('update', description='Journal write: ' + self._journal_date_str(date_val))
-        return result
+            updates['related_slugs'] = tags
+        return self.update_page(entry['slug'], **updates)
 
     def journal_range(self, from_date, to_date) -> list:
         """Lee entradas del diario en un rango de fechas.
@@ -1790,34 +1779,27 @@ class Brain:
 
     def create_reminder(self, title: str, date: str, time: str = '',
                         content: str = '', page_slug: Optional[str] = None) -> dict:
-        """Crea un recordatorio."""
-        if not self._context_id: self.orient()
-        data = {'title': title, 'date': date + ' 00:00:00.000Z', 'time': time,
-                'content': content, 'brain': self._context_id, 'done': False}
-        if page_slug:
-            page = self._get_page(page_slug)
-            if page: data['page'] = page['id']
-        r = self.pb.create('brain_reminders', data)
-        self.log('create', description='Reminder: ' + title)
-        return r
+        """Crea un recordatorio como pagina con page_type='reminder'."""
+        related = [page_slug] if page_slug else None
+        return self.create_page(
+            title=title,
+            body=content or '',
+            page_type='reminder',
+            date=date,
+            time=time,
+            related_slugs=related,
+        )
 
     def reminders(self, done: Optional[bool] = None, date: str = '',
                   page_slug: str = '') -> list:
-        """Lista recordatorios. date='today' para hoy."""
-        if not self._context_id: self.orient()
-        f = ["(brain='" + self._context_id + "')"]
-        if done is not None: f.append("(done=" + str(done).lower() + ")")
-        if date:
-            from datetime import date as dt
-            ds = dt.today().strftime('%Y-%m-%d') if date == 'today' else date
-            f.append("(date='" + ds + " 00:00:00.000Z')")
-        return self.pb.list('brain_reminders', filter="&&".join(f), perPage=100, sort='date,time', expand='page')
+        """Lista recordatorios como paginas con page_type='reminder'."""
+        return self.list_pages(page_type='reminder', sort='date,time')
 
     def complete_reminder(self, reminder_id: str) -> dict:
         """Marca un recordatorio como done."""
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        return self.pb.update('brain_reminders', reminder_id, {'done': True, 'done_date': now})
+        return self.update_page(reminder_id, done=True, done_date=now)
 
     # ── File ingest ──────────────────────────────────────────────
 
