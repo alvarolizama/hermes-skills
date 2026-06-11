@@ -212,9 +212,12 @@ function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:ta
 function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();}
 function switchProjectTab(tab,slug,el){
   var d=window._projectData;if(!d)return;
-  if(el){
     document.querySelectorAll('.project-tabs a').forEach(function(a){a.classList.remove('active');});
-    el.classList.add('active');
+  if(el)el.classList.add('active');
+  if(!el){
+    var links=document.querySelectorAll('#view-todos .project-tabs a');
+    var map={content:0,goals:1,kanban:2,reminders:3,journal:4,files:5,deliverables:6,graph:7};
+    if(links.length&&map[tab]!==undefined)links[map[tab]].classList.add('active');
   }
   var ct=document.getElementById('project-tab-content');if(!ct)return;
   var h='';
@@ -537,7 +540,7 @@ function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slu
   var prems=REMINDERS.filter(function(r){return r.page_slug===slug;});
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var bl=p.backlinks||[];
-  var h='<div class="project-tabs"><a class="active" href=\#" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
+  var h='<div class="project-tabs"><a href=\#" onclick="switchPageTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a>';
   if(bl.length)h+='<a href=\#" onclick="switchPageTab(\'backlinks\',\''+slug+'\'); return false;">Backlinks ('+bl.length+')</a>';
   var relCount=pgoals.length+ptodos.length+prems.length+pjour.length;
   if(relCount)h+='<a href=\#" onclick="switchPageTab(\'related\',\''+slug+'\'); return false;">Relacionado ('+relCount+')</a>';
@@ -672,7 +675,7 @@ function renderProjectView(slug){
   var prems=REMINDERS.filter(function(r){return r.page_slug===slug;});
   var pjour=JOURNAL.filter(function(j){return j.page_slug===slug;});
   var pfiles=FILES.filter(function(f){return f.page_slug===slug;});
-  var h='<div class="project-tabs"><a class="active" href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a><a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals ('+pgoals.length+')</a><a href="\#" onclick="switchProjectTab(\'kanban\',\''+slug+'\'); return false;">Kanban ('+ptodos.length+')</a><a href="\#" onclick="switchProjectTab(\'reminders\',\''+slug+'\'); return false;">Recordatorios ('+prems.length+')</a><a href="\#" onclick="switchProjectTab(\'journal\',\''+slug+'\'); return false;">Journal ('+pjour.length+')</a><a href="\#" onclick="switchProjectTab(\'files\',\''+slug+'\'); return false;">Archivos ('+pfiles.length+')</a><a href="\#" onclick="switchProjectTab(\'deliverables\',\''+slug+'\'); return false;">Entregables ('+pdeps.length+')</a><a href="\#" onclick="switchProjectTab(\'graph\',\''+slug+'\'); return false;">Graph ('+(1+pgoals.length+ptodos.length+prems.length)+')</a></div>';
+  var h='<div class="project-tabs"><a href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido ('+(p.body?1:0)+')</a><a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals ('+pgoals.length+')</a><a href="\#" onclick="switchProjectTab(\'kanban\',\''+slug+'\'); return false;">Kanban ('+ptodos.length+')</a><a href="\#" onclick="switchProjectTab(\'reminders\',\''+slug+'\'); return false;">Recordatorios ('+prems.length+')</a><a href="\#" onclick="switchProjectTab(\'journal\',\''+slug+'\'); return false;">Journal ('+pjour.length+')</a><a href="\#" onclick="switchProjectTab(\'files\',\''+slug+'\'); return false;">Archivos ('+pfiles.length+')</a><a href="\#" onclick="switchProjectTab(\'deliverables\',\''+slug+'\'); return false;">Entregables ('+pdeps.length+')</a><a href="\#" onclick="switchProjectTab(\'graph\',\''+slug+'\'); return false;">Graph ('+(1+pgoals.length+ptodos.length+prems.length)+')</a></div>';
   h+='<div style="font-size:12px;color:var(--mute);margin-bottom:12px;display:flex;align-items:center;gap:8px"><a href="\#" onclick="showTab(\'projects\')" style="color:var(--ink);display:flex;align-items:center;gap:4px">'+icon('arrow-left',16)+' Proyectos</a></div><h1 style="margin-bottom:20px">'+p.title+'</h1>';
   h+='<div id="project-tab-content"></div>';
   vp.innerHTML=h;vp.scrollTop=0;
