@@ -428,8 +428,8 @@ function renderTypeView(type){
 function renderGoalsView(typeFilter){
   var filtered=GOALS;
   if(typeFilter)filtered=GOALS.filter(function(g){return g.type===typeFilter;});
-  if(_goalFilter==='noproject')filtered=GOALS.filter(function(g){return !g.page_slug;});
-  else if(_goalFilter)filtered=GOALS.filter(function(g){return g.page_slug===_goalFilter;});
+  if(_goalFilter==='noproject')filtered=filtered.filter(function(g){return !g.page_slug;});
+  else if(_goalFilter)filtered=filtered.filter(function(g){return g.page_slug===_goalFilter;});
   var cAll=filtered.filter(function(g){return !g.parent;}).length;
   var cActive=filtered.filter(function(g){return !g.parent&&(g.status==='active'||g.status==='planned');}).length;
   var cCompleted=filtered.filter(function(g){return !g.parent&&g.status==='completed';}).length;
