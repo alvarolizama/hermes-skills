@@ -326,6 +326,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/config":
             brain = get_brain()
             self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "token": brain.pb.get_token(), "context": CTX})
+        elif path == "/vis-network.min.js":
+            self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+            js_path = Path(__file__).parent / "vis-network.min.js"
+            self.wfile.write(js_path.read_bytes())
         else: self.send_response(404); self.end_headers()
     def serve_json(self, data):
         self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()

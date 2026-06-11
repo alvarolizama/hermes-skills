@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>PocketBrain</title>
-<script src="https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js"></script>
+<script src="/vis-network.min.js"></script>
 <style>
 :root{--ink:#000;--canvas:#fff;--soft:#fafafa;--hairline:#e5e5e5;--body:#737373;--mute:#a3a3a3;--red:#e74c3c;--green:#4CAF50;--orange:#FF9800;--pink:#E91E63;--purple:#9C27B0;--cyan:#00BCD4;--yellow:#FFC107}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -204,7 +204,6 @@ function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='pr
 
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
-function buildSidebar(){var nav=document.getElementById('nav');var h='';
 function buildSidebar(){var nav=document.getElementById('nav');var h='';
 var pc=PAGES.filter(function(p){return p.page_type==='project';}).length;
 var goalCount=PAGES.filter(function(p){return p.page_type==='goal';}).length;
