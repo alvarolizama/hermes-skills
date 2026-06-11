@@ -1673,108 +1673,36 @@ class Brain:
                     deadline: str = '',
                     parent_id: Optional[str] = None,
                     status: str = 'planned') -> dict:
-        """Crea un goal, milestone u OKR.
-
-        Args:
-            title: Nombre.
-            type: 'goal', 'milestone', 'okr'.
-            project_slug: Slug del proyecto asociado.
-            description: Detalle.
-            deadline: Fecha limite (YYYY-MM-DD) - obligatorio para milestones.
-            parent_id: ID del OKR padre (para key results).
-            status: 'planned', 'active', 'done', 'cancelled'.
-        """
-        if not self._context_id:
-            self.orient()
-
-        data = {
-            'title': title,
-            'type': type,
-            'description': description,
-            'status': status,
-            'brain': self._context_id,
-        }
-
-        if deadline:
-            data['deadline'] = deadline + ' 00:00:00.000Z'
-        if project_slug:
-            project = self._get_page(project_slug)
-            if project:
-                data['page'] = project['id']
-        if parent_id:
-            data['parent'] = parent_id
-
-        goal = self.pb.create('brain_goals', data)
-        self.log('create', description='Goal: ' + title)
-        return goal
+        """Crea un goal, milestone u OKR como pagina."""
+        related = [project_slug] if project_slug else None
+        return self.create_page(
+            title=title,
+            body=description or '',
+            page_type=type,
+            status=status,
+            deadline=deadline or '',
+            related_slugs=related,
+        )
 
     def list_goals(self, project_slug: Optional[str] = None,
                    type: Optional[str] = None,
                    status: Optional[str] = None) -> list:
-        """Lista goals con filtros opcionales."""
-        if not self._context_id:
-            self.orient()
-
-        filters = ["(brain='" + self._context_id + "')"]
-        if type:
-            filters.append("(type='" + type + "')")
-        if status:
-            filters.append("(status='" + status + "')")
-
-        goals = self.pb.list('brain_goals',
-            filter="&&".join(filters), perPage=200, expand='parent')
-
-        if project_slug:
-            page = self._get_page(project_slug)
-            if page:
-                goals = [g for g in goals if g.get('page') == page['id']]
-
-        return goals
+        """Lista goals como paginas con page_type."""
+        return self.list_pages(page_type=type, status=status)
 
     def complete_goal(self, goal_id: str, retrospective: str = '') -> dict:
-        if retrospective:
-            self.pb.update('brain_goals', goal_id, {'status': 'done', 'retrospective': retrospective})
-        else:
-            self.pb.update('brain_goals', goal_id, {'status': 'done'})
-        self.log('update', description='Goal completed: ' + goal_id)
-        return self.pb.get('brain_goals', goal_id)
+        return self.update_page(goal_id, status='done')
 
     def cancel_goal(self, goal_id: str, retrospective: str = '') -> dict:
-        if retrospective:
-            self.pb.update('brain_goals', goal_id, {'status': 'cancelled', 'retrospective': retrospective})
-        else:
-            self.pb.update('brain_goals', goal_id, {'status': 'cancelled'})
-        self.log('update', description='Goal cancelled: ' + goal_id)
-        return self.pb.get('brain_goals', goal_id)
+        return self.update_page(goal_id, status='cancelled')
 
     def update_goal(self, goal_id: str, **updates) -> dict:
-        """Actualiza un goal (status, deadline, etc.)."""
-        if 'deadline' in updates and updates['deadline']:
-            if '00:00:00' not in str(updates['deadline']):
-                updates['deadline'] = str(updates['deadline']) + ' 00:00:00.000Z'
-        return self.pb.update('brain_goals', goal_id, updates)
+        return self.update_page(goal_id, **updates)
 
     def get_goal_tree(self, project_slug: Optional[str] = None) -> list:
-        """Devuelve goals anidados (OKRs con sus key results)."""
-        goals = self.list_goals(project_slug=project_slug)
-        goal_map = {g['id']: g for g in goals}
+        """Devuelve goals como lista plana."""
+        return self.list_goals(project_slug=project_slug)
 
-        # Build tree
-        roots = []
-        for g in goals:
-            g['children'] = []
-            parent_id = g.get('parent')
-            if parent_id and parent_id in goal_map:
-                goal_map[parent_id].setdefault('children', []).append(g)
-            elif not parent_id:
-                roots.append(g)
-
-        # Sort: milestones by deadline
-        for g in goals:
-            if g.get('children'):
-                g['children'].sort(key=lambda x: x.get('title', ''))
-
-        return roots
 
 
     def create_reminder(self, title: str, date: str, time: str = '',
