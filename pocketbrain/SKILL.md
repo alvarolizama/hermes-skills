@@ -57,6 +57,8 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `reminder` | Recordatorios con fecha/hora | "Reunión 10am", "Pagar factura" |
 | `journal` | Diario, entrada por día | "Journal: 2026-06-10" |
 
+> **Auto-suggest:** si no pasas `page_type`, se infiere solo via `suggest_page_type()`. Por ejemplo, `create_page(title="Nota reunión diseño")` → `page_type='note'` porque el título contiene "nota". Si quieres forzar un tipo, pásalo explícitamente: `create_page(title="Mi idea", page_type='idea')`.
+
 Todos los tipos viven en la misma colección `brain_pages`. Las funciones específicas (`create_todo()`, `create_goal()`, `create_reminder()`, `journal_write()`) internamente llaman a `create_page()` con el `page_type` adecuado.
 
 ### Raw sources: tipos de fuentes
