@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Wiki/cerebro de conocimiento multi-contexto sobre PocketBase — 12 colecciones, búsqueda rankeada, versionado, todos, goals, journal, reminders, deliverables, graph y servidor web live."
-version: 2.14.0
+version: 2.15.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -14,6 +14,16 @@ metadata:
 
 Knowledge base multi-cerebro sobre PocketBase. Los agentes escriben, tú consultas.
 Un servidor web live, 12 colecciones, todo conectado con trazabilidad completa.
+
+## Novedades v2.15.0 (auto-linking, page_type suggestion, auto-backlinks)
+
+- **Auto-link via `[[wikilinks]]`**: `create_page()` escanea el body, resuelve slugs de páginas existentes, y las guarda automáticamente en `related_pages`. Soporta alias `[[target|alias]]`.
+- **Auto-suggest `page_type`**: si no se especifica `page_type`, se infiere automáticamente según el contenido (proyecto, raw, comparación, query, entidad, concepto). Ver `suggest_page_type()`.
+- **Auto-backlinks**: al crear una página que linkea a otras, la página linkeada recibe automáticamente un backlink en su `related_pages`.
+- **`build_backlinks()`**: reconstruye todos los backlinks escaneando `[[wikilinks]]` de todas las páginas.
+- **`related_slugs` en `update_page()`**: ahora resuelve slugs a IDs y actualiza `related_pages`.
+- **Nuevo campo `related_pages` en schema**: relación N:M a `brain_pages` (self-ref, se agrega vía PATCH post-creación).
+- **Referencia**: `references/auto-linking.md` documenta el flujo completo de auto-link, page_type y backlinks.
 
 ## Novedades v2.14.0 (LLM Wiki gaps — metadata, índices, provenance, lint UI)
 
@@ -877,3 +887,4 @@ skill_view('pocketbrain', file_path='references/env-architecture.md')
 | `references/repo-maintenance.md` | Cómo mantener el repo sync: qué va y qué no va en el tap, screenshots, `.gitignore` |
 | `references/llm-wiki-comparison.md` | Mapeo completo de PocketBrain vs LLM Wiki de Karpathy — qué cubre y qué gaps persisten |
 | `references/llm-wiki-workflow.md` | Guía práctica de PocketBrain bajo paradigma LLM Wiki — ingest, calidad, mantenimiento, consulta |
+| `references/auto-linking.md` | Cómo funciona el auto-link de `[[wikilinks]]`, sugerencia de page_type, y auto-backlinks al crear páginas |

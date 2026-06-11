@@ -43,6 +43,7 @@
 | `contradictions` | text | |
 | `archived` | bool | |
 | `attachment` | file | PDF, imagen |
+| `related_pages` | relation → brain_pages (N:M) | Auto-link desde [[wikilinks]] |
 | `brain` | relation → brains | |
 | `domain` | relation → brain_domains | |
 | `goal` | relation → brain_goals | |

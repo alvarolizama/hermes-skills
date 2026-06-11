@@ -112,6 +112,8 @@ BRAIN_SCHEMA = {
              "cascadeDelete": False, "maxSelect": None},
             {"name": "archived", "type": "bool"},
             {"name": "attachment", "type": "file", "maxSelect": 1, "maxSize": 0},
+            {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
+             "cascadeDelete": False, "maxSelect": None},
         ],
     },
     "brain_page_versions": {
@@ -267,6 +269,10 @@ CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "bra
 
 # Colecciones con campos self-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
+    "brain_pages": [
+        {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
+         "cascadeDelete": False, "maxSelect": None},
+    ],
     "brain_goals": [
         {"name": "parent", "type": "relation", "collectionId": "brain_goals",
          "cascadeDelete": False, "maxSelect": 1},
@@ -469,6 +475,63 @@ def setup_contexts(pb: PB) -> dict:
 #  BRAIN CLASS
 # ═════════════════════════════════════════════════════════════════════
 
+
+def suggest_page_type(title: str, body: str = '') -> str:
+    """Sugiere un page_type basado en el contenido.
+
+    Heurísticas:
+    - 'project' si el título contiene palabras como proyecto, mvp, roadmap
+    - 'raw' si el body empieza con URL o parece fuente externa
+    - 'comparison' si el body contiene tablas o 'vs' en el título
+    - 'query' si el título termina con ? o empieza con query:
+    - 'entity' si el título parece un nombre propio (mayúscula inicial, sin verbo)
+    - 'concept' para todo lo demás (default)
+
+    Args:
+        title: Título de la página.
+        body: Contenido markdown (opcional).
+
+    Returns:
+        Uno de: 'project', 'raw', 'comparison', 'query', 'entity', 'concept'
+    """
+    t = title.lower().strip()
+    b = (body or '').lower()
+
+    # Project
+    project_keywords = ['proyecto', 'project', 'mvp', 'roadmap', 'sprint', 'release', 'lanzamiento']
+    if any(kw in t for kw in project_keywords):
+        return 'project'
+
+    # Raw
+    if b.startswith('http://') or b.startswith('https://') or b.startswith('#'):
+        return 'raw'
+    if t.startswith('ingest') or t.startswith('raw:'):
+        return 'raw'
+
+    # Comparison
+    if ' vs ' in t or ' vs. ' in t or ' versus ' in t:
+        return 'comparison'
+    # Tables in body often indicate comparisons
+    if '|' in b and ('---' in b or b.count('|') > 6):
+        return 'comparison'
+
+    # Query
+    if t.endswith('?') or t.startswith('query:') or t.startswith('que ') or t.startswith('what '):
+        return 'query'
+
+    # Entity: proper noun pattern (single word, capitalized, not a common term)
+    # Heuristic: short title, no spaces, looks like a model/product name
+    if len(title.split()) <= 3 and not any(kw in t for kw in ['que es', 'what is', 'como', 'how to', 'guia', 'guide']):
+        # Could be entity or concept — prefer entity for named things
+        # Check if it's a well-known name-like pattern
+        common_verbs = ['implementar', 'build', 'create', 'usar', 'use', 'como']
+        if not any(v in t for v in common_verbs):
+            return 'entity'
+
+    # Default: concept
+    return 'concept'
+
+
 class Brain:
     """Cliente para un cerebro de conocimiento específico.
 
@@ -646,11 +709,34 @@ class Brain:
 
         slug = slugify(title)
 
+        # Auto-suggest page_type si no se especificó explícitamente
+        # Si page_type se pasa como None o '', usar sugerencia
+        effective_page_type = page_type
+        if not effective_page_type or effective_page_type == '':
+            effective_page_type = suggest_page_type(title, body)
+
+        # Extraer [[wikilinks]] del body para auto-link
+        links = extract_wikilinks(body)
+        linked_page_ids = []
+        for link_slug in links:
+            # Soporte para alias [[target|alias]]
+            link_slug = link_slug.split('|')[0].strip()
+            linked = self._get_page(link_slug)
+            if linked:
+                linked_page_ids.append(linked['id'])
+
+        # Si se pasaron related_slugs, resolverlos también
+        if related_slugs:
+            for rs in related_slugs:
+                rp = self._get_page(rs)
+                if rp and rp['id'] not in linked_page_ids:
+                    linked_page_ids.append(rp['id'])
+
         data = {
             'title': title,
             'slug': slug,
             'brain': self._context_id,
-            'page_type': page_type,
+            'page_type': effective_page_type,
             'body': body,
             'summary': summary or body[:200].split('\n')[0] if body else '',
             'contested': contested,
@@ -668,11 +754,82 @@ class Brain:
             data['source_sha256'] = source_sha256
         if tags:
             data['tags'] = [self.get_or_create_tag(t) for t in tags]
+        if linked_page_ids:
+            data['related_pages'] = linked_page_ids
 
         page = self.pb.create('brain_pages', data)
-        self.log('create', page_id=page.get('id'), description=f'Created: {title}')
+        page_id = page.get('id')
+
+        # Auto-backlinks: agregar esta página al related_pages de cada página linkeada
+        if linked_page_ids and page_id:
+            for linked_id in linked_page_ids:
+                try:
+                    linked_page = self.pb.get('brain_pages', linked_id, expand='related_pages')
+                    current_related = linked_page.get('expand', {}).get('related_pages', [])
+                    current_ids = [r['id'] for r in current_related] if current_related and isinstance(current_related[0], dict) else linked_page.get('related_pages', [])
+                    if page_id not in current_ids:
+                        current_ids.append(page_id)
+                        self.pb.update('brain_pages', linked_id, {'related_pages': current_ids})
+                except Exception:
+                    pass  # Si falla el backlink, no bloquear la creación
+
+        self.log('create', page_id=page_id, description=f'Created: {title} (type={effective_page_type}, links={len(linked_page_ids)})')
         self.save_version(slug, 'Initial version')
         return page
+
+    def build_backlinks(self, slug: Optional[str] = None) -> dict:
+        """Reconstruye los related_pages de una o todas las páginas
+        basándose en los [[wikilinks]] del body.
+
+        Escanea el body de cada página en busca de [[wikilinks]],
+        y actualiza el campo related_pages de cada página linkeada
+        para que incluya a la página que la referencia.
+
+        Args:
+            slug: Slug específico (opcional). Si no se provee, procesa todas.
+
+        Returns:
+            Dict con stats de backlinks creados.
+        """
+        if not self._context_id:
+            self.orient()
+
+        if slug:
+            pages = [self._get_page(slug)] if self._get_page(slug) else []
+        else:
+            pages = self.pb.all('brain_pages',
+                filter=f"(brain='{self._context_id}' && archived=false)")
+
+        stats = {'scanned': 0, 'backlinks_added': 0}
+        slug_map = {p['slug']: p for p in pages}
+
+        for page in pages:
+            body = page.get('body', '') or ''
+            links = extract_wikilinks(body)
+            stats['scanned'] += 1
+
+            for link_slug in links:
+                link_slug = link_slug.split('|')[0].strip()
+                target = slug_map.get(link_slug)
+                if not target:
+                    continue
+
+                # Agregar esta página como related_page de la página linkeada
+                try:
+                    current = target.get('related_pages', []) or []
+                    if isinstance(current, list) and len(current) > 0 and isinstance(current[0], dict):
+                        current = [r['id'] for r in current]
+                    if page['id'] not in current:
+                        current.append(page['id'])
+                        self.pb.update('brain_pages', target['id'], {'related_pages': current})
+                        stats['backlinks_added'] += 1
+                        # Actualizar slug_map para evitar re-procesar
+                        slug_map[link_slug] = self._get_page(link_slug) or target
+                except Exception:
+                    pass
+
+        self.log('update', description=f'Build backlinks: {stats}')
+        return stats
 
     def update_page(self, slug_or_id: str, **updates) -> dict:
         """Actualiza una página existente.
@@ -692,6 +849,12 @@ class Brain:
             updates['domain'] = self.get_or_create_domain(updates.pop('domain'))
         if 'tags' in updates and updates['tags']:
             updates['tags'] = [self.get_or_create_tag(t) for t in updates['tags']]
+        if 'related_slugs' in updates:
+            slugs = updates.pop('related_slugs')
+            if slugs:
+                ids = self._slugs_to_ids(slugs if isinstance(slugs, list) else [slugs])
+                if ids:
+                    updates['related_pages'] = ids
 
         result = self.pb.update('brain_pages', page['id'], updates)
         change_desc = ', '.join(updates.keys())
