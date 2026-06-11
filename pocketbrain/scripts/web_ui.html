@@ -175,7 +175,9 @@ var _ICONS={
   'clock':'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   'x-circle':'m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   'circle':'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
-  'shield-check':'M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z'
+  'shield-check':'M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z',
+  'users':'M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z',
+  'light-bulb':'M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18'
 };
 function icon(name, size){size=size||20;return '<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="'+(_ICONS[name]||'')+'"/></svg>';}
 
@@ -203,24 +205,27 @@ function restoreFromHash(){var hp=getHashParams();if(hp.project){_currentTab='pr
 function filterSidebar(){var q=document.getElementById('search').value.toLowerCase();document.querySelectorAll('#nav a[data-search]').forEach(function(a){a.style.display=(q&&!a.getAttribute('data-search').includes(q))?'none':'block';});}
 
 function buildSidebar(){var nav=document.getElementById('nav');var h='';
+function buildSidebar(){var nav=document.getElementById('nav');var h='';
 var pc=PAGES.filter(function(p){return p.page_type==='project';}).length;
 var goalCount=PAGES.filter(function(p){return p.page_type==='goal';}).length;
 var msCount=PAGES.filter(function(p){return p.page_type==='milestone';}).length;
 var tc=TODOS.length,rc=REMINDERS.length,jc=JOURNAL.length,nc=(GRAPH.nodes||[]).length;
+function cnt(t){return PAGES.filter(function(p){return p.page_type===t;}).length;}
 h+='<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects"><span class="nav-label">'+icon('squares-2x2',16)+'<span>Proyectos</span></span><span class="nav-count">'+pc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo"><span class="nav-label">'+icon('clipboard-document-list',16)+'<span>Todo</span></span><span class="nav-count">'+tc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'goals\')" data-search="goals"><span class="nav-label">'+icon('flag',16)+'<span>Goals</span></span><span class="nav-count">'+goalCount+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'milestones\')" data-search="milestones"><span class="nav-label">'+icon('flag',16)+'<span>Milestones</span></span><span class="nav-count">'+msCount+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'milestones\')" data-search="milestones"><span class="nav-label">'+icon('check-circle',16)+'<span>Milestones</span></span><span class="nav-count">'+msCount+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="reminders"><span class="nav-label">'+icon('bell',16)+'<span>Reminders</span></span><span class="nav-count">'+rc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal"><span class="nav-label">'+icon('book-open',16)+'<span>Journal</span></span><span class="nav-count">'+jc+'</span></a>';
-var types=['entity','concept','comparison','query','raw','plan','note','idea'];
-var tLabels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas'};
-var tIcons={'entity':'squares-2x2','concept':'document-text','comparison':'chart-pie','query':'magnifying-glass','raw':'document-arrow-down','plan':'calendar-days','note':'book-open','idea':'sparkles'};
-types.forEach(function(t){
-  var cnt=PAGES.filter(function(p){return p.page_type===t;}).length;
-  h+='<a href="#" class="nav-link" onclick="showTab(\'type_'+t+'\')" data-search="'+t+'"><span class="nav-label">'+icon(tIcons[t]||'circle',16)+'<span>'+tLabels[t]+'</span></span><span class="nav-count">'+cnt+'</span></a>';
-});
-h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">◉ Graph</span><span class="nav-count">'+nc+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_entity\')" data-search="entity"><span class="nav-label">'+icon('users',16)+'<span>Entidades</span></span><span class="nav-count">'+cnt('entity')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_concept\')" data-search="concept"><span class="nav-label">'+icon('document-text',16)+'<span>Conceptos</span></span><span class="nav-count">'+cnt('concept')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_plan\')" data-search="plan"><span class="nav-label">'+icon('calendar-days',16)+'<span>Planes</span></span><span class="nav-count">'+cnt('plan')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_note\')" data-search="note"><span class="nav-label">'+icon('clock',16)+'<span>Notas</span></span><span class="nav-count">'+cnt('note')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 
 var _currentTab='projects',_currentProject=null;
