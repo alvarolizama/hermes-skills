@@ -224,8 +224,9 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'graph\')" data-search="graph
 h+='<a href="#" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 
 var _currentTab='projects',_currentProject=null;
-function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:tab});showCurrentView();}
-function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');}
+function showTab(tab){_currentTab=tab;_currentProject=null;setHashParams({tab:tab});showCurrentView();closeSidebar();}
+function showProject(slug){_currentTab='project';_currentProject=slug;setHashParams({project:slug});showCurrentView();closeSidebar();}
 function switchProjectTab(tab,slug,el){
   var d=window._projectData;if(!d)return;
     document.querySelectorAll('.project-tabs a').forEach(function(a){a.classList.remove('active');});
@@ -572,6 +573,7 @@ function showIndex(){
 }
 
 function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slug});var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
+  closeSidebar();
   document.getElementById('view-wiki').classList.add('active');
   var pgoals=GOALS.filter(function(g){return g.page===slug;});
   var ptodos=TODOS.filter(function(t){return t.page_slug===slug;});
