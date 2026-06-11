@@ -8,12 +8,12 @@ El proyecto tiene tabs principales: `Contenido` (por defecto) → `Goals` → `K
 
 - El **tab por defecto es Contenido**, renderizando el `body` markdown del proyecto (`mdToHtml(p.body)`).
 - **No se inserta un resumen o meta pills arriba del tab nav**, solo el título + breadcrumb (icono flecha + "Proyectos"), luego los tabs, luego el contenido.
-- Cada tab `<a>` tiene `href="\#"` y `onclick="...; return false;"` — sin `href` o `return false` se recarga la SPA (blank page).
+- Cada tab `<a>` tiene `href="\\#\"` y `onclick="...; return false;"` — sin `href` o `return false` se recarga la SPA (blank page).
 
 ```js
 h += '<div class="project-tabs">' +
-     '<a class="active" href="\#" onclick="switchProjectTab(\'content\',\''+slug+'\'); return false;">Contenido</a>' +
-     '<a href="\#" onclick="switchProjectTab(\'goals\',\''+slug+'\'); return false;">Goals</a>' +
+     '<a class="active" href="\\#" onclick="switchProjectTab(\\'content\\',\\''+slug+'\\'); return false;">Contenido</a>' +
+     '<a href="\\#" onclick="switchProjectTab(\\'goals\\',\\''+slug+'\\'); return false;">Goals</a>' +
      ... +
      '</div>';
 ```
@@ -25,8 +25,8 @@ Tanto la vista general de Goals (sidebar → Goals) como el tab Goals dentro de 
 ```js
 // En renderGoalsView (general)
 var h = '<div class="project-tabs" style="margin-bottom:12px">' +
-        '<a href="#" onclick="event.preventDefault(); _goalStatusFilter=\'all\'; renderGoalsView(); return false;" ' + 
-          (_goalStatusFilter === 'all' ? 'class="active"' : '') + '>Todos</a>' + ...;
+        '<a href="#" onclick="event.preventDefault(); _goalStatusFilter=\\'all\\'; renderGoalsView(); return false;" ' + 
+          (_goalStatusFilter === 'all' ? 'class=\"active\"' : '') + '>Todos</a>' + ...;
 
 // En tab goals de proyecto (dentro switchProjectTab)
 if (tab === 'goals') {
@@ -126,6 +126,64 @@ if (kf === 'by-goal') {
 
 **Regla:** cuando se agrega un nuevo filtro de tab de proyecto, seguir este patrón exacto. No inventar nombres nuevos para variables o funciones; usar `_proj` + `NombreTab` + `Filter/Status` y `setProj` + `NombreTab` + `Filter/Status`.
 
+## Tab active state: nunca hardcodear `class="active"`
+
+**Regla de oro:** ninguna tab `<a>` debe nacer con `class="active"` hardcodeada en el HTML generado por JS. El estado activo debe manejarse **dinámicamente** mediante la función switch de cada vista.
+
+### ❌ Incorrecto (causa el bug de tab fantasma)
+
+```javascript
+// En renderProjectView() o showPage():
+var h = '<div class="project-tabs">' +
+     '<a class="active" href="#" onclick="switchProjectTab(\\'content\\',\\''+slug+'\\')">Contenido</a>' +
+     '<a href="#" onclick="switchProjectTab(\\'goals\\',\\''+slug+'\\')">Goals</a>' +
+     '</div>';
+```
+
+**Síntoma del bug:** al cambiar de proyecto, el primer tab del proyecto anterior sigue apareciendo como "activo" visualmente, aunque el contenido sea del nuevo proyecto o de otro tab. Esto pasa porque el HTML viejo se reemplaza pero el `class="active"` hardcodeado en el nuevo HTML no refleja el estado real.
+
+### ✅ Correcto — estado dinámico vía switch
+
+```javascript
+// En renderProjectView():
+var h = '<div class="project-tabs">' +
+     '<a href="#" onclick="switchProjectTab(\\'content\\',\\''+slug+'\\')">Contenido</a>' +
+     '<a href="#" onclick="switchProjectTab(\\'goals\\',\\''+slug+'\\')">Goals</a>' +
+     '</div>';
+
+// Llamar switch para mostrar contenido y marcar el tab correcto:
+switchProjectTab('content', slug);
+```
+
+```javascript
+// En switchProjectTab(): SIEMPRE resetear active y marcar el correcto
+function switchProjectTab(tab, slug, el) {
+  // Siempre quitar active de todos los tabs
+  document.querySelectorAll('.project-tabs a').forEach(function(a) {
+    a.classList.remove('active');
+  });
+  // Marcar el clickeado si hay el, o buscar por indice si no
+  if (el) {
+    el.classList.add('active');
+  } else {
+    var links = document.querySelectorAll('#view-todos .project-tabs a');
+    var map = {content:0, goals:1, kanban:2, reminders:3, journal:4, files:5, deliverables:6, graph:7};
+    if (links.length && map[tab] !== undefined) links[map[tab]].classList.add('active');
+  }
+  // ... renderizar contenido del tab
+}
+```
+
+**Patrón:** la función switch SIEMPRE limpia todos los `active` y luego marca el correspondiente, sin depender de si fue llamada por click (`el`) o programáticamente. Así al abrir un nuevo proyecto, se renderiza sin tabs fantasma.
+
+**Verificación después del fix:**
+1. Abrir proyecto A → se ve "Contenido" activo ✅
+2. Click en "Goals" → Goals activo ✅
+3. Volver a proyectos y abrir proyecto B → "Contenido" activo (no Goals) ✅
+4. Click en "Kanban" en proyecto B → Kanban activo, volver a proyecto A → "Goals" (el estado anterior se perdio, correcto) ✅
+
+Lo mismo aplica a `showPage()` y `switchPageTab()`.
+
 ## Kanban: full-width + full-height dentro del proyecto
 
 Dentro del tab `Kanban` del proyecto, el board debe ocupar todo el espacio disponible (100% ancho, 100% alto de su contenedor):
@@ -155,17 +213,17 @@ Función inline en el HTML. Mejoras aplicadas:
 ```js
 function mdToHtml(text) {
   if (!text) return '';
-  var lines = text.split('\n'), out = [], ic = false, ul = false, ol = false;
-  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
+  var lines = text.split('\\n'), out = [], ic = false, ul = false, ol = false;
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\\"/g,'&quot;'); }
   function rl(tx) {
-    tx = tx.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    tx = tx.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    tx = tx.replace(/\*(?!\*)(.+?)\*/g, '<em>$1</em>');
+    tx = tx.replace(/\\*\\*\\*(.+?)\\*\\*\\*/g, '<strong><em>$1</em></strong>');
+    tx = tx.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+    tx = tx.replace(/\\*(?!\\*)(.+?)\\*/g, '<em>$1</em>');
     return tx;
   }
   function closeList() { ... }
   // ... parseo por línea
-  return out.join('\n');
+  return out.join('\\n');
 }
 ```
 
@@ -235,11 +293,14 @@ El sidebar debe listar **Proyectos** como primer ítem, ya que es el entry point
 6. Files (icon paper-clip)
 7. Deliverables (icon cube)
 8. Wiki (icon document-text)
-9. Graph (icon chart-pie)
+9. Graph (◉ Graph)
+10. **Lint (icon shield-check)** — al final, abajo de todo
 
 ```js
 h += icon('squares-2x2',16) + ' Proyectos';
 h += ...; // Todo, Goals, etc.
+h += '◉ Graph';
+h += icon('shield-check',16) + ' Lint';  // último
 ```
 
 ## Mobile: cerrar sidebar automáticamente
@@ -283,13 +344,13 @@ var fc = FILES.length, dc = DEPS.length, jc = JOURNAL.length;
 var nc = (GRAPH.nodes || []).length;
 
 // Then render each link with spans:
-h += '<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">' +
+h += '<a href="#" class="nav-link" onclick="showTab(\\'projects\\')" data-search="projects">' +
      icon('squares-2x2', 16) + '<span>Proyectos</span>' +
      '<span class="nav-count">' + pc + '</span></a>';
-h += '<a href="#" class="nav-link" onclick="showTab(\'todos\')" data-search="todo">' +
+h += '<a href="#" class="nav-link" onclick="showTab(\\'todos\\')" data-search="todo">' +
      icon('clipboard-document-list', 16) + '<span>Todo</span>' +
      '<span class="nav-count">' + tc + '</span></a>';
-// ... repeat for goals, reminders, journal, files, deliverables, wiki, graph
+// ... repeat for goals, reminders, journal, files, deliverables, wiki, graph, lint
 ```
 
 **Pitfall: invisible count badge** — using `background: var(--soft)` (almost white) on a white sidebar makes the badge invisible. Always use `var(--hairline)` for the badge background so it has visible contrast.
@@ -312,7 +373,7 @@ Con flex `space-between`, si el link tiene 3 items (icon, text, badge), el texto
 ```
 
 ```js
-h += '<a href="#" class="nav-link" onclick="showTab(\'projects\')" data-search="projects">' +
+h += '<a href="#" class="nav-link" onclick="showTab(\\'projects\\')" data-search="projects">' +
      '<span class="nav-label">' + icon('squares-2x2', 16) + '<span>Proyectos</span></span>' +
      '<span class="nav-count">' + pc + '</span></a>';
 ```
@@ -358,10 +419,178 @@ var counts = { all: PAGES.length, project: byType['project'], concept: byType['c
 ```
 **Regla:** siempre usar `counts[t.k]` para verificar, no `counts[t.l]` (label). Los keys del dict deben ser el identificador del tab, no el texto mostrado.
 
-## Pitfall: carácter Unicode U+2019 (’) en archivos de código
+## Graph rendering (vis.js): legend debe ser sibling, no child
 
-El `patch` tool con `replace_all=true` o copiar-pegar desde el chat pueden introducir el caracter Unicode U+2019 (Right Single Quotation Mark, `’`) en lugar de la comilla simple ASCII U+0027 (`'`). 
-El HTML no distingue, pero el JS sí: `var h = '...’;` → SyntaxError en el browser.
+vis.js Network **reemplaza el innerHTML del contenedor** cuando se inicializa. Cualquier elemento hijo dentro del `div` contenedor (ej. una leyenda de pills) será destruido al crear la red.
+
+### ❌ Incorrecto — leyenda dentro del contenedor (se borra)
+
+```html
+<div id="project-graph-view">
+  <div id="project-graph-legend">...</div>  <!-- se pierde cuando vis.js init -->
+</div>
+```
+
+### ✅ Correcto — leyenda como sibling, no child
+
+```html
+<div style="position:relative">
+  <div id="project-graph-view"></div>
+  <div id="project-graph-legend" style="position:absolute;bottom:0;right:0;"></div>
+</div>
+```
+
+### Mostrar la leyenda después de renderizar el grafo
+
+```js
+var lgc = document.getElementById('project-graph-legend');
+if (lgc) {
+  lgc.innerHTML = plh;
+  lgc.style.display = 'block';  // arranca con display:none
+}
+```
+
+### Page types en leyenda de ambos graphs
+
+La leyenda del grafo global y del project graph deben mostrar **todos los page_types individuales**, no un genérico:
+
+```js
+var GTYPE_NAMES = {
+  entity: 'Entidades', concept: 'Conceptos', comparison: 'Comparaciones',
+  query: 'Consultas', raw: 'Raw', project: 'Proyectos',
+  goal: 'Goals', milestone: 'Hitos', okr: 'OKRs',
+  todo: 'Todo', deliverable: 'Entregables', reminder: 'Reminders'
+};
+```
+
+Para el project graph, las page_types se cuentan extrayendo `[[wikilinks]]` del body del proyecto:
+
+```js
+var ptCounts = {};
+if (d.p && d.p.body) {
+  var links = (d.p.body.match(/\\[\\[([^\\]]+)\\]\\]/g) || [])
+    .map(function(l) { return l.replace(/[\\[\\]]/g, '').split('|')[0].trim(); });
+  links.forEach(function(slug) {
+    var pp = pmap[slug];
+    if (pp) { var t = pp.page_type || 'concept'; ptCounts[t] = (ptCounts[t] || 0) + 1; }
+  });
+}
+```
+
+Para el backend (brain_web.py), las páginas deben usar su `page_type` como `group` en vez de "page":
+
+```python
+nodes.append({
+    "id": slug,
+    "label": pg.get("title", slug),
+    "color": COLORS.get(pg.get("page_type", "concept"), "#607D8B"),
+    "group": pg.get("page_type", "concept")  # antes era "page"
+})
+```
+
+## ShowPage() navigation: deactivate other views
+
+**Regla:** `showPage()` (manejador de wikilinks y clicks en cards) debe desactivar todas las vistas previas antes de activar `view-wiki`. Si no, el div viejo queda con `display:block` y el contenido se renderiza debajo.
+
+```javascript
+function showPage(slug) {
+  window._wikiSlug = slug;
+  setHashParams({tab:'wiki', page:slug});
+  var p = pmap[slug];
+  if (!p) { ... return; }
+  // ✅ SIEMPRE desactivar vistas previas
+  document.querySelectorAll('#main>div').forEach(function(d){
+    d.classList.remove('active');
+  });
+  closeSidebar();
+  document.getElementById('view-wiki').classList.add('active');
+  // ...render content...
+}
+```
+
+**Pitfall:** si el viewport tiene dos divs con `active`, el CSS `#main>div.active { display: block }` los apila verticalmente. El usuario ve el contenido de la página wikilinkeada "abajo" de la vista anterior. El browser_vision puede reportar falsamente que "solo se ve una vista" cuando en realidad hay stacking — siempre verificar con `document.querySelectorAll('#main > div.active').length`.
+
+## Empty state: toda sección sin items debe mostrar un mensaje
+
+**Regla:** cualquier tab o sección que pueda estar vacía debe mostrar `"No hay ..."` cuando no hay items. No dejar el `#project-tab-content` vacío sin feedback visual.
+
+### Sections with empty state in project tabs
+
+| Tab en switchProjectTab | Mensaje | Código |
+|------------------------|---------|--------|
+| goals | `"No hay goals."` | `if(!pGoals.length)h+='<p>No hay goals.</p>'` |
+| milestones | `"No hay milestones."` | `if(!projMS.length)h+='<p>No hay milestones.</p>'` |
+| ideas | `"No hay ideas relacionadas."` | `if(!ideas.length)h+='<p>No hay ideas relacionadas.</p>'` |
+| plans | `"No hay planes relacionados."` | `if(!plans.length)h+='<p>No hay planes relacionados.</p>'` |
+| notes | `"No hay notas relacionadas."` | `if(!notes.length)h+='<p>No hay notas relacionadas.</p>'` |
+| reminders | `"No hay recordatorios en esta sección."` | `if(!activeSet.length)h+='<p>No hay recordatorios...</p>'` |
+| journal | `"No hay entradas."` | `if(!d.jour.length)h+='<p>No hay entradas.</p>'` |
+| files | `"No hay archivos adjuntos."` | `if(!fls.length)h+='<p>No hay archivos adjuntos.</p>'` |
+| deliverables | `"No hay entregables."` | `if(!dlv.length)h+='<p>No hay entregables.</p>'` |
+
+### Data sources for project tab sections
+
+Cada sección obtiene sus datos de `window._projectData`:
+
+| Tab | Property | Tipo |
+|-----|----------|------|
+| content | `d.p.body` | string (markdown) |
+| goals | `d.goals` | array (filtrable por status y type) |
+| milestones | `d.goals.filter(g.type==='milestone')` | array |
+| ideas | `d.pideas` | array de slugs |
+| plans | `d.pplans` | array de slugs |
+| todo/kanban | `d.todos` | array |
+| reminders | `d.rems` | array |
+| notes | `d.pnotes` | array de slugs |
+| journal | `d.jour` | array |
+| files | `d.files` | array |
+| deliverables | `d.deps` | array |
+| graph | `d.p` + graph data | render vis.js |
+
+**Pitfall:** milestones, ideas, plans, notes NO tienen handler en `switchProjectTab()` originalmente. Si agregas el tab en `renderProjectView()`, debes agregar el handler correspondiente en `switchProjectTab()`. Siempre verificar que handler exista para cada tab agregado.
+
+## Journal: filter dual (proyecto + mes/año)
+
+Journal es la única vista que combina dos filtros en el header: proyecto y mes/año. Ambos selectores aparecen en la misma fila del `view-header`.
+
+```javascript
+var h='<div class="view-header">'
++ '<h1>Journal</h1>'
++ '<select onchange="setJournalFilter(this.value)">...Todos/Con proyecto/Sin proyecto</select>'
++ '<div class="journal-nav">'
++ '  <select onchange="...month/year...">...</select>'
++ '</div>'
++ '</div>';
+```
+
+### Orden de filtrado
+
+1. Primero se aplica el filtro de proyecto (`_journalFilter`) sobre el array `JOURNAL`
+2. Luego se aplica el filtro de mes/año (`_journalYear`, `_journalMonth`) sobre el resultado
+
+```javascript
+var journalEntries = JOURNAL;
+if(_journalFilter==='project') journalEntries = JOURNAL.filter(function(j){return !!j.page_slug;});
+else if(_journalFilter==='noproject') journalEntries = JOURNAL.filter(function(j){return !j.page_slug;});
+var filtered = journalEntries.filter(function(j){
+  var d = new Date(j.date);
+  return d.getFullYear() === _journalYear && (d.getMonth()+1) === _journalMonth;
+});
+```
+
+### Variable y setter
+
+```javascript
+var _journalFilter = '';  // junto a las otras filter variables globales
+function setJournalFilter(v) { _journalFilter = v; renderJournalView(); }
+```
+
+**Patrón:** el filtro de proyecto es el primero en aplicarse (más amplio), el mes/año es el segundo (más específico). Esto evita tener que refetch datos al cambiar el filtro de proyecto.
+
+## Pitfall: carácter Unicode U+2019 (') en archivos de código
+
+El `patch` tool con `replace_all=true` o copiar-pegar desde el chat pueden introducir el caracter Unicode U+2019 (Right Single Quotation Mark, `'`) en lugar de la comilla simple ASCII U+0027 (`'`). 
+El HTML no distingue, pero el JS sí: `var h = '...';` → SyntaxError en el browser.
 
 **Síntoma:** `node --check` falla con `SyntaxError: Invalid or unexpected token` en una línea con comillas aparentemente normales. El caracter U+2019 es visualmente idéntico a U+0027 en la mayoría de las fonts.
 
@@ -370,8 +599,7 @@ El HTML no distingue, pero el JS sí: `var h = '...’;` → SyntaxError en el b
 with open('web_ui.html','rb') as f:
     data = f.read()
     # buscar el caracter U+2019 (UTF-8: 0xE2 0x80 0x99)
-    if b'\xe2\x80\x99' in data:
-        print('Encontrado U+2019 at position', data.index(b'\xe2\x80\x99'))
+    if b'\\xe2\\x80\\x99' in data:
+        print('Encontrado U+2019 at position', data.index(b'\\xe2\\x80\\x99'))
 ```
 **Prevention:** Nunca copiar código JS con comillas simples desde el editor de chat (puede re-encodificar apóstrofes). Siempre escribir el código directamente en el archivo. O usar `replace_all=true` con `old_string` y `new_string` que no contengan apóstrofos.
-

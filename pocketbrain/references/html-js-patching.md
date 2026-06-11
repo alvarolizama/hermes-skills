@@ -1,69 +1,136 @@
-# HTML+JS Patching Strategy — web_ui.html
+# Web UI HTML/JS Patching Strategy
 
-`web_ui.html` es un archivo único de ~50KB con HTML, CSS y JS inline. Modificarlo es una operación común pero frágil: los parches de `patch` con `old_string`/`new_string` pueden fallar por escaping de comillas, múltiples reemplazos similares, o truncamiento si el archivo es muy grande.
+## Problem
 
-## Patrón: Python script para reemplazos masivos
+The `patch` tool fails with `Escape-drift detected` on `web_ui.html` because the file contains JS-heavy escaping:
+- `\"` (escaped double quotes inside JS strings)
+- `\\'` (escaped single quotes inside onclick handlers)
+- `\\` (backslash escapes in regex patterns)
 
-Cuando hay **más de 3 cambios** simultáneos (ej. refactor de tabs, cambio de iconos, mejora de markdown, CSS nuevo), es más robusto usar `execute_code` (Python) con `open()` en lugar de múltiples `patch` individuales:
+The `patch` tool tries to normalize these and fails because the file's escaping doesn't match what the agent serialized.
+
+## Solution: Python Script Patches
+
+Instead of `patch`, write a temporary Python script and execute it:
 
 ```python
-import os
-from html import escape
-path = os.path.expanduser('~/.hermes/skills/productivity/pocketbrain/scripts/web_ui.html')
-with open(path) as f: h = f.read()
+# Write to /tmp/patch_xyz.py
+with open(path, 'r') as f:
+    content = f.read()
 
-# 1. Reemplazo exacto de string (verificar presencia primero)
-old = '...'
-new = '...'
-assert old in h, f'Match not found: {old[:60]}...'
-h = h.replace(old, new, 1)
+old = "the exact text to find (use repr() to debug)"
+new = "the replacement text"
 
-# 2. Reemplazo CSS block (buscar old_string exacto)
-old_css = '.card{...}'
-new_css = '.card{...}\n.md-content h2{...}'
-assert old_css in h
-h = h.replace(old_css, new_css)
+count = content.count(old)
+assert count >= 1, f"Found {count} occurrences"
 
-with open(path, 'w') as f: f.write(h)
-print(f'Done: {len(h)} bytes')
+content = content.replace(old, new, 1)
+
+with open(path, 'w') as f:
+    f.write(content)
 ```
 
-## Reglas
-1. **Nunca parchear a ciegas** — siempre `assert old in h` o `assert h.count(old)==1` para evitar reemplazar el match incorrecto.
-2. **Backup antes de tocar** — `cp web_ui.html web_ui.html.bak` (el repo git también sirve como backup).
-3. **Verificar después** — `wc -c` y `node --check` inmediatamente después de cualquier escritura.
-4. **Restaurar de backup si algo se rompe** — si `node --check` falla, restaurar desde el backup y re-emprender con una estrategia más granular.
+Key advantages:
+- Exact byte-level matching (no escape normalization)
+- `assert count >= 1` catches missing patterns immediately
+- Can handle single or multiple replacements
+- Works reliably with `\"`, `\\'`, regex patterns, unicode escapes
 
-## Pitfall: comillas simples dentro de strings JS que generan HTML
+## Debugging Hard-to-Find Patterns
 
-Cuando el JS genera HTML con un string literal delimitado por comillas simples (`h+='<div ...>'`), cualquier comilla simple dentro del HTML generado — como atributos `onclick="setX('val')"` o asignaciones `_var='value'` — **rompe el string literal JS** y crashea todo el parser. El resultado es app en blanco con "Cargando..." infinito, y `node --check` reporta `SyntaxError: Unexpected identifier 'val'`.
+When `content.count(old)` returns 0:
 
-**Ejemplo que truena:**
-```javascript
-// ROTO — las comillas simples en 'all' terminan el string JS
-h+='<div onclick="setProjGoalStatus(’all’)...">';
-// CORRECTO — escapadas como \' 
-h+='<div onclick="setProjGoalStatus(\\'all\\')...">';
-```
+1. Use `content.find(unique_substring)` to locate the region
+2. Extract a chunk: `content[idx:idx+300]`
+3. Print with `repr()` to see exact escaping
 
-**Fix automático (Python):**
 ```python
-import re
-
-def esc_status(m):
-    return m.group(1) + "(" + "\\'" + m.group(2) + "\\')"
-
-def esc_assign(m):
-    return m.group(1) + "\\'" + m.group(2) + "\\'"
-
-content = re.sub(r"(set[A-Za-z]+Status)\'([^']+)'\)", esc_status, content)
-content = re.sub(r"(;[A-Za-z_]+=)(\'[^']+')\b", esc_assign, content)
+idx = content.find("return tx.replace")
+chunk = content[idx:idx+350]
+print(repr(chunk))
 ```
 
-**Regla:** todo generador de HTML dentro de strings JS debe usar comillas dobles para atributos HTML y las comillas simples internas que vayan a JS deben escaparse. Correr `python3 scripts/validate_ui.py` (ver scripts) antes de cada deploy detecta y corrige esto automáticamente.
+## Save and Run
 
-**Script disponible:** `scripts/validate_ui.py` en este repositorio. `validate_ui.py --fix` aplica la regex de arriba y luego corre `node --check`. Si el script no existe, usar `execute_code` con el código inline.
+```bash
+python3 /tmp/patch_xyz.py
+```
 
-## Pitfall: write_file trunca archivos grandes
+Always delete the temp file after:
+```bash
+rm /tmp/patch_xyz.py
+```
 
-`write_file` puede truncar silenciosamente archivos >9KB. Si `wc -c` muestra un tamaño inesperado, reescribir con `execute_code` (Python) que no tiene el límite de Hermes, o usar `patch` si el cambio es pequeño. Nunca usar `write_file` como bloc de notas temporal para `web_ui.html` — sobreescribe todo el JS/CSS/HTML sin advertencia.
+## ⚠️ Pitfall 1: Python template artifacts en JS generado
+
+Cuando usas Python triple-quoted strings (`"""..."""`) para generar JS que contiene caracteres especiales, **NUNCA** uses `chr()` o `'''` dentro del string literal — el código Python se escribe literalmente en el JS de salida:
+
+```python
+# ❌ MAL: Python chr() se escribe literal en el JS
+new_code = """var h='<h1>""" + chr(9989) + """ Lint</h1>';"""
+# → JS: var h='<h1>''' + chr(9989) + ''' Lint</h1>';  ← SyntaxError!
+
+# ✅ BIEN: Embed el character real como UTF-8
+CHECK_MARK = "\u2705"
+new_code = f"""var h='<h1>{CHECK_MARK} Lint</h1>';"""
+# → JS: var h='<h1>✅ Lint</h1>';  ← OK
+```
+
+**Regla:** Si necesitas emojis o caracteres Unicode en el JS generado desde Python:
+1. Asigna el char a una variable Python: `my_char = "\u2705"` o `my_char = "✅"`
+2. Usa f-strings o `.format()` para interpolar
+3. **No** uses concatenación con `chr()` ni `'''` dentro del string literal
+
+**Para surrogate pairs** (emoji 🔄 = U+1F504):
+```python
+# ✅ BIEN: Python 3 maneja chars > 0xFFFF naturalmente
+refresh_icon = "\U0001F504"  # 🔄
+# Alternativa: usar el char literal directamente
+refresh_icon = "🔄"
+```
+
+## ⚠️ Pitfall 2: `open(path, 'wb').write()` con surrogates trunca el archivo a 0 bytes
+
+Si escribes un archivo en modo binario (`'wb'`) y el contenido tiene **lone surrogates** (ej. `\ud83d` sin su `\udd04` acompañante), Python lanza `UnicodeEncodeError` y el archivo se queda en **0 bytes** — corrupción total sin recuperación.
+
+```python
+# ❌ MAL: Surrogate pair mal formado → UnicodeEncodeError → archivo 0 bytes
+content = "text \ud83d\udd04 more text"  # \ud83d\udd04 es 🔄 pero si escríbimos mal...
+with open('web_ui.html', 'wb') as f:
+    f.write(content.encode('utf-8'))  # UnicodeEncodeError if surrogates present
+
+# ✅ BIEN: Usar UTF-8 nativo
+content = "text 🔄 more text"  # El char real, no escapes
+with open('web_ui.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+# ✅ BIEN (modo binario con string limpio):
+with open('web_ui.html', 'wb') as f:
+    f.write(content.encode('utf-8'))  # Solo si content no tiene surrogates
+```
+
+**Verificación post-escritura:** Siempre revisar que el archivo tiene tamaño esperado:
+```bash
+wc -c web_ui.html
+# Si muestra 0 → el archivo se corrompió, restaurar de git y re-aplicar
+```
+
+## ⚠️ Pitfall 3: Zombie server process sirve versión OLD
+
+Después de parchear `web_ui.html` y reiniciar `brain_web.py`, el proceso viejo puede quedar vivo escuchando el puerto y sirviendo la versión sin el parche. `process(action='kill')` (vía API de Hermes) puede fallar silenciosamente.
+
+**Siempre verificar que el server sirve el parche:**
+```bash
+# 1. Confirmar que el archivo en disco tiene el cambio
+grep -n 'unique pattern from your patch' web_ui.html
+
+# 2. Matar cualquier proceso zombie en el puerto
+lsof -i :8899
+kill -9 PID   # force kill, no confiar en kill normal
+
+# 3. Reiniciar y verificar que el HTML servido tiene el parche
+python3 brain_web.py --port 8899 &
+curl -s http://localhost:8899/ | grep -n 'unique pattern from your patch'
+```
+
+Si el grep sobre el HTML servido no encuentra el patrón, el server está sirviendo código viejo — el proceso zombie sigue vivo.

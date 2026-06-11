@@ -135,6 +135,145 @@ expression="renderProjectsView(); typeof _projectData === 'object' ? 'OK' : 'FAI
 
 **Regla:** si agregas una función que llama a otra función (ej. `renderProjectsView()` → `activateView()`), verificar que la función destino exista en el mismo `<script>` tag antes de reiniciar el server.
 
+## Pitfall: `function buildSidebar()` duplicada → `{` sin cerrar
+
+Al aplicar múltiples parches a `buildSidebar()`, puede quedar una copia de la declaración anterior. Esto deja un `{` sin cerrar que rompe TODO el script:
+
+```javascript
+function buildSidebar(){var nav=...;  // ← primera, sin }
+function buildSidebar(){var nav=...;  // ← segunda arranca antes que cierre la primera
+```
+
+**Síntoma:** La página se queda en "Cargando..." para siempre. `typeof loadBrains === 'undefined'` en browser console. node --check muestra "Unexpected end of input". El balance de `{` vs `}` está desbalanceado.
+
+**Diagnóstico:**
+```bash
+grep -n "function buildSidebar" web_ui.html
+# Si hay 2+ líneas, hay duplicado
+# Verificar balance:
+python3 -c "
+with open('web_ui.html','rb') as f:
+    raw = f.read()
+idx = raw.find(b'<script>\\n')
+end = raw.find(b'</script>', idx + 10)
+js = raw[idx+9:end]
+opens = js.count(b'{')
+closes = js.count(b'}')
+print(f'Braces: open={opens}, close={closes}, diff={opens-closes}')
+"
+# diff debe ser 0
+```
+
+**Fix:** Eliminar la línea duplicada. Cada `buildSidebar()` debe declararse exactamente una vez.
+
+## Pitfall: El SCRIPT TAG incorrecto se valida con node --check
+
+Hay DOS `<script>` tags en `web_ui.html`:
+1. `<script src="/vis-network.min.js"></script>` → CDN/local, contenido vacío
+2. `<script>` → inline, TODO el JS de PocketBrain
+
+La regex `<script>(.*?)</script>` con `match` encuentra el PRIMER cierre `</script>`, que es el del CDN. Valida 0 bytes de JS y dice "OK" aunque el inline tenga errores.
+
+**Fix: extraer el SEGUNDO script tag (el que no tiene src):**
+```python
+with open('web_ui.html', 'rb') as f:
+    raw = f.read()
+idx = raw.find(b'<script>\\n')  # encuentra el inline (sin src)
+end = raw.find(b'</script>', idx + 10)
+js = raw[idx+9:end]
+with open('/tmp/pb_valid.js', 'wb') as f:
+    f.write(js)
+```
+```bash
+node --check /tmp/pb_valid.js
+```
+
+O usar `python3 -c` con findall y filtrar por `'src=' not in js`.
+
+## Pitfall: vis.js CDN bloquea ejecución del script inline
+
+El `<script src="https://unpkg.com/...">` sin `async`/`defer` BLOQUEA la ejecución del script inline que le sigue. Si el CDN no se puede cargar (headless browser, restricciones de red), el JS de PocketBrain nunca se ejecuta. La página muestra el HTML estático pero ningún dato carga.
+
+**Síntoma mismo que JS syntax error: "Cargando..." forever. Pero la diferencia: `node --check` pasa, y no hay duplicados de función. El CDN script tag está ANTES del inline.**
+
+**Fix: servir vis.js localmente + agregar endpoint estático en brain_web.py:**
+1. Descargar: `curl -sL https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js -o scripts/vis-network.min.js`
+2. Agregar endpoint en Handler:
+```python
+elif path == "/vis-network.min.js":
+    self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.end_headers()
+    js_path = Path(__file__).parent / "vis-network.min.js"
+    self.wfile.write(js_path.read_bytes())
+```
+3. HTML: `<script src="/vis-network.min.js"></script>` (sin CDN)
+
+## Pitfall: Sidebar no se cierra en mobile al navegar
+
+El botón hamburguesa hace `classList.toggle('open')` en el sidebar, pero al hacer click en un nav-link, el sidebar no se cierra automáticamente.
+
+**Fix:** agregar `closeSidebar()` a todas las funciones de navegación:
+```javascript
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');}
+function showTab(tab){...; closeSidebar();}
+function showProject(slug){...; closeSidebar();}
+function showPage(slug){...; closeSidebar();}
+```
+
+## Pitfall: Sidebar sin orden ni iconos únicos
+
+El sidebar debe mostrar los links ordenados por importancia. No mezclar tipos operacionales (Proyectos, Todo) con tipos de conocimiento (Entidades, Conceptos). Cada tipo debe tener un icono Heroicons único, no compartido.
+
+**Orden correcto:**
+```
+# Operacional
+Proyectos → Todo → Goals → Milestones → Reminders → Journal
+# Conocimiento
+Entidades → Conceptos → Comparaciones → Consultas → Planes → Notas → Ideas
+# Fuentes y utilidades
+Raw → Files → Deliverables → Graph → Lint
+```
+
+**Iconos únicos (evitar duplicados):**
+| Tipo | Icono |
+|------|-------|
+| Proyectos | squares-2x2 |
+| Todo | clipboard-document-list |
+| Goals | flag |
+| Milestones | check-circle |
+| Reminders | bell |
+| Journal | book-open |
+| Entidades | users |
+| Conceptos | document-text |
+| Planes | calendar-days |
+| Notas | clock |
+| Ideas | light-bulb |
+| Comparaciones | chart-pie |
+| Consultas | magnifying-glass |
+| Raw | paper-clip |
+| Files | document-text |
+| Deliverables | cube |
+| Lint | shield-check |
+
+## Patrón: Filtro por proyecto en vistas de tipo
+
+Para tipos como `plan`, `note`, `idea`, agregar un dropdown de filtro por proyecto. El filtro busca `[[proyecto-slug]]` en el body de cada página:
+
+```javascript
+function renderTypeView(type){
+  var hasFilter = (type==='plan'||type==='note'||type==='idea');
+  var filterKey = '_projFilter_'+type;
+  var currentFilter = window[filterKey]||'';
+  var projects = PAGES.filter(function(p){return p.page_type==='project';});
+  var pages = PAGES.filter(function(p){return p.page_type===type;});
+  if(currentFilter){
+    pages = pages.filter(function(p){
+      return (p.body||'').toLowerCase().indexOf('[['+currentFilter+']]')>=0;
+    });
+  }
+  // ... render + dropdown select ...
+}
+```
+
 ## Regla de oro: verificar ANTES de afirmar
 
 > Si el JS pasa `node --check` y las APIs devuelven datos, el UI debería renderizar. Si no, es un bug de JS runtime (función perdida, selector mal, etc.) que solo se ve en el browser.
@@ -142,6 +281,21 @@ expression="renderProjectsView(); typeof _projectData === 'object' ? 'OK' : 'FAI
 **Nunca decir "ya jala" sin:** `node --check` + API curl + al menos una `browser_console` check o `browser_vision` screenshot.
 
 **Preferir browser automation sobre desktop tools.** La herramienta `browser_*` (Hermes browser automation) SÍ accede a `localhost` y ejecuta JS en el contexto de la página. No usar `screencapture`, `osascript`, `open` de Chrome/Safari — son flaky en headless y no son reproducibles. Usar `browser_navigate` / `browser_console` / `browser_vision`.
+
+### browser_vision NO es confiable para detectar stacking de vistas
+
+El modelo de visión puede reportar "se ve solo una vista" cuando en realidad hay dos divs con display:block apilados (ej. project view + wiki page). **No confiar en screenshots para detectar stacking.**
+
+Usar `browser_console` con expression para contar vistas activas:
+```javascript
+expression = "document.querySelectorAll('#main > div.active').length"
+// Si devuelve > 1, hay stacking
+```
+
+Alternativa: inspeccionar clases con curl:
+```bash
+curl -s http://localhost:8899/ | grep -oP 'class="active"[^>]*>' | head -5
+```
 
 ---
 
@@ -168,29 +322,37 @@ function loadAll(){
 
 Al eliminar un elemento inline (ej. `<h2>PocketBrain</h2>`) con `patch` usando un `old_string` que incluye el elemento anterior como contexto, el tool puede duplicar el elemento padre si el `old_string` no es lo suficientemente específico.
 
-**Ejemplo real:**
-```html
-<!-- Original -->
-<span class="mobile-title">PocketBrain</span>
-<div id="sidebar">
-  <h2>PocketBrain</h2>
-```
-
-Parche para quitar el `<h2>`:
-- `old_string = "\n  <h2>PocketBrain</h2>\n"`
-- El tool matchó solo el `\n` (newline) y reemplazó, dejando:
-```html
-<div id="sidebar">
-<div id="sidebar">
-```
-
 **Regla:** al remover elementos inline de HTML con `patch`, usar `old_string` lo suficientemente largo para ser único: incluir al menos 2-3 líneas de contexto antes y después. Si el elemento está entre otros tags del mismo tipo, usar `execute_code` (Python regex/replace) en vez de `patch`.
 
-## Pitfall: vis.js canvas invisible → `position:relative` en padre
+## Pitfall: vis.js Network destruye innerHTML del contenedor
 
-Cuando la leyenda del grafo se posiciona `absolute` (ej. `bottom:12px;right:12px`), el padre necesita `position:relative` para que el canvas se contenga correctamente. Si el padre no tiene `position:relative`, el canvas de vis.js sale del flujo (0x0) y la leyenda no se visualiza.
+Al crear un `vis.Network(container, ...)`, vis.js **reemplaza el innerHTML** del `container` con su propio DOM (canvas, etc.). Cualquier elemento hijo que hayas puesto dentro del contenedor (ej. un `<div id="legend">`) desaparece.
 
-**Fix:** asegurar que `#view-graph.active` tiene `position:relative`:
-```css
-#view-graph.active{display:flex;flex-direction:column;position:relative;...}
+**Fix: la leyenda debe ser HERMANA del contenedor, no hija:**
+```javascript
+// wrapper con position:relative, leyenda como sibling
+var h = '<div style="position:relative">' +
+  '<div id="graph-view"></div>' +
+  '<div id="graph-legend" style="position:absolute;bottom:12px;right:12px">...</div>' +
+  '</div>';
+ct.innerHTML = h;
+// vis.Network modifica #graph-view, no toca #graph-legend
+```
+
+**Regla:** cualquier UI overlay (leyendas, botones flotantes) en un contenedor vis.js debe ser HERMANO del container network, no hijo.
+
+## Pitfall: helpers deben ser globales si múltiples funciones los usan
+
+Si `esc()` está anidada dentro de `mdToHtml()` pero otra función (`showPage()`) también la necesita, lanza `ReferenceError`. Moverla a scope global.
+
+## Pitfall: `class="active"` hardcoded en tabs rompe estado
+
+Nunca hardcodear `class="active"` en tabs generados dinámicamente. El estado activo debe asignarse desde la función de switch que maneja el click:
+```javascript
+function switchTab(tab) {
+  document.querySelectorAll('.project-tabs a').forEach(function(a) {
+    a.classList.remove('active');
+  });
+  // asignar active al tab correcto por índice o patrón
+}
 ```
