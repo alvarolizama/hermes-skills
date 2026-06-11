@@ -184,6 +184,111 @@ brain.orient()
 
 ---
 
+## Flujo de trabajo para el agente
+
+Este skill está diseñado para que el agente **infiera y organice solo**, pero que **pregunte cuando tenga dudas reales**.
+
+### Regla de oro: infiere primero, pregunta si hay ambigüedad
+
+- Si el título tiene "vs" o el cuerpo tiene tablas → `comparison`
+- Si el título termina con "?" o es una pregunta → `query`
+- Si es una fuente externa (URL, paper) → `raw`
+- Si es una persona, empresa, producto o modelo conocido → `entity`
+- Si es un tema, técnica o idea general → `concept`
+- Si tiene fechas, tareas y entregables → `project`
+
+**Solo pregunta al usuario si:**
+- No puedes distinguir entre `entity` y `concept` (ej. nombre ambiguo)
+- No sabes en qué `domain` categorizarlo
+- El usuario te pide explícitamente que decidas
+
+**No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
+
+### Los 6 page_types
+
+| Tipo | Cuándo usarlo | Ejemplos |
+|------|---------------|----------|
+| `entity` | Personas, empresas, productos, modelos | "OpenAI", "GPT-4o", "AWS" |
+| `concept` | Temas, técnicas, ideas, patrones | "Arquitectura microservicios", "Cache distribuido" |
+| `comparison` | Comparativas side-by-side | "React vs Vue", "PostgreSQL vs MySQL" |
+| `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
+| `raw` | Fuentes originales (artículos, papers) | "Paper Attention Is All You Need" |
+| `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
+
+### Cómo se linkean las páginas
+
+1. **`[[wikilinks]]` en el body** — los slugs existentes se resuelven solos y se guardan en `related_pages`
+2. **Auto-backlinks** — si creas `[[gpt-4o]]` en una página, `gpt-4o` recibe un backlink automático
+3. **`related_slugs`** — slugs adicionales manuales si el body no cubre todas las relaciones
+
+**Siempre** usa `[[slug]]` cuando menciones otra página. No pongas texto plano si puedes linkear.
+
+### Cómo organizar
+
+```python
+# Domain: agrupa por área
+domain="investigacion"     # papers, descubrimientos
+domain="proyectos"         # iniciativas concretas
+domain="learning"          # aprendizaje personal
+domain="bravo"             # trabajo en Bravo
+
+# Tags: descriptivos, consistentes
+tags=["machine-learning", "nlp", "transformers"]
+
+# Confidence: sé honesto
+confidence='high'    # múltiples fuentes confiables
+confidence='medium'  # bien documentado, hay debate
+confidence='low'     # fuente única, especulación
+```
+
+### Flujo completo
+
+```python
+# 1. INGEST: fuente externa
+brain.ingest_text(text=contenido, title="Paper X", source_url="...", page_type='raw')
+
+# 2. CREAR: páginas de conocimiento linkeadas
+brain.create_page(
+    title="GPT-4o",
+    body="[[OpenAI]] lanzó GPT-4o...\nVs [[Claude 3.5 Sonnet]]...\n^[paper-x]",
+    confidence='high',
+    domain="investigacion",
+    tags=["multimodal"]
+)
+# → page_type='entity' (auto-suggest), related_pages automático, backlinks automáticos
+
+# 3. MANTENER: lint periódico
+report = brain.lint()
+if report['summary']['broken_links']:
+    # Corregir typos o crear páginas faltantes
+    pass
+if report['summary']['orphans']:
+    # Agregar [[wikilinks]] desde otras páginas
+    pass
+```
+
+### Links rotos: manéjalos solo, no preguntes
+
+Si `broken_links` aparece:
+1. **Typo** → corrígelo directamente (ej. `transforrmer` → `transformer`)
+2. **Página faltante** → créala con `create_page()`, confidence='low'
+3. **No sabes** → créala igual con body mínimo, no bloquees el flujo
+
+### Duda sobre page_type: guía rápida
+
+| El contenido es... | page_type |
+|---|---|
+| Producto/empresa/persona/modelo | `entity` |
+| Tema o técnica | `concept` |
+| Comparativa | `comparison` |
+| Pregunta respondida | `query` |
+| Fuente externa (paper, artículo) | `raw` |
+| Proyecto con fechas y tareas | `project` |
+
+Si aún así tienes duda, **pregunta**: "¿Esto va como entity o concept?"
+
+---
+
 ## Arquitectura
 
 12 colecciones. Ver `references/schema.md` para detalle completo.
