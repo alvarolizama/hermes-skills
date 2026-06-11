@@ -449,7 +449,8 @@ function renderGoalsView(typeFilter){
 
     h+='</div>';
   });
-  document.getElementById('view-goals').innerHTML=h||'<p style="color:var(--mute)">No hay goals.</p>';
+  var cid=typeFilter==='milestone'?'view-milestones':'view-goals';
+  document.getElementById(cid).innerHTML=h||'<p style="color:var(--mute)">No hay '+gt+'s.</p>';
 }
 
 // ── Journal ──────────────────────────────────────────────
