@@ -1305,34 +1305,30 @@ class Brain:
                     content: str = "",
                     status: str = "backlog",
                     owner: str = "alvaro") -> dict:
-        if not self._context_id:
-            self.orient()
-        data = {'title': title, 'content': content, 'status': status,
-                'domain': domain, 'owner': owner, 'brain': self._context_id}
-        if page_slug:
-            page = self._get_page(page_slug)
-            if page:
-                data['page'] = page['id']
-        if goal_id:
-            data['goal'] = goal_id
-        todo = self.pb.create('brain_todos', data)
-        self.log('create', description='Todo: ' + title)
-        return todo
+        related = [page_slug] if page_slug else None
+        return self.create_page(
+            title=title,
+            body=content or "",
+            page_type='todo',
+            domain=domain,
+            status=status,
+            owner=owner,
+            related_slugs=related,
+        )
 
     def todos(self, status: Optional[str] = None,
               domain: Optional[str] = None,
               owner: Optional[str] = None,
               goal_id: Optional[str] = None,
               limit: int = 50) -> list:
-        if not self._context_id:
-            self.orient()
-        filters = ["(brain='" + self._context_id + "')"]
-        if status: filters.append("(status='" + status + "')")
-        if domain: filters.append("(domain='" + domain + "')")
-        if owner: filters.append("(owner='" + owner + "')")
-        if goal_id: filters.append("(goal='" + goal_id + "')")
-        return self.pb.list('brain_todos', filter="&&".join(filters),
-                            perPage=limit, expand='page,goal')
+        return self.list_pages(
+            page_type='todo',
+            domain=domain,
+            status=status,
+            owner=owner,
+            sort='-created',
+            per_page=limit,
+        )
 
     def update_todo(self, todo_id: str, **updates) -> dict:
         from datetime import datetime, timezone
@@ -1345,15 +1341,8 @@ class Brain:
         elif new_status == 'cancelled':
             updates['cancelled_date'] = updates.get('cancelled_date', now)
         if 'page_slug' in updates:
-            slug = updates.pop('page_slug')
-            if slug:
-                page = self._get_page(slug)
-                if page:
-                    updates['page'] = page['id']
-        result = self.pb.update('brain_todos', todo_id, updates)
-        desc = 'Todo updated: ' + str(list(updates.keys()))
-        self.log('update', description=desc)
-        return result
+            updates['related_slugs'] = [updates.pop('page_slug')]
+        return self.update_page(todo_id, **updates)
 
     def start_todo(self, todo_id: str) -> dict:
         return self.update_todo(todo_id, status='in progress')
