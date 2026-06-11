@@ -596,6 +596,7 @@ function showIndex(){
 }
 
 function showPage(slug){window._wikiSlug=slug;setHashParams({tab:'wiki',page:slug});var p=pmap[slug];if(!p){document.getElementById('view-wiki').innerHTML='<p>Pagina no encontrada.</p>';return;}
+  document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});
   closeSidebar();
   document.getElementById('view-wiki').classList.add('active');
   var pgoals=GOALS.filter(function(g){return g.page===slug;});
