@@ -232,7 +232,7 @@ h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_entity
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
-h+='<a href=\"javascript:void(0)\" class=\"nav-link\" onclick=\"showIndex()\" data-search=\"wiki all\"><span class=\"nav-label\">'+icon('home',16)+'<span>Wiki</span></span><span class=\"nav-count\">'+PAGES.length+'</span></a>';
+h+='<a href=\"javascript:void(0)\" class=\"nav-link\" onclick=\"showIndex()\" data-search=\"wiki all\"><span class=\"nav-label\">'+icon('bars-3',16)+'<span>Wiki</span></span><span class=\"nav-count\">'+PAGES.length+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'graph\')" data-search="graph"><span class="nav-label">\u25c9 Graph</span><span class="nav-count">'+nc+'</span></a>';
 h+='<a href="javascript:void(0)" class="nav-link" onclick="showTab(\'lint\')" data-search="lint"><span class="nav-label">'+icon('shield-check',16)+'<span>Lint</span></span></a>';nav.innerHTML=h;}
 var _currentTab='projects',_currentProject=null;
@@ -604,6 +604,7 @@ function toggleArchived(show){
 
 
 function showIndex(){
+  document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});closeSidebar();document.getElementById('view-wiki').classList.add('active');
   window._wikiSlug=null;
   var tabs=[{k:'all',l:'Todos'},{k:'project',l:'Proyectos'},{k:'concept',l:'Conceptos'},{k:'entity',l:'Entidades'},{k:'comparison',l:'Comparaciones'},{k:'query',l:'Consultas'},{k:'raw',l:'Raw'}];
   var src=window._showArchived&&window._archivedPages?window._archivedPages:PAGES;var byType={};src.forEach(function(p){var pt=p.page_type||'concept';byType[pt]=byType[pt]||[];byType[pt].push(p);});
