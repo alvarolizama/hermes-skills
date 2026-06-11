@@ -37,7 +37,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 14 page_types
+### Los 16 page_types
 
 | Tipo | Cuándo usarlo | Ejemplos |
 |------|---------------|----------|
@@ -55,6 +55,8 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `milestone` | Hitos con fecha límite | "Lanzar MVP", "Fecha de entrega" |
 | `reminder` | Recordatorios con fecha/hora | "Reunión 10am", "Pagar factura" |
 | `journal` | Diario, entrada por día | "Journal: 2026-06-10" |
+| `file` | Archivos adjuntos (PDFs, imágenes, docs) | "Diagrama arquitectura.pdf" |
+| `deliverable` | Entregables versionados | "Specs v2", "Release notes v1.0" |
 
 > **Auto-suggest:** si no pasas `page_type`, se infiere solo via `suggest_page_type()`. Por ejemplo, `create_page(title="Nota reunión diseño")` → `page_type='note'` porque el título contiene "nota". Si quieres forzar un tipo, pásalo explícitamente: `create_page(title="Mi idea", page_type='idea')`.
 

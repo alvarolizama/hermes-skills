@@ -33,7 +33,7 @@
 |-------|------|-------|
 | `title` | text (required) | |
 | `slug` | text (required, unique) | lowercase-hyphens |
-| `page_type` | select | entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, reminder, journal |
+| `page_type` | select | entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, reminder, journal, file, deliverable |
 | `body` | text | **Markdown puro** con `[[wikilinks]]` |
 | `summary` | text | |
 | `confidence` | select | high, medium, low |
@@ -43,6 +43,8 @@
 | `contradictions` | text | |
 | `archived` | bool | |
 | `attachment` | file | PDF, imagen |
+| `file_type` | select | pdf, image, doc, sheet, other |
+| `version` | text | Versión del entregable |
 | `related_pages` | relation → brain_pages (N:M) | Auto-link desde [[wikilinks]] |
 | `content` | text | Cuerpo alternativo (tareas) |
 | `status` | select | backlog, this week, today, in progress, done, cancelled, planned, active, draft |
