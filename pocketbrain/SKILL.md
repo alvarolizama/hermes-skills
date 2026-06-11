@@ -37,7 +37,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 
 **No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
 
-### Los 6 page_types
+### Los 7 page_types
 
 | Tipo | Cuándo usarlo | Ejemplos |
 |------|---------------|----------|
@@ -47,6 +47,7 @@ Este skill está diseñado para que el agente **infiera y organice solo**, pero 
 | `query` | Preguntas respondidas | "¿Cómo optimizar consultas SQL?" |
 | `raw` | Fuentes originales (artículos, papers, videos, archivos) | "Paper Attention Is All You Need", "Video de microservicios" |
 | `project` | Proyectos con goals y tareas | "Lanzar MVP 2026", "Migración K8s" |
+| `plan` | Roadmaps, specs, estrategias, presupuestos dentro de un proyecto | "Roadmap Q1", "Especificación técnica", "Presupuesto 2026" |
 
 ### Raw sources: tipos de fuentes
 

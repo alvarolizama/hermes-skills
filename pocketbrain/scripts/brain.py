@@ -99,7 +99,7 @@ BRAIN_SCHEMA = {
             {"name": "domain", "type": "relation", "collectionId": "brain_domains",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan"], "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
             {"name": "confidence", "type": "select",
@@ -498,7 +498,7 @@ def suggest_page_type(title: str, body: str = '') -> str:
     b = (body or '').lower()
 
     # Project
-    project_keywords = ['proyecto', 'project', 'mvp', 'roadmap', 'sprint', 'release', 'lanzamiento']
+    project_keywords = ['proyecto', 'project', 'mvp', 'sprint', 'release', 'lanzamiento']
     if any(kw in t for kw in project_keywords):
         return 'project'
 
@@ -518,6 +518,13 @@ def suggest_page_type(title: str, body: str = '') -> str:
     # Query
     if t.endswith('?') or t.startswith('query:') or t.startswith('que ') or t.startswith('what '):
         return 'query'
+
+    # Plan: roadmap, spec, strategy, design doc, timeline, schedule, budget
+    plan_keywords = ['plan', 'roadmap', 'estrategia', 'strategy', 'spec', 'especificacion',
+                     'timeline', 'cronograma', 'schedule', 'presupuesto', 'budget',
+                     'design doc', 'diseno', 'arquitectura', 'propuesta', 'proposal']
+    if any(kw in t for kw in plan_keywords):
+        return 'plan'
 
     # Entity: proper noun pattern (single word, capitalized, not a common term)
     # Heuristic: short title, no spaces, looks like a model/product name

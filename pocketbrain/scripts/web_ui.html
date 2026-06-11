@@ -711,8 +711,8 @@ function renderDeliverables(){
 }
 function renderGraph(){
   if(_graphInit){if(window._net)window._net.fit();return;}_graphInit=true;
-  var GCOLORS={entity:'#4CAF50',concept:'#2196F3',comparison:'#FF9800',query:'#9C27B0',raw:'#607D8B',project:'#E91E63',goal:'#4CAF50',milestone:'#FF9800',okr:'#E91E63',todo:'#9C27B0',deliverable:'#00BCD4',reminder:'#FFC107'};
-  var GTYPE_NAMES={entity:'Entidades',concept:'Conceptos',comparison:'Comparaciones',query:'Consultas',raw:'Raw',project:'Proyectos',goal:'Goals',milestone:'Hitos',okr:'OKRs',todo:'Todo',deliverable:'Entregables',reminder:'Reminders'};
+  var GCOLORS={entity:'#4CAF50',concept:'#2196F3',comparison:'#FF9800',query:'#9C27B0',raw:'#607D8B',project:'#E91E63',plan:'#795548',goal:'#4CAF50',milestone:'#FF9800',okr:'#E91E63',todo:'#9C27B0',deliverable:'#00BCD4',reminder:'#FFC107'};
+  var GTYPE_NAMES={entity:'Entidades',concept:'Conceptos',comparison:'Comparaciones',query:'Consultas',raw:'Raw',project:'Proyectos',plan:'Planes',goal:'Goals',milestone:'Hitos',okr:'OKRs',todo:'Todo',deliverable:'Entregables',reminder:'Reminders'};
   var lh='';var counts=(GRAPH.counts||{});
   for(var group in counts){var color=GCOLORS[group]||'#888';var label=GTYPE_NAMES[group]||group;lh+='<div><span style="background:'+color+'"></span> '+label+' ('+counts[group]+')</div>';}
   document.getElementById('graph-legend').innerHTML=lh;
@@ -761,8 +761,8 @@ function renderProjectGraph(d){
       if(pp){var t=pp.page_type||'concept';ptCounts[t]=(ptCounts[t]||0)+1;}
     });
   }
-  var ptLabels={entity:'Entidades',concept:'Conceptos',comparison:'Comparaciones',query:'Consultas',raw:'Raw'};
-  var ptColors={entity:'#4CAF50',concept:'#2196F3',comparison:'#FF9800',query:'#9C27B0',raw:'#607D8B'};
+  var ptLabels={entity:'Entidades',concept:'Conceptos',comparison:'Comparaciones',query:'Consultas',raw:'Raw',plan:'Planes'};
+  var ptColors={entity:'#4CAF50',concept:'#2196F3',comparison:'#FF9800',query:'#9C27B0',raw:'#607D8B',plan:'#795548'};
   Object.keys(ptLabels).forEach(function(t){if(ptCounts[t])ptypes.push({label:ptLabels[t],count:ptCounts[t],color:ptColors[t]});});
   var plh='<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-top:8px;">';
   ptypes.forEach(function(pt){plh+='<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+pt.color+';margin-right:4px;"></span>'+pt.label+' ('+pt.count+')</div>';});

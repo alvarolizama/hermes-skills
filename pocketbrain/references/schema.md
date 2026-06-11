@@ -33,7 +33,7 @@
 |-------|------|-------|
 | `title` | text (required) | |
 | `slug` | text (required, unique) | lowercase-hyphens |
-| `page_type` | select | entity, concept, comparison, query, raw, project |
+| `page_type` | select | entity, concept, comparison, query, raw, project, **plan** |
 | `body` | text | **Markdown puro** con `[[wikilinks]]` |
 | `summary` | text | |
 | `confidence` | select | high, medium, low |
