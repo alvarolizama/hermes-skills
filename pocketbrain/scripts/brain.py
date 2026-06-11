@@ -969,14 +969,14 @@ class Brain:
     def list_pages(self, page_type: Optional[str] = None,
                    domain: Optional[str] = None,
                    tag: Optional[str] = None,
+                   status: Optional[str] = None,
+                   owner: Optional[str] = None,
                    include_archived: bool = False,
                    sort: str = '', per_page: int = 50) -> list:
         """Lista páginas con filtros opcionales."""
         if not self._context_id:
             self.orient()
-        filters = [f"(brain='{self._context_id}')"]
-        if not include_archived:
-            filters.append("(archived=false)")
+        filters = [f"(brain='{self._context_id}' && archived=false)"]
         if page_type:
             filters.append(f"(page_type='{page_type}')")
         if domain:
@@ -987,6 +987,10 @@ class Brain:
             # Resolver nombre de tag a ID
             tag_id = self.get_or_create_tag(tag)
             filters.append(f"(tags?='{tag_id}')")
+        if status:
+            filters.append(f"(status='{status}')")
+        if owner:
+            filters.append(f"(owner='{owner}')")
 
         params = {
             'filter': "&&".join(filters),
