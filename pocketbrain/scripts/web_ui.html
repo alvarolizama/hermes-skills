@@ -220,11 +220,11 @@ h+='<a href="#" class="nav-link" onclick="showTab(\'reminders\')" data-search="r
 h+='<a href="#" class="nav-link" onclick="showTab(\'journal\')" data-search="journal"><span class="nav-label">'+icon('book-open',16)+'<span>Journal</span></span><span class="nav-count">'+jc+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_entity\')" data-search="entity"><span class="nav-label">'+icon('users',16)+'<span>Entidades</span></span><span class="nav-count">'+cnt('entity')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_concept\')" data-search="concept"><span class="nav-label">'+icon('document-text',16)+'<span>Conceptos</span></span><span class="nav-count">'+cnt('concept')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
+h+='<a href="#" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_plan\')" data-search="plan"><span class="nav-label">'+icon('calendar-days',16)+'<span>Planes</span></span><span class="nav-count">'+cnt('plan')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_note\')" data-search="note"><span class="nav-label">'+icon('clock',16)+'<span>Notas</span></span><span class="nav-count">'+cnt('note')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_idea\')" data-search="idea"><span class="nav-label">'+icon('light-bulb',16)+'<span>Ideas</span></span><span class="nav-count">'+cnt('idea')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_comparison\')" data-search="comparison"><span class="nav-label">'+icon('chart-pie',16)+'<span>Comparaciones</span></span><span class="nav-count">'+cnt('comparison')+'</span></a>';
-h+='<a href="#" class="nav-link" onclick="showTab(\'type_query\')" data-search="query"><span class="nav-label">'+icon('magnifying-glass',16)+'<span>Consultas</span></span><span class="nav-count">'+cnt('query')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_raw\')" data-search="raw"><span class="nav-label">'+icon('paper-clip',16)+'<span>Raw</span></span><span class="nav-count">'+cnt('raw')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_file\')" data-search="file"><span class="nav-label">'+icon('document-text',16)+'<span>Files</span></span><span class="nav-count">'+cnt('file')+'</span></a>';
 h+='<a href="#" class="nav-link" onclick="showTab(\'type_deliverable\')" data-search="deliverable"><span class="nav-label">'+icon('cube',16)+'<span>Deliverables</span></span><span class="nav-count">'+cnt('deliverable')+'</span></a>';
@@ -396,10 +396,27 @@ function renderTypeView(type){
   var v=document.getElementById('view-type-'+type);
   if(!v)return;
   v.classList.add('active');
-  var labels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas'};
+  var labels={'entity':'Entidades','concept':'Conceptos','comparison':'Comparaciones','query':'Consultas','raw':'Raw','plan':'Planes','note':'Notas','idea':'Ideas','file':'Files','deliverable':'Deliverables'};
+  var hasFilter=(type==='plan'||type==='note'||type==='idea');
+  var filterKey='_projFilter_'+type;
+  var currentFilter=window[filterKey]||'';
+  var projects=PAGES.filter(function(p){return p.page_type==='project';});
   var pages=PAGES.filter(function(p){return p.page_type===type;});
+  if(currentFilter){
+    pages=pages.filter(function(p){
+      var body=(p.body||'').toLowerCase();
+      return body.indexOf('[['+currentFilter+']]')>=0;
+    });
+  }
   pages.sort(function(a,b){return a.title.localeCompare(b.title);});
   var h='<h1 style="margin-bottom:20px">'+labels[type]+' ('+pages.length+')</h1>';
+  if(hasFilter&&projects.length){
+    h+='<div style="margin-bottom:16px"><select onchange="window.'+filterKey+'=this.value;renderTypeView(\''+type+'\')" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)"><option value="">Todos los proyectos</option>';
+    projects.forEach(function(p){
+      h+='<option value="'+p.slug+'"'+(currentFilter===p.slug?' selected':'')+'>'+p.title+'</option>';
+    });
+    h+='</select></div>';
+  }
   pages.forEach(function(p){
     var b='';if(p.confidence)b=' <span class="conf-badge conf-'+p.confidence+'">'+p.confidence+'</span>';
     h+='<div class="card" style="cursor:pointer;margin-bottom:8px;padding:12px" onclick="showPage(\''+p.slug+'\')">';
