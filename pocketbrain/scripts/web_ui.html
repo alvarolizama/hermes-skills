@@ -337,7 +337,7 @@ function showCurrentView(){
   document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});
   document.querySelectorAll('#nav a.nav-link').forEach(function(a){a.classList.remove('active');});
   if(_currentTab==='project'&&_currentProject){renderProjectView(_currentProject);return;}
-  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',files:'view-files',deliverables:'view-deliverables',wiki:'view-wiki',graph:'view-graph',lint:'view-lint'};
+  var views={projects:'view-projects',todos:'view-todos',goals:'view-goals',journal:'view-journal',reminders:'view-reminders',milestones:'view-milestones',type_entity:'view-type-entity',type_concept:'view-type-concept',type_comparison:'view-type-comparison',type_query:'view-type-query',type_raw:'view-type-raw',type_plan:'view-type-plan',type_note:'view-type-note',type_idea:'view-type-idea',graph:'view-graph',lint:'view-lint'};
   var vid=views[_currentTab];if(!vid)return;
   document.getElementById(vid).classList.add('active');
   var sel='a.nav-link[onclick*="showTab(' + "'" + _currentTab + "'" + ')"]';
