@@ -14,6 +14,19 @@ metadata:
 
 Knowledge base multi-cerebro sobre PocketBase. **Prioridad #1: responder en la conversación con markdown.** La web UI es secundaria.
 
+## Contexto obligatorio
+
+**Todo** en PocketBrain requiere un contexto. Cada página, tarea, goal, reminder, journal está scoped a un contexto. No hay operaciones globales.
+
+El agente usa `POCKETBRAIN_CONTEXT` del env (o `'personal'` por default):
+
+```python
+brain = Brain()           # → POCKETBRAIN_CONTEXT o 'personal'
+brain = Brain('bravo')    # → override explícito
+```
+
+Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`.
+
 ## Cómo responder al usuario
 
 Cuando el usuario pregunte sobre datos en PocketBrain, responde **directo en la conversación** con markdown formateado. No le digas "ve a la web", no le compartas links de la UI. La conversación ES la interfaz.
