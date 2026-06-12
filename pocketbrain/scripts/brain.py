@@ -32,7 +32,7 @@ from pb import PB, quick_pb
 # ── PocketBrain env loader ──────────────────────────────────────────
 
 def _load_pocketbrain_env():
-    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD del .env."""
+    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ."""
     env = {}
     env_path = os.path.expanduser('~/.hermes/.env')
     if os.path.exists(env_path):
@@ -41,7 +41,11 @@ def _load_pocketbrain_env():
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
                     k, v = line.split('=', 1)
-                    env[k.strip()] = v.strip().strip('"').strip("'")
+                    val = v.strip().strip('"').strip("'")
+                    env[k.strip()] = val
+                    # Propagar a os.environ para que esté disponible globalmente
+                    if k.strip().startswith('POCKETBRAIN_'):
+                        os.environ[k.strip()] = val
     return env
 
 def _pocketbrain_pb():
@@ -468,8 +472,10 @@ class Brain:
         report = brain.lint()                 # auditar
     """
 
-    def __init__(self, context_name: str, pb: Optional[PB] = None,
+    def __init__(self, context_name: str = '', pb: Optional[PB] = None,
                  agent: str = 'chaos-manager', user: str = 'alvaro'):
+        if not context_name:
+            context_name = os.environ.get('POCKETBRAIN_CONTEXT', '') or 'personal'
         self.context_name = context_name
         self.pb = pb or _pocketbrain_pb()
         self.agent = agent

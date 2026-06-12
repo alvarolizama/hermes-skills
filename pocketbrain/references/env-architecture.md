@@ -7,7 +7,7 @@ Cada skill es dueño de sus propias credenciales:
 | Skill | Variables en `.env` | Quién las lee |
 |-------|--------------------|---------------|
 | `pocketbase` | `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD` | Nadie — `pb.py` no lee env vars |
-| `pocketbrain` | `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` | `brain.py` → `_pocketbrain_pb()` |
+| `pocketbrain` | `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`, `POCKETBRAIN_CONTEXT` | `brain.py` → `_pocketbrain_pb()` y `Brain(context_name='')` |
 
 ## Flujo de conexión
 

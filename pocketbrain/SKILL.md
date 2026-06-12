@@ -315,6 +315,7 @@ brain.recent_logs(20)  # trazabilidad
 | `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
 | `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
 | `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
+| `POCKETBRAIN_CONTEXT` | Contexto default del agente (`personal`, `projects`, etc.) | `~/.hermes/.env` o variable de entorno. Default: `personal` |
 
 ### Quick Start
 
