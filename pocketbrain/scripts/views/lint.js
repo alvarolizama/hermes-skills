@@ -27,11 +27,13 @@ export function renderLintView() {
   setActiveView('view-lint');
 
   container.innerHTML = `
-    <div class="view-header"><h1>${icon('shield-check', 18)} Lint</h1></div>
-    <p style="color:var(--mute);margin-bottom:16px">Resultados de brain.lint().</p>
-    <button data-pb-refresh-lint style="margin-bottom:16px;padding:8px 16px;border:1px solid var(--hairline);border-radius:6px;cursor:pointer;background:var(--canvas);color:var(--body)">
-      Refrescar
-    </button>
+    <div class="view-header">
+      <div class="view-title-row">
+        <h1>${icon('shield-check', 20)}<span>Lint</span></h1>
+        <button data-pb-refresh-lint class="filter-select" style="display:flex;align-items:center;gap:6px;cursor:pointer;">${icon('arrow-path', 14)} Refrescar</button>
+      </div>
+      <p class="view-subtitle">Resultados de brain.lint()</p>
+    </div>
     <div id="lint-results"><p style="color:var(--mute)">Cargando...</p></div>
   `;
 
@@ -58,16 +60,15 @@ async function refreshLint() {
       return;
     }
 
-    let h = `<div style="margin-bottom:16px"><strong>Total páginas:</strong> ${data.total_pages || 0}</div>`;
-    h += '<table style="width:100%;border-collapse:collapse;border:1px solid var(--hairline);margin-bottom:16px"><thead><tr style="background:var(--hairline)">';
-    h += '<th style="padding:6px 12px;text-align:left;font-weight:500">Issue</th><th style="padding:6px 12px;text-align:right;font-weight:500">Cantidad</th></tr></thead><tbody>';
-
+    let h = '<div class="metrics-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+    h += `<div class="metric-card"><div class="metric-value">${data.total_pages || 0}</div><div class="metric-label">Páginas</div></div>`;
     SUMMARY_KEYS.forEach(({ k, label }) => {
       const c = data.summary[k] || 0;
-      h += `<tr><td style="padding:4px 12px;border-bottom:1px solid var(--hairline)">${esc(label)}</td>`;
-      h += `<td style="padding:4px 12px;text-align:right;border-bottom:1px solid var(--hairline);font-weight:${c > 0 ? '700' : '400'}">${c}</td></tr>`;
+      h += `<div class="metric-card" style="${c > 0 ? 'border-color:#E53935' : ''}"><div class="metric-value" style="${c > 0 ? 'color:#E53935' : ''}">${c}</div><div class="metric-label">${esc(label)}</div></div>`;
     });
-    h += '</tbody></table>';
+    h += '</div>';
+
+    h += '<div class="cards-grid">';
 
     const renderList = (items, title) => {
       if (!items || !items.length) return '';
@@ -97,6 +98,7 @@ async function refreshLint() {
     h += renderList(data.invalid_tags, 'Tags inválidos');
     h += renderList(data.oversized_pages, 'Páginas grandes');
     h += renderList(data.drift, 'Source drift');
+    h += '</div>';
 
     results.innerHTML = h || '<p style="color:var(--mute)">No hay issues.</p>';
 

@@ -1,4 +1,5 @@
 import Store from '../store.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -57,20 +58,18 @@ export function renderJournalView() {
 
   const opts = ymOptions();
 
-  let html = `<div class="view-header"><h1>Journal</h1>`
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('book-open', 20)}<span>Journal</span></h1>`
     + `<div style="display:flex;gap:8px">`
-    + `<select data-pb-filter="journal" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+    + `<select data-pb-filter="journal" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${filter === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
     + `</select>`
-    + `<select data-pb-month style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+    + `<select data-pb-month class="filter-select">`
     + opts.map(o => `<option value="${o.value}" ${journalMonth === o.value ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
     + `</select>`
-    + `</div>`
-    + `</div>`;
-
-  html += `<p style="color:var(--mute);margin-bottom:20px">${monthEntries.length} entradas</p>`;
+    + `</div></div>`
+    + `<p class="view-subtitle">${monthEntries.length} entradas</p></div>`;
 
   if (!days.length) {
     html += '<p style="color:var(--mute)">No hay entradas este mes.</p>';

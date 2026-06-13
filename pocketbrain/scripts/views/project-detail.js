@@ -412,7 +412,7 @@ export function renderProjectPlaceholder(slug, ptab = 'content') {
     + `</div>`;
 
   // Header
-  html += `<div class="view-header"><h1>${esc(data.p.title)}</h1></div>`;
+  html += `<div class="view-header"><div class="view-title-row"><h1>${icon('squares-2x2', 22)}<span>${esc(data.p.title)}</span></h1></div></div>`;
 
   // Dashboard metrics
   html += renderMetrics(data);

@@ -1,5 +1,6 @@
 import Store from '../store.js';
 import { Tabs, bindTabs } from '../components/Tabs.js';
+import { icon } from '../components/Icon.js';
 import { setHashParams } from '../router.js';
 
 function esc(s) {
@@ -19,6 +20,14 @@ const TAB_LABELS = {
   upcoming: 'Próximos',
   overdue: 'Atrasados',
   done: 'Completados'
+};
+const TAB_ICONS = {
+  all: 'squares-2x2',
+  today: 'sun',
+  week: 'calendar-days',
+  upcoming: 'arrow-right-circle',
+  overdue: 'exclamation-circle',
+  done: 'check-circle'
 };
 
 let reminderStatus = 'all';
@@ -60,20 +69,21 @@ export function renderRemindersView() {
   else if (reminderStatus === 'overdue') filtered = reminders.filter(r => !r.done && r.date < today);
   else if (reminderStatus === 'done') filtered = reminders.filter(r => r.done);
 
-  let html = `<div class="view-header"><h1>Reminders</h1>`
-    + `<select data-pb-filter="reminder" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('bell', 20)}<span>Reminders</span></h1>`
+    + `<select data-pb-filter="reminder" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${filter === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
-    + `</select></div>`;
+    + `</select></div>`
+    + `<p class="view-subtitle">${filtered.length} reminders</p></div>`;
 
   html += Tabs({
-    items: TAB_IDS.map(id => ({ id, label: TAB_LABELS[id] })),
+    items: TAB_IDS.map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })),
     active: reminderStatus,
     counts
   });
 
-  html += `<p style="color:var(--mute);margin-bottom:20px">${filtered.length} reminders</p>`;
+  html += `<div class="cards-grid">`;
 
   if (!filtered.length) {
     html += '<p style="color:var(--mute)">No hay reminders.</p>';
@@ -82,10 +92,14 @@ export function renderRemindersView() {
       const cls = !r.done && r.date < today ? 'reminder-overdue' : '';
       html += `<div class="card ${cls}" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-reminder="${esc(r.id || r.slug || '')}">`
         + `<h3>${esc(r.title)}</h3>`
-        + `<div style="font-size:12px;color:var(--mute)">${esc(r.date)}${r.time ? ' · ' + esc(r.time) : ''}${r.done ? ' · ✅' : ''}</div>`
+        + `<div style="font-size:12px;color:var(--mute);display:flex;align-items:center;gap:6px;margin-top:4px">`
+        + `${icon('calendar', 12)}${esc(r.date)}${r.time ? ' · ' + esc(r.time) : ''}${r.done ? icon('check-circle', 12) : ''}`
+        + `</div>`
         + `</div>`;
     });
   }
+
+  html += '</div>';
 
   container.innerHTML = html;
 

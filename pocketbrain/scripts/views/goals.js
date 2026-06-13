@@ -1,5 +1,6 @@
 import Store from '../store.js';
 import { Tabs, bindTabs } from '../components/Tabs.js';
+import { icon } from '../components/Icon.js';
 import { setHashParams } from '../router.js';
 
 function esc(s) {
@@ -18,6 +19,13 @@ const TAB_LABELS = {
   backlog: 'Backlog',
   completed: 'Terminados',
   cancelled: 'Cancelados'
+};
+const TAB_ICONS = {
+  all: 'squares-2x2',
+  active: 'bolt',
+  backlog: 'archive-box',
+  completed: 'check-circle',
+  cancelled: 'x-circle'
 };
 
 export function renderGoalsView(typeFilter = 'goal') {
@@ -54,31 +62,42 @@ export function renderGoalsView(typeFilter = 'goal') {
   }
 
   const label = typeFilter === 'milestone' ? 'Milestones' : 'Goals';
+  const headerIcon = typeFilter === 'milestone' ? 'check-circle' : 'flag';
 
-  let html = `<div class="view-header"><h1>${esc(label)}</h1>`
-    + `<select data-pb-filter="goal" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon(headerIcon, 20)}<span>${esc(label)}</span></h1>`
+    + `<select data-pb-filter="goal" class="filter-select">`
     + `<option value="" ${gf === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${gf === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${gf === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
-    + `</select></div>`;
+    + `</select></div>`
+    + `<p class="view-subtitle">${filtered.length} ${esc(label.toLowerCase())}</p></div>`;
 
   html += Tabs({
-    items: TAB_IDS.map(id => ({ id, label: TAB_LABELS[id] })),
+    items: TAB_IDS.map(id => ({ id, label: TAB_LABELS[id], icon: TAB_ICONS[id] })),
     active: status,
     counts
   });
 
-  html += `<p style="color:var(--mute);margin-bottom:20px">${filtered.length} ${esc(label.toLowerCase())}</p>`;
+  html += `<div class="cards-grid">`;
 
   if (!filtered.length) {
     html += '<p style="color:var(--mute)">No hay items.</p>';
   } else {
     filtered.forEach(g => {
+      const chipClass = g.type === 'milestone' ? 'chip-milestone' : g.type === 'okr' ? 'chip-okr' : 'chip-goal';
+      const chipLabel = g.type === 'milestone' ? 'Milestone' : g.type === 'okr' ? 'OKR' : 'Goal';
+      const deadline = g.deadline ? ` · ${esc(g.deadline)}` : '';
       html += `<div class="card" style="cursor:pointer;margin-bottom:8px;padding:12px" data-pb-goal="${esc(g.slug)}">`
+        + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">`
         + `<h3>${esc(g.title)}</h3>`
+        + `<span class="chip ${chipClass}">${chipLabel}</span>`
+        + `</div>`
+        + `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(g.status || 'planned')}${deadline}${g.page_slug ? ' · ' + esc(g.page_slug) : ''}</div>`
         + `</div>`;
     });
   }
+
+  html += '</div>';
 
   container.innerHTML = html;
 

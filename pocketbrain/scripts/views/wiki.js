@@ -1,5 +1,6 @@
 import Store from '../store.js';
 import { Tabs, bindTabs } from '../components/Tabs.js';
+import { icon } from '../components/Icon.js';
 import { getHashParams, setHashParams } from '../router.js';
 import { bindMarkdownLinks } from '../markdown.js';
 
@@ -16,13 +17,13 @@ let wikiIndexTab = 'all';
 let pageTab = 'content';
 
 const INDEX_TABS = [
-  { id: 'all', label: 'Todos' },
-  { id: 'project', label: 'Proyectos' },
-  { id: 'concept', label: 'Conceptos' },
-  { id: 'entity', label: 'Entidades' },
-  { id: 'comparison', label: 'Comparaciones' },
-  { id: 'query', label: 'Consultas' },
-  { id: 'raw', label: 'Raw' }
+  { id: 'all', label: 'Todos', icon: 'squares-2x2' },
+  { id: 'project', label: 'Proyectos', icon: 'squares-2x2' },
+  { id: 'concept', label: 'Conceptos', icon: 'light-bulb' },
+  { id: 'entity', label: 'Entidades', icon: 'users' },
+  { id: 'comparison', label: 'Comparaciones', icon: 'chart-pie' },
+  { id: 'query', label: 'Consultas', icon: 'magnifying-glass' },
+  { id: 'raw', label: 'Raw', icon: 'paper-clip' }
 ];
 
 const TYPE_NAMES = {
@@ -54,7 +55,7 @@ function pageMetadataRows(p) {
   if (p.tags && p.tags.length) rows.push(['Tags', p.tags.join(', ')]);
   if (p.source_url) rows.push(['Source URL', `<a href="${esc(p.source_url)}" target="_blank" rel="noopener">${esc(p.source_url.substring(0, 40))}</a>`]);
   if (p.source_sha256) rows.push(['SHA256', `<span style="font-family:monospace;font-size:11px">${esc(p.source_sha256.substring(0, 16))}...</span>`]);
-  if (p.contested) rows.push(['Contested', '<span style="color:#E53935">⚠ Sí</span>']);
+  if (p.contested) rows.push(['Contested', `<span style="color:#E53935;display:flex;align-items:center;gap:4px">${icon('exclamation-triangle', 12)}<span>Sí</span></span>`]);
   if (p.contradictions) rows.push(['Contradicciones', p.contradictions]);
   if (p.created) rows.push(['Creado', p.created]);
   if (p.updated) rows.push(['Actualizado', p.updated]);
@@ -86,15 +87,15 @@ function renderWikiPage(slug) {
   const backlinks = p.backlinks || [];
   const relCount = goals.length + todos.length + reminders.length + journal.length;
 
-  const tabs = [{ id: 'content', label: `Contenido ${p.body ? 1 : 0}` }];
-  if (backlinks.length) tabs.push({ id: 'backlinks', label: `Backlinks ${backlinks.length}` });
-  if (relCount) tabs.push({ id: 'related', label: `Relacionado ${relCount}` });
+  const tabs = [{ id: 'content', label: 'Contenido', icon: 'document-text', count: p.body ? 1 : 0 }];
+  if (backlinks.length) tabs.push({ id: 'backlinks', label: 'Backlinks', icon: 'arrow-left', count: backlinks.length });
+  if (relCount) tabs.push({ id: 'related', label: 'Relacionado', icon: 'share', count: relCount });
 
   let html = `<div style="font-size:12px;color:var(--mute);margin-bottom:8px">`
-    + `<a href="javascript:void(0)" data-pb-index style="color:var(--ink)">← Wiki</a> · `
+    + `<a href="javascript:void(0)" data-pb-index style="color:var(--ink)">${icon('arrow-left', 12)}<span>Wiki</span></a> · `
     + `<a href="javascript:void(0)" data-pb-type="${esc(p.page_type)}" style="color:var(--ink)">${esc(TYPE_NAMES[p.page_type] || p.page_type)}</a> · ${esc(p.title)}`
     + `</div>`;
-  html += `<h1 style="margin-bottom:20px">${esc(p.title)}</h1>`;
+  html += `<div class="view-title-row" style="margin-bottom:20px"><h1>${icon('document-text', 24)}<span>${esc(p.title)}</span></h1></div>`;
 
   html += Tabs({ items: tabs, active: pageTab });
 
@@ -262,22 +263,28 @@ export function renderWikiIndex() {
     tabCounts[t.id] = t.id === 'all' ? counts.all : counts[t.id] || 0;
   });
 
-  let html = `<div class="view-header"><h1>Wiki</h1></div>`;
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('bars-3', 20)}<span>Wiki</span></h1></div>`
+    + `<p class="view-subtitle">${pages.length} páginas</p></div>`;
   html += Tabs({ items: INDEX_TABS, active: wikiIndexTab, counts: tabCounts });
 
   const types = wikiIndexTab === 'all' ? ['project', 'concept', 'entity', 'comparison', 'query', 'raw'] : [wikiIndexTab];
   const total = types.reduce((sum, t) => sum + (byType[t] || []).length, 0);
-  html += `<p style="color:var(--mute);margin-bottom:20px">${total} páginas</p>`;
+  html += `<div class="cards-grid">`;
 
   types.forEach(pt => {
     const items = byType[pt] || [];
     if (!items.length) return;
     items.sort((a, b) => a.title.localeCompare(b.title));
-    html += `<h2>${TYPE_NAMES[pt]} (${items.length})</h2>`;
+    const typeIcon = INDEX_TABS.find(t => t.id === pt)?.icon || 'document-text';
     items.forEach(p => {
-      html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}"><h3>${esc(p.title)}</h3></div>`;
+      html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}">`
+        + `<div style="display:flex;align-items:center;gap:8px">${icon(typeIcon, 16)}<h3>${esc(p.title)}</h3></div>`
+        + (p.page_type ? `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(p.page_type)}${p.domain ? ' · ' + esc(p.domain) : ''}</div>` : '')
+        + `</div>`;
     });
   });
+
+  html += '</div>';
 
   container.innerHTML = html;
 

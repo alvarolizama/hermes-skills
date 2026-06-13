@@ -1,4 +1,5 @@
 import Store from '../store.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -27,6 +28,20 @@ export function renderGraph() {
   setActiveView('view-graph');
 
   const graph = Store.state.graph || { nodes: [], edges: [], counts: {} };
+  const nodeCount = graph.nodes.length;
+  const edgeCount = graph.edges.length;
+
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('share', 20)}<span>Graph</span></h1></div>`
+    + `<p class="view-subtitle">${nodeCount} nodos · ${edgeCount} aristas</p></div>`;
+
+  if (!graph.nodes.length) {
+    html += '<p style="padding:20px;color:var(--mute)">No hay datos para el grafo.</p>';
+    container.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="graph-wrap"><div id="graph-view" style="height:65vh;"></div><div id="graph-legend" class="graph-legend"></div></div>`;
+  container.innerHTML = html;
 
   const legend = document.getElementById('graph-legend');
   if (legend) {
@@ -38,11 +53,6 @@ export function renderGraph() {
       lh += `<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px;"></span>${label} (${counts[group]})</div>`;
     }
     legend.innerHTML = lh;
-  }
-
-  if (!graph.nodes.length) {
-    container.innerHTML = '<p style="padding:20px;color:var(--mute)">No hay datos para el grafo.</p>';
-    return;
   }
 
   const nodes = new vis.DataSet(graph.nodes.map(n => ({

@@ -1,4 +1,5 @@
 import Store from '../store.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -13,6 +14,18 @@ const TYPE_NAMES = {
   concept: 'Conceptos', entity: 'Entidades', comparison: 'Comparaciones',
   query: 'Consultas', raw: 'Raw', plan: 'Planes', note: 'Notas', idea: 'Ideas',
   file: 'Archivos', deliverable: 'Entregables'
+};
+const TYPE_ICONS = {
+  concept: 'light-bulb',
+  entity: 'users',
+  comparison: 'chart-pie',
+  query: 'magnifying-glass',
+  raw: 'paper-clip',
+  plan: 'calendar-days',
+  note: 'clock',
+  idea: 'sparkles',
+  file: 'document-text',
+  deliverable: 'document-text'
 };
 
 export function renderTypeView(typeName) {
@@ -40,22 +53,31 @@ export function renderTypeView(typeName) {
 
   items.sort((a, b) => a.title.localeCompare(b.title));
 
-  let html = `<div class="view-header"><h1>${esc(TYPE_NAMES[typeName] || typeName)}</h1>`
-    + `<select data-pb-filter="${esc(typeName)}" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+  const typeLabel = TYPE_NAMES[typeName] || typeName;
+  const typeIcon = TYPE_ICONS[typeName] || 'document-text';
+
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon(typeIcon, 20)}<span>${esc(typeLabel)}</span></h1>`
+    + `<select data-pb-filter="${esc(typeName)}" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${filter === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
-    + `</select></div>`;
+    + `</select></div>`
+    + `<p class="view-subtitle">${items.length} ${esc(typeLabel.toLowerCase())}</p></div>`;
 
-  html += `<p style="color:var(--mute);margin-bottom:20px">${items.length} ${esc((TYPE_NAMES[typeName] || typeName).toLowerCase())}</p>`;
+  html += `<div class="cards-grid">`;
 
   if (!items.length) {
     html += '<p style="color:var(--mute)">No hay items.</p>';
   } else {
     items.forEach(p => {
-      html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}"><h3>${esc(p.title)}</h3></div>`;
+      html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}">`
+        + `<div style="display:flex;align-items:center;gap:8px">${icon(typeIcon, 16)}<h3>${esc(p.title)}</h3></div>`
+        + (p.summary ? `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(p.summary)}</div>` : '')
+        + `</div>`;
     });
   }
+
+  html += '</div>';
 
   container.innerHTML = html;
 

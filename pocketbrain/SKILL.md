@@ -415,6 +415,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/view-activation-pitfall.md` | showIndex() y otras funciones deben activar view-wiki explícitamente |
 | `references/sidebar-layout.md` | Alineación icono-label-count en sidebar nav, eliminación de deliverables del nav |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
+| `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
 ### Changelogs
 
@@ -493,3 +494,4 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Subagentes para fixes UI no son garantía**: los subagentes pueden llegar al límite de iteraciones sin aplicar el fix, dejando solo análisis parcial. Si el fix es pequeño y crítico (ej. un import roto, un `classList.add` que causa stacking), es más rápido hacerlo directamente, validar con `node --check`, y luego lanzar subagentes solo para verificación o tareas paralelas grandes. Siempre re-verificar visualmente después de subagentes.
 - **Modular SPA: validar imports y registros de router**: al extraer funciones a módulos ES (ej. `views/project-detail.js`), asegurar que el handler registrado en `Router.register('project', handler)` coincida con la firma `(slug, ptab)`. Si el router pasa `ptab` pero el handler lo ignora, las tabs internas no se restauran desde el hash.
 - **Validación mínima de project detail**: al terminar el project detail, confirmar en browser: (a) todas las tabs visibles con counts reales, (b) tab Contenido renderiza markdown, (c) click en goal/todo/reminder/journal/file navega a la página sin stacking (`#main > div.active` === 1), (d) wikilinks dentro del markdown y backlinks también navegan sin stacking.
+- **UI consistency across all views**: headers, tabs, status filters, kanban columns, and cards must all use Heroicons. No emoji. Filter select is always `Todos / Con proyecto / Sin proyecto`. See `references/ui-consistency-patterns.md`.

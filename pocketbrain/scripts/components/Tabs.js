@@ -21,6 +21,8 @@
  *   renderTabs(container, { items, active, counts }, id => { ... });
  */
 
+import { icon } from './Icon.js';
+
 const ESCAPE_MAP = {
   '&': '&amp;',
   '<': '&lt;',
@@ -41,7 +43,7 @@ function escapeAttr(str) {
  * Render tabs markup.
  *
  * @param {Object} props
- * @param {{id:string,label:string}[]} props.items
+ * @param {{id:string,label:string,icon?:string}[]} props.items
  * @param {string} props.active
  * @param {Record<string,number>} [props.counts={}]
  * @returns {string}
@@ -55,10 +57,13 @@ export function Tabs({ items, active, counts = {} }) {
     const id = String(it.id ?? '');
     const label = String(it.label ?? '');
     const count = counts[id];
-    const display = count !== undefined ? `${label} (${count})` : label;
+    const svg = it.icon ? icon(it.icon, 16) : '';
+    const countHtml = count !== undefined && count !== null ? ` <span class="nav-count">${count}</span>` : '';
     const cls = id === active ? 'active' : '';
 
-    return `<a href="javascript:void(0)" class="${escapeAttr(cls)}" data-tab-id="${escapeAttr(id)}">${escapeHtml(display)}</a>`;
+    return `<a href="javascript:void(0)" class="${escapeAttr(cls)}" data-tab-id="${escapeAttr(id)}">`
+      + `<span class="tab-label">${svg}<span>${escapeHtml(label)}</span>${countHtml}</span>`
+      + `</a>`;
   }).join('');
 
   return `<div class="project-tabs">${tabs}</div>`;

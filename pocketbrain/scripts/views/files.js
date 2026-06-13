@@ -1,4 +1,5 @@
 import Store from '../store.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -22,22 +23,28 @@ export function renderFilesView() {
     files = files.filter(f => !f.page_slug);
   }
 
-  let html = `<div class="view-header"><h1>Archivos</h1>`
-    + `<select data-pb-filter="file" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('paper-clip', 20)}<span>Archivos</span></h1>`
+    + `<select data-pb-filter="file" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${filter === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
-    + `</select></div>`;
+    + `</select></div>`
+    + `<p class="view-subtitle">${files.length} archivos</p></div>`;
 
-  html += `<p style="color:var(--mute);margin-bottom:20px">${files.length} archivos</p>`;
+  html += `<div class="cards-grid">`;
 
   if (!files.length) {
     html += '<p style="color:var(--mute)">No hay archivos.</p>';
   } else {
     files.forEach(f => {
-      html += `<div class="card" style="padding:12px;margin-bottom:8px"><h3>${esc(f.name)}</h3><div style="font-size:12px;color:var(--mute)">${esc(f.file_type || 'otro')}</div></div>`;
+      html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(f.slug || f.id)}">`
+        + `<div style="display:flex;align-items:center;gap:8px">${icon('document-text', 18)}<h3>${esc(f.name)}</h3></div>`
+        + `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(f.file_type || 'otro')}${f.page_slug ? ' · ' + esc(f.page_slug) : ''}</div>`
+        + `</div>`;
     });
   }
+
+  html += '</div>';
 
   container.innerHTML = html;
 

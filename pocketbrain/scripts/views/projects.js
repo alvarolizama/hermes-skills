@@ -1,4 +1,5 @@
 import Store from '../store.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -67,7 +68,7 @@ export function renderProjectsView() {
   let html = `
     <div class="view-header">
       <div class="view-title-row">
-        <h1>Proyectos</h1>
+        <h1>${icon('squares-2x2', 20)}<span>Proyectos</span></h1>
         <select data-pb-filter="page" class="filter-select">
           <option value="" ${filter === '' ? 'selected' : ''}>Todos</option>
           <option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>

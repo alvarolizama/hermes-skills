@@ -34,10 +34,15 @@ body{background:var(--canvas);color:var(--ink);font-family:ui-sans-serif,system-
 #main>div.active{display:block}
 #view-graph.active{display:flex;flex-direction:column;position:relative;max-width:none;padding:0;height:100%}
 #graph-view{position:absolute;top:0;left:0;right:0;bottom:0;min-height:400px}
-#graph-legend{position:absolute;bottom:20px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap}
+#graph-legend{position:absolute;bottom:20px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap;z-index:5}
 #graph-legend span{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.graph-wrap{position:relative;flex:1;min-height:400px;height:calc(100% - 80px)}
+.graph-legend{position:absolute;bottom:20px;right:12px;background:var(--canvas);border:1px solid var(--hairline);padding:8px 12px;border-radius:12px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap;z-index:5}
+#view-graph .view-header{padding:20px 30px 0}
+#view-graph .graph-wrap{margin:0 30px 20px}
 .view-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
-.view-header h1{font-family:SF Pro Rounded,system-ui,sans-serif;font-size:30px;font-weight:500;margin:0}
+.view-header h1{font-family:SF Pro Rounded,system-ui,sans-serif;font-size:30px;font-weight:500;margin:0;display:inline-flex;align-items:center;gap:10px;line-height:1}
+.view-header h1 svg{display:block;flex-shrink:0;color:var(--body)}
 .view-header select{padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)}
 h2{font-family:SF Pro Rounded,system-ui,sans-serif;font-size:20px;font-weight:600;margin:28px 0 10px}
 h3{font-size:16px;font-weight:500;margin:16px 0 6px}
@@ -99,6 +104,8 @@ blockquote{font-style:italic;color:var(--mute);border-left:3px solid var(--mute)
 .project-tabs a:hover{color:var(--ink)}
 .project-tabs a.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
 .project-tabs a svg{display:block;flex-shrink:0}
+.project-tabs a .tab-label{display:inline-flex;align-items:center;gap:6px}
+.project-tabs a .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center;flex-shrink:0;margin-left:2px}
 .project-item-card{padding:14px 16px;margin-bottom:10px}
 .project-item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px}
 .project-item-header h3{margin:0;font-size:15px;flex:1}

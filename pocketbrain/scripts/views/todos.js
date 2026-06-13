@@ -1,4 +1,6 @@
 import Store from '../store.js';
+import API from '../api.js';
+import { icon } from '../components/Icon.js';
 
 function esc(s) {
   return String(s ?? '')
@@ -17,6 +19,14 @@ const COLUMN_LABELS = {
   'in progress': 'IN PROGRESS',
   done: 'DONE',
   cancelled: 'CANCELLED'
+};
+const COLUMN_ICONS = {
+  backlog: 'archive-box',
+  'this week': 'calendar',
+  today: 'sun',
+  'in progress': 'arrow-path',
+  done: 'check-circle',
+  cancelled: 'x-circle'
 };
 
 export function renderTodosView() {
@@ -39,24 +49,33 @@ export function renderTodosView() {
     if (byCol[c]) byCol[c].push(t);
   });
 
-  let html = `<div class="view-header"><h1>Todo</h1>`
-    + `<select data-pb-filter="todo" style="padding:6px 12px;border:1px solid var(--hairline);border-radius:9999px;font-size:13px;background:var(--canvas);color:var(--body)">`
+  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('clipboard-document-list', 20)}<span>Todo</span></h1>`
+    + `<select data-pb-filter="todo" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
     + `<option value="noproject" ${filter === 'noproject' ? 'selected' : ''}>Sin proyecto</option>`
-    + `</select></div>`;
+    + `</select></div>`
+    + `<p class="view-subtitle">${todos.length} tareas · ${byCol['done'].length} done · ${byCol['in progress'].length} in progress</p></div>`;
 
-  html += `<div class="kanban">`;
+  html += `<div class="kanban-board">`;
   COLUMNS.forEach(c => {
     const items = byCol[c];
-    html += `<div class="kanban-col"><h3>${COLUMN_LABELS[c]} (${items.length})</h3>`;
+    html += `<div class="kanban-column">`
+      + `<div class="kanban-column-header">${icon(COLUMN_ICONS[c], 14)}<span>${COLUMN_LABELS[c]}</span><span class="kanban-count">${items.length}</span></div>`
+      + `<div class="kanban-column-body">`;
     items.forEach(t => {
       html += `<div class="kanban-card" data-pb-todo="${esc(t.id)}" style="cursor:pointer">`
-        + esc(t.title)
-        + (t.domain ? `<div class="meta2">${esc(t.domain)}</div>` : '')
-        + `</div>`;
+        + `<div class="kanban-card-title">${esc(t.title)}</div>`
+        + (t.domain ? `<div class="kanban-card-meta">${esc(t.domain)}</div>` : '')
+        + (t.goal_title ? `<div class="kanban-card-meta">${esc(t.goal_title)}</div>` : '')
+        + `<div class="kanban-actions">`;
+      COLUMNS.forEach(target => {
+        if (target === c) return;
+        html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(target)}">${esc(COLUMN_LABELS[target])}</button>`;
+      });
+      html += `</div></div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
   });
   html += `</div>`;
 
@@ -71,7 +90,15 @@ export function renderTodosView() {
   }
 
   container.querySelectorAll('[data-pb-todo]').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', e => {
+      const moveBtn = e.target.closest('[data-pb-move-todo]');
+      if (moveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const [id, status] = moveBtn.dataset.pbMoveTodo.split(':');
+        moveTodo(id, status);
+        return;
+      }
       const id = el.dataset.pbTodo;
       const todo = Store.state.todos.find(t => String(t.id) === id);
       let slug = todo && (todo.page_slug || todo.goal_id);
@@ -86,6 +113,20 @@ export function renderTodosView() {
       }
     });
   });
+}
+
+async function moveTodo(id, status) {
+  try {
+    await API.patch(`/todos/${id}/status/${status}`);
+    const idx = Store.state.todos.findIndex(t => String(t.id) === String(id));
+    if (idx >= 0) {
+      Store.state.todos[idx] = { ...Store.state.todos[idx], status };
+    }
+    renderTodosView();
+  } catch (err) {
+    console.error('moveTodo error', err);
+    alert('No se pudo mover la tarea: ' + err.message);
+  }
 }
 
 export default renderTodosView;
