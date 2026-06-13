@@ -34,7 +34,7 @@ Los agentes guardan. Tú consultas.
 - **Interactive graph**: grafos con vis.js, nodos coloreados por tipo
 - **Project management**: proyectos con goals, milestones, todos kanban, reminders, journal, archivos, pages y graph propio
 - **Hash-based URLs**: toda navegación genera URLs compartibles
-- **Multi-contexto**: 5 contextos (personal, projects, bravo, learning, health)
+- **Multi-contexto**: cada contexto es un silo independiente; se crean los que se requieran
 - **Consistente UI**: iconos Heroicons en headers, tabs, breadcrumbs y cards
 
 ---
@@ -48,7 +48,7 @@ cd ~/.hermes/skills/productivity/pocketbrain/scripts
 python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
 # Servidor web live
-python3 brain_web.py --context personal --port 8899
+python3 brain_web.py --context <context_name> --port 8899
 # → http://localhost:8899
 ```
 
@@ -57,7 +57,7 @@ python3 brain_web.py --context personal --port 8899
 ```python
 from brain import Brain
 
-brain = Brain('personal')
+brain = Brain('<context_name>')
 
 # Páginas de conocimiento
 brain.create_page("GPT-4o", body="Modelo multimodal de [[OpenAI]]", page_type="entity")
@@ -87,4 +87,4 @@ brain.create_reminder("Reunión", date="2026-12-25", time="10:00")
 
 ## Estado
 
-Live. Funcionando en http://localhost:8899 con el contexto `personal`.
+Live. Funcionando en http://localhost:8899.

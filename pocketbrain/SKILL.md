@@ -18,14 +18,14 @@ Knowledge base multi-cerebro sobre PocketBase. **Prioridad #1: responder en la c
 
 **Todo** en PocketBrain requiere un contexto. Cada página, tarea, goal, reminder, journal está scoped a un contexto. No hay operaciones globales.
 
-El agente usa `POCKETBRAIN_CONTEXT` del env (o `'personal'` por default):
+El agente usa `POCKETBRAIN_CONTEXT` del env, o un override explícito:
 
 ```python
-brain = Brain()           # → POCKETBRAIN_CONTEXT o 'personal'
+brain = Brain()             # → POCKETBRAIN_CONTEXT o contexto default
 brain = Brain('work')       # → override explícito de contexto
 ```
 
-Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`.
+Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`. Se crean los contextos que se requieran.
 
 ## Cómo responder al usuario
 
@@ -329,7 +329,7 @@ PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente
 | `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
 | `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
 | `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
-| `POCKETBRAIN_CONTEXT` | Contexto default del agente (`personal`, `projects`, etc.) | `~/.hermes/.env` o variable de entorno. Default: `personal` |
+| `POCKETBRAIN_CONTEXT` | Contexto default del agente | `~/.hermes/.env` o variable de entorno. |
 
 ### Quick Start headless
 
@@ -368,7 +368,7 @@ python3 brain_web.py --context personal --port 8899
 Requisitos:
 - PocketBase corriendo con las colecciones creadas.
 - Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` en `~/.hermes/.env`.
-- El contexto por default es `personal`; cambia con `--context <name>`.
+- Usa `--context <name>` para seleccionar el contexto.
 
 Después de modificar módulos ES o CSS, reiniciar el servidor no basta por el cache del browser (`max-age=3600`). Usa `Cmd+Shift+R` o DevTools → Disable cache.
 
