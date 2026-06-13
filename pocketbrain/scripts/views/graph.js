@@ -118,6 +118,10 @@ export function renderProjectGraph(d) {
   const container = document.getElementById('project-graph-view');
   if (!container) return;
 
+  const reminders = d.reminders || d.rems || [];
+  const todos = d.todos || [];
+  const goals = d.goals || [];
+
   const colors = {
     goal: '#4CAF50', milestone: '#FF9800', todo: '#9C27B0', concept: '#2196F3', entity: '#4CAF50',
     project: '#E91E63', reminder: '#FFC107', deliverable: '#00BCD4', file: '#607D8B', journal: '#795548'
@@ -126,19 +130,19 @@ export function renderProjectGraph(d) {
   const nodes = [{ id: 'project', label: d.p.title, color: { background: '#E91E63', border: '#333' }, font: { color: '#333', size: 14 }, shape: 'dot', size: 25 }];
   const edges = [];
 
-  d.goals.forEach((g, i) => {
+  goals.forEach((g, i) => {
     const nid = 'goal_' + i;
     nodes.push({ id: nid, label: g.title, color: { background: colors[g.type] || '#4CAF50', border: '#333' }, font: { color: '#333', size: 11 }, shape: 'dot', size: 16 });
     edges.push({ from: 'project', to: nid, color: { color: '#ccc', opacity: 0.6 } });
   });
 
-  d.todos.forEach((t, i) => {
+  todos.forEach((t, i) => {
     const nid = 'todo_' + i;
     nodes.push({ id: nid, label: t.title, color: { background: colors.todo, border: '#333' }, font: { color: '#333', size: 10 }, shape: 'dot', size: 14 });
     edges.push({ from: 'project', to: nid, color: { color: '#ddd', opacity: 0.4 } });
   });
 
-  d.rems.forEach((r, i) => {
+  reminders.forEach((r, i) => {
     const nid = 'rem_' + i;
     nodes.push({ id: nid, label: r.title, color: { background: colors.reminder, border: '#333' }, font: { color: '#333', size: 10 }, shape: 'dot', size: 14 });
     edges.push({ from: 'project', to: nid, color: { color: '#ddd', opacity: 0.4 } });
@@ -154,9 +158,9 @@ export function renderProjectGraph(d) {
   if (pnet) pnet.fit();
 
   const ptypes = [];
-  if (d.goals.length) ptypes.push({ label: 'Goals', count: d.goals.length, color: '#4CAF50' });
-  if (d.todos.length) ptypes.push({ label: 'Tareas', count: d.todos.length, color: '#9C27B0' });
-  if (d.rems.length) ptypes.push({ label: 'Reminders', count: d.rems.length, color: '#FFC107' });
+  if (goals.length) ptypes.push({ label: 'Goals', count: goals.length, color: '#4CAF50' });
+  if (todos.length) ptypes.push({ label: 'Tareas', count: todos.length, color: '#9C27B0' });
+  if (reminders.length) ptypes.push({ label: 'Reminders', count: reminders.length, color: '#FFC107' });
   ptypes.push({ label: 'Proyecto', count: 1, color: '#E91E63' });
 
   const ptCounts = {};

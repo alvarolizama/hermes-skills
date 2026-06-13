@@ -204,13 +204,17 @@ function showPage(slug) {
 
 // Project detail view is implemented in ./views/project-detail.js.
 
+function renderProjectDetail(slug, ptab) {
+renderProjectPlaceholder(slug, ptab || 'content');
+}
+
 function renderPagePlaceholder(slug) {
   renderWikiView(slug);
 }
 
 // Register router handlers.
 Router.register('tab', renderTab);
-Router.register('project', renderProjectPlaceholder);
+Router.register('project', renderProjectDetail);
 Router.register('page', renderPagePlaceholder);
 Router.register('default', () => renderTab('projects'));
 

@@ -439,8 +439,12 @@ export function renderProjectPlaceholder(slug, ptab = 'content') {
     }
   }
 
-  // Delegated event handlers.
-  container.addEventListener('click', onProjectClick);
+  // Remove any previously delegated handler before adding a new one.
+  if (container._projectClickHandler) {
+    container.removeEventListener('click', container._projectClickHandler);
+  }
+  container._projectClickHandler = onProjectClick;
+  container.addEventListener('click', container._projectClickHandler);
 
   function onProjectClick(e) {
     const back = e.target.closest('[data-pb-back-projects]');

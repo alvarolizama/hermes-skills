@@ -30,6 +30,19 @@ const TYPE_ICONS = {
   deliverable: 'document-text'
 };
 
+function stripMarkdown(text) {
+  if (!text) return '';
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1')
+    .replace(/\n+/g, ' ')
+    .trim();
+}
+
 export function renderTypeView(typeName) {
   const containerId = `view-type-${typeName}`;
   const container = document.getElementById(containerId);
@@ -77,9 +90,13 @@ export function renderTypeView(typeName) {
     html += '<p style="color:var(--mute)">No hay items.</p>';
   } else {
     items.forEach(p => {
+      const rawSummary = p.summary || (p.body ? p.body.slice(0, 200).replace(/\n+/g, ' ') : '');
+      const plainSummary = stripMarkdown(rawSummary);
+      const safeSummary = plainSummary ? esc(plainSummary) : '';
+
       html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}">`
         + `<div style="display:flex;align-items:center;gap:8px">${icon(typeIcon, 16)}<h3>${esc(p.title)}</h3></div>`
-        + (p.summary ? `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(p.summary)}</div>` : '')
+        + (safeSummary ? `<div class="md-content" style="font-size:12px;color:var(--mute);margin-top:4px">${safeSummary}</div>` : '')
         + `</div>`;
     });
   }
