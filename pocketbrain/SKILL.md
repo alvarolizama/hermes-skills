@@ -25,7 +25,7 @@ brain = Brain()             # → POCKETBRAIN_CONTEXT o contexto default
 brain = Brain('work')       # → override explícito de contexto
 ```
 
-Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`. Se crean los contextos que se requieran.
+Cada contexto es un silo: sus propias páginas, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`. Se crean los contextos que se requieran.
 
 ## Cómo responder al usuario
 
@@ -73,17 +73,17 @@ Ver `references/reports-by-channel.md` para plantillas completas.
 **Listar entidades con tabla:**
 ```markdown
 ## Proyectos (3)
-| Proyecto | Domain | Pages | Links |
-|----------|--------|-------|-------|
-| PocketBrain | proyectos | 4 | 10 |
-| Viaje a Japon 2026 | personal | 2 | 5 |
-| Rediseno web | proyectos | 1 | 3 |
+| Proyecto | Pages | Links |
+|----------|-------|-------|
+| **PocketBrain** | 4 | 10 |
+| Viaje a Japon 2026 | 2 | 5 |
+| Rediseno web | 1 | 3 |
 ```
 
 **Detalle de una página con metadata:**
 ```markdown
 ## GPT-4o
-**Tipo:** entity · **Confianza:** high · **Dominio:** investigacion
+**Tipo:** entity · **Confianza:** high
 **Tags:** multimodal, llm
 
 OpenAI lanzó GPT-4o, un modelo multimodal...
@@ -255,16 +255,9 @@ brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
 - `done` → completado
 - `cancelled` → cancelado
 
-### PASO 5 — Organizar por domain y tags
+### PASO 5 — Tags
 
 ```python
-# Domain: agrupa por área de la vida/trabajo
-domain="investigacion"     # papers, descubrimientos técnicos
-domain="proyectos"         # iniciativas personales concretas
-domain="learning"          # aprendizaje, cursos, lecturas
-domain="personal"          # vida personal, viajes, salud
-domain="finanzas"          # inversiones, presupuestos
-
 # Tags: descriptivos, consistentes, en inglés
 tags=["machine-learning", "nlp", "transformers"]
 tags=["elixir", "phoenix", "ecto"]
@@ -450,6 +443,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/view-activation-pitfall.md` | showIndex() y otras funciones deben activar view-wiki explícitamente |
 | `references/ui-validation-checklist.md` | Checklist de validación visual y de navegación tras cambios en la UI |
 | `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI (secuencia de vistas, rutas relativas, README conciso) |
+| `references/domain-to-context-cleanup.md` | Domain ya no se usa; contexto es el único silo. Schema, API y UI actualizados |
+| `references/context-only-migration.md` | Guía de migración a context-only: schema, reportes, UI, lecciones |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 | `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
@@ -457,6 +452,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
+| v2.28.0 | Domain concept removed entirely. Schema drops `brain_domains` collection and `domain` field from `brain_pages`. API no longer accepts/returns `domain`. UI no longer renders domain chips. Updated `references/domain-to-context-cleanup.md`. Context is the only organizational silo. |
+| v2.27.1 | Added predefined reports (`report_projects`, `report_project_status`, `report_todos`, `report_journal`, `report_reminders`, `report_lint`) in `brain.py` plus `/api/reports/*` endpoints in `brain_web.py`. Added channel-aware response formatting: use `clarify()` for ambiguous queries, then format for Hermes Desktop (rich markdown), Telegram (short + emojis), or CLI (dense pipes). See `references/reports-by-channel.md`. |
 | v2.26.1 | Removed `okr` and `deliverable` page types (14 types total). Updated `brain.py` PAGE_TYPES, `create_goal` validation, and `sync.py` to match. Docs no longer list real/default contexts as examples. Added `references/screenshots-readme-workflow.md`. |
 | v2.25.0 | Skill optimizado para uso headless: Setup reordenado, UI web documentada como opcional. Project detail completo: dashboard de métricas + 12 tabs (Contenido, Goals, Milestones, Ideas, Planes, Todo kanban, Notas, Reminders, Journal, Archivos, Pages, Graph). brain.py: PAGE_TYPES, validaciones en create_page/create_goal/create_todo/create_reminder, list_goals filtra por project_slug. brain_web.py: fix `related` no definido en `get_todos` cuando related_pages es lista. |
 | v2.24.1 | Modular SPA refactor completado: view stacking fix, project detail con todas las tabs y counts reales, cards navegables, wikilinks/backlinks navegables sin stacking, sidebar iconos alineados, Entregables eliminado. Backend: normalizar `expand.related_pages` (dict vs list) en `brain_web.py`. Seed: reminders/journal ahora vinculan `page_slug`. Nuevas referencias: `backend-relations-shape.md`, `project-detail-validation.md`, `modular-spa-project-tabs.md`, `modular-spa-journal.md`, `brain-py-improvement-plan.md`. |
@@ -517,8 +514,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 ### Workflow notes (Alvaro's style)
 
-- **Sample data must stay generic.** Seed scripts, SKILL.md examples, and any reusable skill code must NOT mention the user's company, role, or real projects (e.g., no "Bravo", "CTO", work-specific domains). Default to generic placeholders (`proyectos`, `work`, `personal`) and ask before inserting real context.
-- **`bravo` is a context, not a domain.** In PocketBrain, context names are passed to `Brain('...')`. They are NOT values for the `domain` field. Keep all examples neutral and avoid using real context names as domains. If you need a domain example, use generic placeholders like `"proyectos"`, `"investigacion"`, or `"personal"`.
+- **Sample data must stay generic.** Seed scripts, SKILL.md examples, and any reusable skill code must NOT mention the user's company, role, or real projects (e.g., no "Bravo", "CTO", work-specific contexts). Default to generic placeholders (`proyectos`, `work`, `personal`) and ask before inserting real context.
+- **`bravo` is a context, not a domain.** In PocketBrain, context names are passed to `Brain('...')`. Keep all examples neutral and avoid using real context names as examples. If you need a placeholder, use generic ones like `"work"` or `"personal"`.
 - **No fake/default contexts in README examples.** Do not list `personal, projects, bravo, learning, health` as if they were predefined. The docs should say contexts are created as needed and use `<context_name>` placeholders.
 - **"commit"** = commit inmediato sin discusion. git add + commit, reporta el hash.
 - **Terse, directo, sin branding.** UI limpia sin texto de producto.

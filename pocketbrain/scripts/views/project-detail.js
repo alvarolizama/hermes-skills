@@ -173,7 +173,6 @@ function renderContentTab(data) {
   let html = '';
 
   const meta = [];
-  if (p.domain) meta.push(['Dominio', p.domain]);
   if (p.status) meta.push(['Estado', p.status]);
   if (p.tags && p.tags.length) meta.push(['Tags', Array.isArray(p.tags) ? p.tags.join(', ') : p.tags]);
   if (p.created) meta.push(['Creado', formatDate(p.created)]);
@@ -214,16 +213,15 @@ function renderGoalCard(g) {
 
 function renderTodoCard(t, showMove = true) {
   const goalMeta = t.goal_title ? ` · ${esc(t.goal_title)}` : '';
-  const domainMeta = t.domain ? ` · ${esc(t.domain)}` : '';
   let html = `<div class="card project-item-card" data-pb-page="${esc(t.slug || t.id)}">`
     + `<h3>${esc(t.title)}</h3>`
-    + `<div class="project-item-meta">${esc(t.status || 'backlog')}${domainMeta}${goalMeta}</div>`;
+    + `<div class="project-item-meta">${esc(t.status || 'backlog')}${goalMeta}</div>`;
 
   if (showMove) {
     html += `<div class="kanban-actions">`;
     KANBAN_COLUMNS.forEach(col => {
       if (col === (t.status || 'backlog')) return;
-      html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(col)}">${esc(COLUMN_LABELS[col])}</button>`;
+      html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(col)}" title="Mover a ${esc(COLUMN_LABELS[col])}">${esc(COLUMN_LABELS[col])}</button>`;
     });
     html += `</div>`;
   }
@@ -260,7 +258,7 @@ function renderPageCard(p) {
   return `<div class="card project-item-card" data-pb-page="${esc(p.slug)}">`
     + `<div class="project-item-header">`
     + `<h3>${esc(p.title)}</h3>`
-    + `<span class="chip-domain">${esc(p.page_type || 'concept')}</span>`
+    + `<span class="chip">${esc(p.page_type || 'concept')}</span>`
     + `</div>`
     + (p.summary ? `<div class="project-item-summary">${esc(p.summary)}</div>` : '')
     + `</div>`;
@@ -300,12 +298,12 @@ function renderTodoKanban(data) {
     items.forEach(t => {
       html += `<div class="kanban-card" data-pb-page="${esc(t.slug || t.id)}">`
         + `<div class="kanban-card-title">${esc(t.title)}</div>`
-        + (t.domain ? `<div class="kanban-card-meta">${esc(t.domain)}</div>` : '')
         + (t.goal_title ? `<div class="kanban-card-meta">${esc(t.goal_title)}</div>` : '')
+        + `<div class="kanban-current-status">${esc(COLUMN_LABELS[col])}</div>`
         + `<div class="kanban-actions">`;
       KANBAN_COLUMNS.forEach(target => {
         if (target === col) return;
-        html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(target)}">${esc(COLUMN_LABELS[target])}</button>`;
+        html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(target)}" title="Mover a ${esc(COLUMN_LABELS[target])}">${esc(COLUMN_LABELS[target])}</button>`;
       });
       html += `</div></div>`;
     });

@@ -50,7 +50,6 @@ function pageMetadataRows(p) {
   const rows = [];
   if (p.page_type) rows.push(['Tipo', p.page_type]);
   if (p.confidence) rows.push(['Confianza', p.confidence]);
-  if (p.domain) rows.push(['Dominio', p.domain]);
   if (p.status) rows.push(['Estado', p.status]);
   if (p.tags && p.tags.length) rows.push(['Tags', p.tags.join(', ')]);
   if (p.source_url) rows.push(['Source URL', `<a href="${esc(p.source_url)}" target="_blank" rel="noopener">${esc(p.source_url.substring(0, 40))}</a>`]);
@@ -178,7 +177,7 @@ function renderPageTabContent(p, goals, todos, reminders, journal, backlinks) {
     if (todos.length) {
       html += `<h2>Tareas (${todos.length})</h2>`;
       todos.forEach(t => {
-        html += `<div class="card" style="padding:12px;margin-bottom:8px"><h3>${esc(t.title)}</h3><div style="font-size:12px;color:var(--mute)">${esc(t.status)} · ${esc(t.domain)}</div></div>`;
+        html += `<div class="card" style="padding:12px;margin-bottom:8px"><h3>${esc(t.title)}</h3><div style="font-size:12px;color:var(--mute)">${esc(t.status)}</div></div>`;
       });
     }
     if (reminders.length) {
@@ -284,7 +283,7 @@ export function renderWikiIndex() {
     items.forEach(p => {
       html += `<div class="card" style="cursor:pointer;padding:12px;margin-bottom:8px" data-pb-page="${esc(p.slug)}">`
         + `<div style="display:flex;align-items:center;gap:8px">${icon(typeIcon, 16)}<h3>${esc(p.title)}</h3></div>`
-        + (p.page_type ? `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(p.page_type)}${p.domain ? ' · ' + esc(p.domain) : ''}</div>` : '')
+        + (p.page_type ? `<div style="font-size:12px;color:var(--mute);margin-top:4px">${esc(p.page_type)}</div>` : '')
         + `</div>`;
     });
   });

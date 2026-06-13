@@ -72,16 +72,6 @@ BRAIN_SCHEMA = {
             {"name": "schema_config", "type": "json"},
         ],
     },
-    "brain_domains": {
-        "name": "brain_domains",
-        "type": "base",
-        "fields": [
-            {"name": "name", "type": "text", "required": True},
-            {"name": "label", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
-             "cascadeDelete": False, "maxSelect": 1},
-        ],
-    },
     "brain_tags": {
         "name": "brain_tags",
         "type": "base",
@@ -100,10 +90,8 @@ BRAIN_SCHEMA = {
             {"name": "slug", "type": "text", "required": True, "unique": True},
             {"name": "brain", "type": "relation", "collectionId": "contexts",
              "cascadeDelete": False, "maxSelect": 1},
-            {"name": "domain", "type": "relation", "collectionId": "brain_domains",
-             "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea", "file", "deliverable"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea", "file"], "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
             {"name": "confidence", "type": "select",
@@ -176,7 +164,7 @@ BRAIN_SCHEMA = {
     },
 }
 
-CREATION_ORDER = ["contexts", "brain_domains", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
+CREATION_ORDER = ["contexts", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
 
 # Colecciones con campos self-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
@@ -184,6 +172,14 @@ SELF_REF_FIELDS = {
         {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
          "cascadeDelete": False, "maxSelect": None},
     ],
+}
+
+
+# Dependencias para creación/verificación
+DEPENDENCIES = {
+    'brain_pages':     ['contexts', 'brain_tags'],
+    'brain_log':       ['contexts', 'brain_pages'],
+    'brain_page_versions': ['contexts', 'brain_pages'],
 }
 
 
@@ -251,9 +247,8 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
     order = [
         'brain_log',            # depende de brain_pages
         'brain_page_versions',  # depende de brain_pages
-        'brain_pages',         # depende de brain_domains, brain_tags
+        'brain_pages',         # depende de brain_tags
         'brain_tags',          # depende de contexts
-        'brain_domains',       # depende de contexts
     ]
 
     stats = {}
@@ -489,13 +484,12 @@ class Brain:
         self.user = user
         self._context_id: Optional[str] = None
         self._schema: Optional[dict] = None
-        self._domain_cache: dict = {}   # name → id
         self._tag_cache: dict = {}      # name → id
 
     # ── Orient ───────────────────────────────────────────────────
 
     def orient(self) -> dict:
-        """Carga el contexto del cerebro: ID, schema, dominios y tags cacheados.
+        """Carga el contexto del cerebro: ID, schema, tags cacheados.
 
         Llama esto al inicio de cada sesión antes de operar con un cerebro.
         """
@@ -510,12 +504,6 @@ class Brain:
         self._context_id = context['id']
         self._schema = context.get('schema_config', {}) or {}
 
-        # Cachear dominios
-        self._domain_cache = {}
-        for d in self.pb.all('brain_domains',
-                             filter=f"(brain='{self._context_id}')"):
-            self._domain_cache[d['name']] = d['id']
-
         # Cachear tags
         self._tag_cache = {}
         for t in self.pb.all('brain_tags',
@@ -529,7 +517,6 @@ class Brain:
 
         return {
             'brain': context,
-            'domain_count': len(self._domain_cache),
             'tag_count': len(self._tag_cache),
             'page_count': page_count,
             'schema': self._schema,
@@ -573,27 +560,6 @@ class Brain:
         self.log('setup', description=f'Cerebro "{self.context_name}" creado')
         return result
 
-    # ── Domain management ────────────────────────────────────────
-
-    def get_or_create_domain(self, name: str, label: str = '') -> str:
-        """Obtiene el ID de un dominio, creándolo si no existe."""
-        if name in self._domain_cache:
-            return self._domain_cache[name]
-
-        existing = self.pb.list('brain_domains',
-            filter=f"(name='{name}' && brain='{self._context_id}')")
-        if existing:
-            self._domain_cache[name] = existing[0]['id']
-            return existing[0]['id']
-
-        result = self.pb.create('brain_domains', {
-            'name': name,
-            'label': label or name,
-            'brain': self._context_id,
-        })
-        self._domain_cache[name] = result['id']
-        return result['id']
-
     # ── Tag management ───────────────────────────────────────────
 
     def get_or_create_tag(self, name: str, category: str = '') -> str:
@@ -618,7 +584,7 @@ class Brain:
     # ── Page CRUD ────────────────────────────────────────────────
 
     def create_page(self, title: str, body: str, page_type: str = 'concept',
-                    domain: Optional[str] = None, tags: Optional[list] = None,
+                    tags: Optional[list] = None,
                     summary: str = '', confidence: Optional[str] = None,
                     source_url: str = '', source_sha256: str = '',
                     contested: bool = False, contradictions: str = '',
@@ -635,7 +601,6 @@ class Brain:
             title: Título de la página
             body: Contenido en markdown con [[wikilinks]]
             page_type: 'entity', 'concept', 'comparison', 'query', 'raw'
-            domain: Nombre del dominio (se crea si no existe)
             tags: Lista de nombres de tags (se crean si no existen)
             summary: Resumen (default: primeras 200 chars del body)
             confidence: 'high', 'medium', 'low'
@@ -687,8 +652,6 @@ class Brain:
             'archived': False,
         }
 
-        if domain:
-            data['domain'] = self.get_or_create_domain(domain)
         if confidence:
             data['confidence'] = confidence
         if source_url:
@@ -742,7 +705,6 @@ class Brain:
             if version: args += ["-F", f"version={version}"]
             if status: args += ["-F", f"status={status}"]
             if owner: args += ["-F", f"owner={owner}"]
-            if domain: args += ["-F", f"domain={self.get_or_create_domain(domain)}"]
             if linked_page_ids:
                 for lid in linked_page_ids: args += ["-F", f"related_pages={lid}"]
             result = subprocess.run(args, capture_output=True, text=True)
@@ -830,8 +792,7 @@ class Brain:
 
         Args:
             slug_or_id: Slug o ID de la página
-            **updates: Campos a actualizar. 'domain' acepta string (nombre).
-                       'tags' acepta lista de nombres. 
+            **updates: Campos a actualizar. 'tags' acepta lista de nombres. 
                        'related_slugs' acepta lista de slugs.
         """
         page = self._get_page(slug_or_id)
@@ -839,8 +800,6 @@ class Brain:
             raise ValueError(f"Página '{slug_or_id}' no encontrada")
 
         # Resolver nombres a IDs
-        if 'domain' in updates and isinstance(updates['domain'], str):
-            updates['domain'] = self.get_or_create_domain(updates.pop('domain'))
         if 'tags' in updates and updates['tags']:
             updates['tags'] = [self.get_or_create_tag(t) for t in updates['tags']]
         if 'related_slugs' in updates:
@@ -906,12 +865,11 @@ class Brain:
 
     # ── Query ────────────────────────────────────────────────────
 
-    def get_page(self, slug: str, expand: str = 'domain,tags,related_pages') -> Optional[dict]:
+    def get_page(self, slug: str, expand: str = 'tags,related_pages') -> Optional[dict]:
         """Obtiene una página por slug con relaciones expandidas."""
         return self._get_page(slug, expand)
 
     def list_pages(self, page_type: Optional[str] = None,
-                   domain: Optional[str] = None,
                    tag: Optional[str] = None,
                    status: Optional[str] = None,
                    owner: Optional[str] = None,
@@ -923,10 +881,6 @@ class Brain:
         filters = [f"(brain='{self._context_id}' && archived=false)"]
         if page_type:
             filters.append(f"(page_type='{page_type}')")
-        if domain:
-            # Resolver nombre de dominio a ID
-            domain_id = self.get_or_create_domain(domain)
-            filters.append(f"(domain='{domain_id}')")
         if tag:
             # Resolver nombre de tag a ID
             tag_id = self.get_or_create_tag(tag)
@@ -939,7 +893,7 @@ class Brain:
         params = {
             'filter': "&&".join(filters),
             'perPage': per_page,
-            'expand': 'domain,tags,related_pages',
+            'expand': 'tags,related_pages',
         }
         if sort:
             params['sort'] = sort
@@ -995,7 +949,6 @@ class Brain:
     def ingest_text(self, text: str, title: str = '',
                     page_type: str = 'raw',
                     source_url: str = '',
-                    domain: Optional[str] = None,
                     tags: Optional[list] = None) -> dict:
         """Ingesta texto crudo como página.
 
@@ -1009,7 +962,6 @@ class Brain:
             title=title,
             body=text,
             page_type=page_type,
-            domain=domain,
             tags=tags,
             source_url=source_url,
             source_sha256=sha256(text) if page_type == 'raw' else '',
@@ -1271,7 +1223,6 @@ class Brain:
     # ── Todos ───────────────────────────────────────────────────
 
     def create_todo(self, title: str,
-                    domain: str = 'default',
                     page_slug: Optional[str] = None,
                     goal_id: Optional[str] = None,
                     content: str = "",
@@ -1285,20 +1236,17 @@ class Brain:
             title=title,
             body=content or "",
             page_type='todo',
-            domain=domain,
             status=status,
             owner=owner,
             related_slugs=related,
         )
 
     def todos(self, status: Optional[str] = None,
-              domain: Optional[str] = None,
               owner: Optional[str] = None,
               goal_id: Optional[str] = None,
               limit: int = 50) -> list:
         return self.list_pages(
             page_type='todo',
-            domain=domain,
             status=status,
             owner=owner,
             sort='-created',
@@ -1546,7 +1494,7 @@ class Brain:
             done_todos = [t for t in ptodos if t.get('status') == 'done']
             result.append({
                 'slug': p['slug'], 'title': p.get('title', ''),
-                'status': p.get('status', ''), 'domain': p.get('expand', {}).get('domain', {}).get('name', '') if isinstance(p.get('expand', {}).get('domain'), dict) else '',
+                'status': p.get('status', ''),
                 'goals_count': len(goals),
                 'todos_count': len(ptodos), 'todos_done': len(done_todos),
                 'progress': int(len(done_todos) / len(ptodos) * 100) if ptodos else 0,
@@ -1555,7 +1503,7 @@ class Brain:
 
     def report_project_status(self, project_slug: str) -> dict:
         """Status completo de un proyecto: goals, todos, reminders, journal, notas."""
-        project = self._get_page(project_slug, expand='related_pages,domain,tags')
+        project = self._get_page(project_slug, expand='related_pages,tags')
         if not project:
             raise ValueError(f"Proyecto '{project_slug}' no encontrado")
         pid = project['id']
@@ -1654,7 +1602,6 @@ class Brain:
     # ── File ingest ──────────────────────────────────────────────
 
     def ingest_file(self, filepath: str, title: str = '',
-                    domain: Optional[str] = None,
                     tags: Optional[list] = None,
                     source_url: str = '') -> dict:
         """Ingesta un archivo (PDF, TXT, etc.) al cerebro.
@@ -1662,7 +1609,6 @@ class Brain:
         Args:
             filepath: Ruta al archivo en disco.
             title: Título (default: nombre del archivo).
-            domain: Dominio opcional.
             tags: Tags opcionales.
             source_url: URL original si aplica.
 
@@ -1682,8 +1628,7 @@ class Brain:
         slug = slugify(title)
         file_hash = sha256_file(filepath)
 
-        # Resolver domain y tags a IDs
-        domain_id = self.get_or_create_domain(domain) if domain else ''
+        # Resolver tags a IDs
         tag_ids = [self.get_or_create_tag(t) for t in tags] if tags else []
 
         # Construir el multipart POST con curl
@@ -1701,8 +1646,6 @@ class Brain:
             "-F", f"source_sha256={file_hash}",
             "-F", f"attachment=@{filepath}",
         ]
-        if domain_id:
-            args += ["-F", f"domain={domain_id}"]
         if source_url:
             args += ["-F", f"source_url={source_url}"]
         for tid in tag_ids:
@@ -1763,11 +1706,11 @@ class Brain:
         """Verifica campos requeridos en todas las paginas no archivadas.
 
         Cada page_type tiene campos obligatorios:
-        - entity: title, body, summary, domain
+        - entity: title, body, summary
         - concept: title, body, summary
-        - comparison: title, body, domain
+        - comparison: title, body
         - raw: title, source_url, source_sha256
-        - project: title, body, domain
+        - project: title, body
         - query: title, body
 
         Returns:
@@ -1777,11 +1720,11 @@ class Brain:
             self.orient()
 
         required_fields = {
-            'entity': ['title', 'body', 'summary', 'domain'],
+            'entity': ['title', 'body', 'summary'],
             'concept': ['title', 'body', 'summary'],
-            'comparison': ['title', 'body', 'domain'],
+            'comparison': ['title', 'body'],
             'raw': ['title', 'source_url', 'source_sha256'],
-            'project': ['title', 'body', 'domain'],
+            'project': ['title', 'body'],
             'query': ['title', 'body'],
         }
 

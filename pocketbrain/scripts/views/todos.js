@@ -71,7 +71,6 @@ export function renderTodosView() {
     items.forEach(t => {
       html += `<div class="kanban-card" data-pb-todo="${esc(t.id)}" style="cursor:pointer">`
         + `<div class="kanban-card-title">${esc(t.title)}</div>`
-        + (t.domain && t.domain !== 'default' ? `<div class="kanban-card-meta">${esc(t.domain)}</div>` : '')
         + (t.goal_title ? `<div class="kanban-card-meta">${esc(t.goal_title)}</div>` : '')
         + `<div class="kanban-current-status">${esc(COLUMN_LABELS[c])}</div>`
         + `<div class="kanban-actions">`;

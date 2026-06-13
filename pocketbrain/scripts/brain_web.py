@@ -66,8 +66,6 @@ def get_pages(ctx, include_archived=False):
                 bls[target].append(pg["slug"])
     result = []
     for pg in pages:
-        ed = pg.get("expand",{}).get("domain")
-        dn = ed.get("name","") if isinstance(ed,dict) else ""
         et = pg.get("expand",{}).get("tags",[])
         tns = []
         if et and isinstance(et,list) and len(et)>0:
@@ -76,7 +74,7 @@ def get_pages(ctx, include_archived=False):
         result.append({"id":pg["id"],"slug":pg["slug"],"title":pg.get("title",pg["slug"]),
             "page_type":pg.get("page_type","concept"),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),
             "confidence":pg.get("confidence",""),"summary":pg.get("summary","") or "",
-            "domain":dn,"tags":tns,"body":pg.get("body","") or "","backlinks":bld,
+            "tags":tns,"body":pg.get("body","") or "","backlinks":bld,
             "status":pg.get("status","") or "","started_date":(pg.get("started_date","") or "")[:10],
             "completed_date":(pg.get("completed_date","") or "")[:10],
             "cancelled_date":(pg.get("cancelled_date","") or "")[:10],
@@ -153,7 +151,7 @@ def get_todos(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id),
-        expand="related_pages,domain")
+        expand="related_pages")
     result = []
     for p in pages:
         rel = p.get("expand", {}).get("related_pages", [])
@@ -172,20 +170,9 @@ def get_todos(ctx):
             if related.get("page_type") in ('goal', 'milestone'):
                 goal_id = related.get("id", "")
                 goal_title = related.get("title", "")
-        dom = p.get("expand", {}).get("domain", {})
-        dn = dom.get("name", "") if isinstance(dom, dict) else p.get("domain", "")
-        if not dn:
-            # fallback: try to resolve domain id
-            did = p.get("domain")
-            if did:
-                try:
-                    drec = brain.pb.get("brain_domains", did)
-                    dn = drec.get("name", "") if drec else ""
-                except Exception:
-                    dn = ""
         result.append({
             "id": p["id"], "title": p.get("title", ""), "status": p.get("status", "backlog"),
-            "domain": dn, "owner": p.get("owner", ""),
+            "owner": p.get("owner", ""),
             "content": p.get("body", "") or "",
             "page_slug": ps, "page_title": pt,
             "goal_id": goal_id, "goal_title": goal_title,
@@ -402,7 +389,6 @@ def create_todo(ctx, payload):
     brain = get_brain(ctx)
     return brain.create_todo(
         title=payload["title"],
-        domain=payload.get("domain", ""),
         page_slug=payload.get("page_slug"),
         goal_id=payload.get("goal_id"),
         content=payload.get("content", ""),
@@ -420,7 +406,6 @@ def create_page(ctx, payload):
         title=payload["title"],
         body=payload.get("body", ""),
         page_type=payload.get("page_type", "concept"),
-        domain=payload.get("domain"),
         tags=payload.get("tags"),
         summary=payload.get("summary", ""),
         confidence=payload.get("confidence"),

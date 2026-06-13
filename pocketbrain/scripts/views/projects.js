@@ -93,7 +93,6 @@ export function renderProjectsView() {
       if (c.ideas) chips.push(`Ideas ${c.ideas}`);
       if (c.plans) chips.push(`Planes ${c.plans}`);
 
-      const domain = p.expand?.domain?.name || p.domain || '';
       const tags = (p.expand?.tags || p.tags || []).slice(0, 3);
       const updated = formatDate(p.updated || p.created);
 
@@ -101,7 +100,6 @@ export function renderProjectsView() {
         <div class="card project-card" data-pb-project="${esc(p.slug)}">
           <div class="project-card-header">
             <h3>${esc(p.title)}</h3>
-            ${domain ? `<span class="chip-domain">${esc(domain)}</span>` : ''}
           </div>
           ${p.summary || p.body ? `<p class="project-excerpt">${esc(excerpt(p.summary || p.body))}</p>` : ''}
           <div class="project-meta">
