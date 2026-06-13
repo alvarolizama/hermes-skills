@@ -89,7 +89,8 @@ const Store = {
 
   setFilter(view, value) {
     if (!Object.prototype.hasOwnProperty.call(this.state.filters, view)) {
-      throw new Error(`Unknown filter view: ${view}`);
+      // Silently ignore unknown filter views instead of throwing; some views (type_*) may not have a dedicated filter slot.
+      return;
     }
     this.state.filters = { ...this.state.filters, [view]: String(value ?? '') };
     this.notify();

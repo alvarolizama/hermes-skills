@@ -263,7 +263,12 @@ export function renderWikiIndex() {
     tabCounts[t.id] = t.id === 'all' ? counts.all : counts[t.id] || 0;
   });
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('bars-3', 20)}<span>Wiki</span></h1></div>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Wiki</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('bars-3', 20)}<span>Wiki</span></h1></div>`
     + `<p class="view-subtitle">${pages.length} páginas</p></div>`;
   html += Tabs({ items: INDEX_TABS, active: wikiIndexTab, counts: tabCounts });
 
@@ -294,6 +299,14 @@ export function renderWikiIndex() {
       wikiIndexTab = id;
       setHashParams({ tab: 'wiki', wtab: id });
       renderWikiIndex();
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

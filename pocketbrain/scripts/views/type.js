@@ -11,11 +11,13 @@ function esc(s) {
 }
 
 const TYPE_NAMES = {
+  project: 'Proyectos',
   concept: 'Conceptos', entity: 'Entidades', comparison: 'Comparaciones',
   query: 'Consultas', raw: 'Raw', plan: 'Planes', note: 'Notas', idea: 'Ideas',
   file: 'Archivos', deliverable: 'Entregables'
 };
 const TYPE_ICONS = {
+  project: 'squares-2x2',
   concept: 'light-bulb',
   entity: 'users',
   comparison: 'chart-pie',
@@ -56,7 +58,12 @@ export function renderTypeView(typeName) {
   const typeLabel = TYPE_NAMES[typeName] || typeName;
   const typeIcon = TYPE_ICONS[typeName] || 'document-text';
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon(typeIcon, 20)}<span>${esc(typeLabel)}</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>${esc(typeLabel)}</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon(typeIcon, 20)}<span>${esc(typeLabel)}</span></h1>`
     + `<select data-pb-filter="${esc(typeName)}" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
@@ -86,6 +93,14 @@ export function renderTypeView(typeName) {
     select.addEventListener('change', e => {
       Store.setFilter(typeName, e.target.value);
       renderTypeView(typeName);
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

@@ -64,7 +64,12 @@ export function renderGoalsView(typeFilter = 'goal') {
   const label = typeFilter === 'milestone' ? 'Milestones' : 'Goals';
   const headerIcon = typeFilter === 'milestone' ? 'check-circle' : 'flag';
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon(headerIcon, 20)}<span>${esc(label)}</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>${esc(label)}</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon(headerIcon, 20)}<span>${esc(label)}</span></h1>`
     + `<select data-pb-filter="goal" class="filter-select">`
     + `<option value="" ${gf === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${gf === 'project' ? 'selected' : ''}>Con proyecto</option>`
@@ -116,6 +121,14 @@ export function renderGoalsView(typeFilter = 'goal') {
       const tab = typeFilter === 'milestone' ? 'milestones' : 'goals';
       setHashParams({ tab, gstatus: id });
       renderGoalsView(typeFilter);
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

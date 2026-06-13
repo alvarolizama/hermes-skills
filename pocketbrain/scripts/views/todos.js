@@ -49,7 +49,12 @@ export function renderTodosView() {
     if (byCol[c]) byCol[c].push(t);
   });
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('clipboard-document-list', 20)}<span>Todo</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Todo</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('clipboard-document-list', 20)}<span>Todo</span></h1>`
     + `<select data-pb-filter="todo" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
@@ -86,6 +91,14 @@ export function renderTodosView() {
     select.addEventListener('change', e => {
       Store.setFilter('todo', e.target.value);
       renderTodosView();
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

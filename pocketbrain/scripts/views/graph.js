@@ -31,17 +31,38 @@ export function renderGraph() {
   const nodeCount = graph.nodes.length;
   const edgeCount = graph.edges.length;
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('share', 20)}<span>Graph</span></h1></div>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Graph</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('share', 20)}<span>Graph</span></h1></div>`
     + `<p class="view-subtitle">${nodeCount} nodos · ${edgeCount} aristas</p></div>`;
 
   if (!graph.nodes.length) {
     html += '<p style="padding:20px;color:var(--mute)">No hay datos para el grafo.</p>';
     container.innerHTML = html;
+
+    const back = container.querySelector('[data-pb-back-projects]');
+    if (back) {
+      back.addEventListener('click', e => {
+        e.preventDefault();
+        if (typeof window.showTab === 'function') window.showTab('projects');
+      });
+    }
     return;
   }
 
   html += `<div class="graph-wrap"><div id="graph-view" style="height:65vh;"></div><div id="graph-legend" class="graph-legend"></div></div>`;
   container.innerHTML = html;
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
+    });
+  }
 
   const legend = document.getElementById('graph-legend');
   if (legend) {

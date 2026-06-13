@@ -58,7 +58,12 @@ export function renderJournalView() {
 
   const opts = ymOptions();
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('book-open', 20)}<span>Journal</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Journal</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('book-open', 20)}<span>Journal</span></h1>`
     + `<div style="display:flex;gap:8px">`
     + `<select data-pb-filter="journal" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
@@ -94,6 +99,14 @@ export function renderJournalView() {
     select.addEventListener('change', e => {
       Store.setFilter('journal', e.target.value);
       renderJournalView();
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

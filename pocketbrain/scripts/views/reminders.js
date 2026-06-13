@@ -69,7 +69,12 @@ export function renderRemindersView() {
   else if (reminderStatus === 'overdue') filtered = reminders.filter(r => !r.done && r.date < today);
   else if (reminderStatus === 'done') filtered = reminders.filter(r => r.done);
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('bell', 20)}<span>Reminders</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Reminders</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('bell', 20)}<span>Reminders</span></h1>`
     + `<select data-pb-filter="reminder" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
@@ -108,6 +113,14 @@ export function renderRemindersView() {
     select.addEventListener('change', e => {
       Store.setFilter('reminder', e.target.value);
       renderRemindersView();
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 

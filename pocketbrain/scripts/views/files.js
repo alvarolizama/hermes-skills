@@ -23,7 +23,12 @@ export function renderFilesView() {
     files = files.filter(f => !f.page_slug);
   }
 
-  let html = `<div class="view-header"><div class="view-title-row"><h1>${icon('paper-clip', 20)}<span>Archivos</span></h1>`
+  let html = `<div class="view-header">`
+    + `<div class="project-breadcrumb" style="margin-bottom:8px">`
+    + `<a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>`
+    + `<span class="project-breadcrumb-sep">/</span><span>Archivos</span>`
+    + `</div>`
+    + `<div class="view-title-row"><h1>${icon('paper-clip', 20)}<span>Archivos</span></h1>`
     + `<select data-pb-filter="file" class="filter-select">`
     + `<option value="" ${filter === '' ? 'selected' : ''}>Todos</option>`
     + `<option value="project" ${filter === 'project' ? 'selected' : ''}>Con proyecto</option>`
@@ -53,6 +58,14 @@ export function renderFilesView() {
     select.addEventListener('change', e => {
       Store.setFilter('file', e.target.value);
       renderFilesView();
+    });
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
     });
   }
 }

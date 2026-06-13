@@ -28,6 +28,10 @@ export function renderLintView() {
 
   container.innerHTML = `
     <div class="view-header">
+      <div class="project-breadcrumb" style="margin-bottom:8px">
+        <a href="javascript:void(0)" data-pb-back-projects>${icon('arrow-left', 12)}<span>Proyectos</span></a>
+        <span class="project-breadcrumb-sep">/</span><span>Lint</span>
+      </div>
       <div class="view-title-row">
         <h1>${icon('shield-check', 20)}<span>Lint</span></h1>
         <button data-pb-refresh-lint class="filter-select" style="display:flex;align-items:center;gap:6px;cursor:pointer;">${icon('arrow-path', 14)} Refrescar</button>
@@ -42,6 +46,14 @@ export function renderLintView() {
   const btn = container.querySelector('[data-pb-refresh-lint]');
   if (btn) {
     btn.addEventListener('click', refreshLint);
+  }
+
+  const back = container.querySelector('[data-pb-back-projects]');
+  if (back) {
+    back.addEventListener('click', e => {
+      e.preventDefault();
+      if (typeof window.showTab === 'function') window.showTab('projects');
+    });
   }
 }
 
