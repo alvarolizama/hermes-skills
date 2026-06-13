@@ -92,10 +92,36 @@ def get_lint(ctx):
     brain = get_brain(ctx)
     return brain.lint()
 
+# ── Reports ──────────────────────────────────────────────────────
+
+def report_projects(ctx):
+    brain = get_brain(ctx)
+    return brain.report_projects()
+
+def report_project_status(ctx, slug):
+    brain = get_brain(ctx)
+    return brain.report_project_status(slug)
+
+def report_todos(ctx, status=None, project_slug=None):
+    brain = get_brain(ctx)
+    return brain.report_todos(status=status, project_slug=project_slug)
+
+def report_journal(ctx, days=7):
+    brain = get_brain(ctx)
+    return brain.report_journal(days=days)
+
+def report_reminders(ctx, date=''):
+    brain = get_brain(ctx)
+    return brain.report_reminders(date=date)
+
+def report_lint(ctx):
+    brain = get_brain(ctx)
+    return brain.report_lint()
+
 def get_goals(ctx):
     brain = get_brain(ctx)
     result = []
-    for pt in ['goal', 'milestone', 'okr']:
+    for pt in ['goal', 'milestone']:
         pages = brain.pb.all("brain_pages",
             filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
             expand="related_pages")
@@ -417,6 +443,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             elif path == "/api/journal": self.serve_json(get_journal(ctx))
             elif path == "/api/lint": self.serve_json(get_lint(ctx))
             elif path == "/api/graph": self.serve_json(get_graph(ctx))
+            elif path == "/api/reports/projects": self.serve_json(report_projects(ctx))
+            elif path.startswith("/api/reports/project/"):
+                self.serve_json(report_project_status(ctx, path.split('/')[-1]))
+            elif path == "/api/reports/todos":
+                self.serve_json(report_todos(ctx, status=qs.get('status', [None])[0], project_slug=qs.get('project', [None])[0]))
+            elif path == "/api/reports/journal":
+                self.serve_json(report_journal(ctx, days=int(qs.get('days', ['7'])[0] or '7')))
+            elif path == "/api/reports/reminders":
+                self.serve_json(report_reminders(ctx, date=qs.get('date', [''])[0] or ''))
+            elif path == "/api/reports/lint": self.serve_json(report_lint(ctx))
             elif path == "/api/versions": 
                 self.serve_json(get_versions(ctx, qs.get('slug',[None])[0]))
             elif path == "/api/logs": self.serve_json(get_logs(ctx))

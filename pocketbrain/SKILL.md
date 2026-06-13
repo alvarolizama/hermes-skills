@@ -31,6 +31,42 @@ Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, re
 
 Cuando el usuario pregunte sobre datos en PocketBrain, responde **directo en la conversación** con markdown formateado. No le digas "ve a la web", no le compartas links de la UI. La conversación ES la interfaz.
 
+### Antes de responder: claridad
+
+Si la pregunta es ambigua, usa `clarify()` para confirmar:
+
+- "proyectos" → ¿listar todos o uno específico?
+- "dame el status" → ¿de qué proyecto?
+- "tareas" → ¿cuáles? ¿de hoy? ¿de un proyecto?
+- "journal" → ¿hoy, esta semana, últimos 7 días?
+
+Ejemplo:
+
+```python
+clarify(
+    question="¿De qué proyecto quieres el status?",
+    choices=["PocketBrain", "Mundial 2026", "Otro (escribe)"]
+)
+```
+
+### Formatos por canal
+
+**Hermes Desktop (prioridad):**
+- Markdown enriquecido: tablas, headers, listas, emojis moderados.
+- Si hay muchos datos, adjunta archivo markdown.
+- Destaca conteos y progreso en negritas.
+
+**Telegram:**
+- Mensajes cortos, markdown nativo de Telegram, emojis.
+- Máximo 4096 caracteres; si excede, resume o parte.
+- Fechas en formato natural: "hoy", "mañana", "esta semana".
+
+**CLI / terminal:**
+- Texto plano denso, pipes, sin emojis.
+- Una línea por ítem.
+
+Ver `references/reports-by-channel.md` para plantillas completas.
+
 ### Patrones de respuesta
 
 **Listar entidades con tabla:**
@@ -385,6 +421,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/schema.md` | Detalle de las 6 colecciones y sus campos, historial de unificación |
 | `references/schema-audit.md` | Auditoría de integridad del schema: checklist 10 puntos para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
 | `references/goals.md` | Sistema de goals y milestones |
+| `references/reports-by-channel.md` | Reportes predefinidos y formatos por canal: Hermes Desktop, Telegram, CLI |
 | `references/web-ui.md` | Navegación y vistas del servidor web live (opcional) |
 | `references/web-ui-patterns.md` | Refactor frontend: tabs, progreso, toasts, markdown, modular SPA |
 | `references/frontend-es-modules.md` | Guía completa para refactorizar web_ui.html a módulos ES |
@@ -411,7 +448,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/pocketpages-migration.md` | Alternativa PocketPages: web UI server-rendered con EJS, FAB, Command Palette, Kanban drag & drop |
 | `references/view-activation-pitfall.md` | showIndex() y otras funciones deben activar view-wiki explícitamente |
 | `references/ui-validation-checklist.md` | Checklist de validación visual y de navegación tras cambios en la UI |
-| `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI |
+| `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI (secuencia de vistas, rutas relativas, README conciso) |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 | `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
@@ -419,7 +456,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
-| v2.26.0 | README cleanup, graph legend capitalization, full screenshot refresh, fixed image paths (`../screenshots/NN.png`), removed real context names from examples. UI fixes: project graph data fallbacks, type view markdown stripping, mobile header stack order. |
+| v2.26.1 | Removed `okr` and `deliverable` page types (14 types total). Updated `brain.py` PAGE_TYPES, `create_goal` validation, and `sync.py` to match. Docs no longer list real/default contexts as examples. Added `references/screenshots-readme-workflow.md`. |
 | v2.25.0 | Skill optimizado para uso headless: Setup reordenado, UI web documentada como opcional. Project detail completo: dashboard de métricas + 12 tabs (Contenido, Goals, Milestones, Ideas, Planes, Todo kanban, Notas, Reminders, Journal, Archivos, Pages, Graph). brain.py: PAGE_TYPES, validaciones en create_page/create_goal/create_todo/create_reminder, list_goals filtra por project_slug. brain_web.py: fix `related` no definido en `get_todos` cuando related_pages es lista. |
 | v2.24.1 | Modular SPA refactor completado: view stacking fix, project detail con todas las tabs y counts reales, cards navegables, wikilinks/backlinks navegables sin stacking, sidebar iconos alineados, Entregables eliminado. Backend: normalizar `expand.related_pages` (dict vs list) en `brain_web.py`. Seed: reminders/journal ahora vinculan `page_slug`. Nuevas referencias: `backend-relations-shape.md`, `project-detail-validation.md`, `modular-spa-project-tabs.md`, `modular-spa-journal.md`, `brain-py-improvement-plan.md`. |
 | v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0). |
@@ -480,7 +517,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 ### Workflow notes (Alvaro's style)
 
 - **Sample data must stay generic.** Seed scripts, SKILL.md examples, and any reusable skill code must NOT mention the user's company, role, or real projects (e.g., no "Bravo", "CTO", work-specific domains). Default to generic placeholders (`proyectos`, `work`, `personal`) and ask before inserting real context.
-- **`bravo` is a context, not a domain.** In PocketBrain, `personal`, `projects`, `bravo`, `learning`, and `health` are **contexts** passed to `Brain('...')`. They are NOT values for the `domain` field. Keep all examples neutral and avoid using real context names as domains. If you need a domain example, use generic placeholders like `"proyectos"`, `"investigacion"`, or `"personal"`.
+- **`bravo` is a context, not a domain.** In PocketBrain, context names are passed to `Brain('...')`. They are NOT values for the `domain` field. Keep all examples neutral and avoid using real context names as domains. If you need a domain example, use generic placeholders like `"proyectos"`, `"investigacion"`, or `"personal"`.
+- **No fake/default contexts in README examples.** Do not list `personal, projects, bravo, learning, health` as if they were predefined. The docs should say contexts are created as needed and use `<context_name>` placeholders.
 - **"commit"** = commit inmediato sin discusion. git add + commit, reporta el hash.
 - **Terse, directo, sin branding.** UI limpia sin texto de producto.
 - **Diff contra runtime antes de editar repo.** Sync primero.

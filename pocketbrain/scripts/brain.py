@@ -1532,6 +1532,96 @@ class Brain:
         """Devuelve goals como lista plana."""
         return self.list_goals(project_slug=project_slug)
 
+    # ── Reports (predefined structured output) ───────────────────
+
+    def report_projects(self) -> list:
+        """Lista resumen de proyectos con métricas básicas."""
+        projects = self.list_pages(page_type='project')
+        result = []
+        for p in projects:
+            pid = p['id']
+            goals = [g for g in self.list_goals() if pid in (g.get('related_pages') or [])]
+            todos = self.list_pages(page_type='todo', per_page=200)
+            ptodos = [t for t in todos if pid in (t.get('related_pages') or [])]
+            done_todos = [t for t in ptodos if t.get('status') == 'done']
+            result.append({
+                'slug': p['slug'], 'title': p.get('title', ''),
+                'status': p.get('status', ''), 'domain': p.get('expand', {}).get('domain', {}).get('name', '') if isinstance(p.get('expand', {}).get('domain'), dict) else '',
+                'goals_count': len(goals),
+                'todos_count': len(ptodos), 'todos_done': len(done_todos),
+                'progress': int(len(done_todos) / len(ptodos) * 100) if ptodos else 0,
+            })
+        return result
+
+    def report_project_status(self, project_slug: str) -> dict:
+        """Status completo de un proyecto: goals, todos, reminders, journal, notas."""
+        project = self._get_page(project_slug, expand='related_pages,domain,tags')
+        if not project:
+            raise ValueError(f"Proyecto '{project_slug}' no encontrado")
+        pid = project['id']
+        all_goals = self.list_goals()
+        all_todos = self.list_pages(page_type='todo', per_page=200)
+        all_reminders = self.list_pages(page_type='reminder', sort='date,time', per_page=100)
+        all_journal = self.list_pages(page_type='journal', sort='-date', per_page=50)
+        all_notes = self.list_pages(page_type='note', per_page=50)
+        all_files = self.list_pages(page_type='file', per_page=50)
+
+        goals = [g for g in all_goals if pid in (g.get('related_pages') or [])]
+        todos = [t for t in all_todos if pid in (t.get('related_pages') or [])]
+        reminders = [r for r in all_reminders if pid in (r.get('related_pages') or [])]
+        journal = [j for j in all_journal if pid in (j.get('related_pages') or [])]
+        notes = [n for n in all_notes if pid in (n.get('related_pages') or [])]
+        files = [f for f in all_files if pid in (f.get('related_pages') or [])]
+
+        status_counts = {}
+        for t in todos:
+            status_counts[t.get('status', 'backlog')] = status_counts.get(t.get('status', 'backlog'), 0) + 1
+
+        return {
+            'project': {'slug': project['slug'], 'title': project.get('title', ''), 'body': project.get('body', '') or '', 'status': project.get('status', '')},
+            'goals': goals, 'todos': todos, 'reminders': reminders,
+            'journal': journal, 'notes': notes, 'files': files,
+            'counts': {
+                'goals': len(goals), 'todos': len(todos),
+                'reminders': len(reminders), 'journal': len(journal),
+                'notes': len(notes), 'files': len(files),
+                'todos_by_status': status_counts,
+            }
+        }
+
+    def report_todos(self, status: Optional[str] = None, project_slug: Optional[str] = None) -> list:
+        """Reporte de todos con metadatos útiles."""
+        todos = self.todos(status=status, project_slug=project_slug)
+        return [{
+            'slug': t.get('slug', ''), 'title': t.get('title', ''),
+            'status': t.get('status', 'backlog'), 'priority': t.get('priority', ''),
+            'owner': t.get('owner', ''), 'started': (t.get('started_date', '') or '')[:10],
+            'completed': (t.get('completed_date', '') or '')[:10],
+        } for t in todos]
+
+    def report_journal(self, days: int = 7) -> list:
+        """Journal de los últimos N días."""
+        from datetime import datetime, timezone, timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime('%Y-%m-%d')
+        all_entries = self.list_pages(page_type='journal', sort='-date', per_page=100)
+        return [{
+            'slug': j.get('slug', ''), 'date': (j.get('date', '') or '')[:10],
+            'mood': j.get('mood', ''), 'body': j.get('body', '') or '',
+        } for j in all_entries if (j.get('date') or '')[:10] >= cutoff]
+
+    def report_reminders(self, date: str = '') -> list:
+        """Recordatorios próximos o de una fecha."""
+        reminders = self.reminders(date=date)
+        return [{
+            'slug': r.get('slug', ''), 'title': r.get('title', ''),
+            'date': (r.get('date', '') or '')[:10], 'time': r.get('time', ''),
+            'done': bool(r.get('done', False)),
+        } for r in reminders]
+
+    def report_lint(self) -> dict:
+        """Resumen de lint para reportes."""
+        return self.lint()
+
 
 
     def create_reminder(self, title: str, date: str, time: str = '',
