@@ -126,7 +126,6 @@ Usa esta tabla de decisión para determinar el tipo correcto:
 | Es un recordatorio con fecha y hora | `reminder` | "Reunión 10am con cliente", "Pagar factura luz" |
 | Es una entrada de diario, bitácora del día | `journal` | "Journal 2026-06-10" |
 | Es un archivo adjunto (PDF, imagen, doc) | `file` | "Diagrama arquitectura v2.pdf" |
-| Es un entregable versionado | `deliverable` | "Specs API v1.0", "Release notes v2.3" |
 
 > **Auto-suggest:** si no pasas `page_type`, se infiere solo via `suggest_page_type()`. Por ejemplo, `create_page(title="Nota reunión diseño")` → `page_type='note'` porque el título contiene "nota". Si quieres forzar un tipo, pásalo explícitamente.
 
@@ -186,27 +185,25 @@ proyecto (page_type='project')
   ├── ideas (propuestas relacionadas)
   ├── plans (roadmaps, specs)
   ├── notes (apuntes del proyecto)
-  ├── deliverables (entregables versionados)
   └── files (archivos adjuntos)
 ```
 
 **Flujo de proyecto:**
 ```python
 # 1. Crear el proyecto
-brain.create_page("Migración K8s", page_type="project", domain="proyectos")
+brain.create_page("Migración K8s", page_type="project")
 
 # 2. Definir goals y milestones
 brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30",
                   project_slug="migracion-k8s")  # relaciona al proyecto
 
 # 3. Crear tareas
-brain.create_todo("Configurar CI/CD para K8s", domain="proyectos",
-                  related_slugs=["migracion-k8s"])
-brain.move_todo(todo_id, "in progress")
+brain.create_todo("Configurar CI/CD para K8s", related_slugs=["migracion-k8s"])
 
 # 4. Agendar recordatorios (reuniones, fechas límite)
 brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
                       related_slugs=["migracion-k8s"])
+```
 ```
 
 **Para goals, usa el tipo correcto:**
@@ -257,12 +254,11 @@ else:
     brain.create_page(
         title="GPT-4o",
         body="[[OpenAI]] lanzó GPT-4o...\nVs [[Claude 3.5 Sonnet]]...\n^[paper-x]",
-        page_type="entity",           # inferido o explícito
+        page_type="entity",
         confidence='high',
-        domain="investigacion",
         tags=["multimodal", "llm"]
     )
-    # → related_pages automático, backlinks automáticos
+```
 
 # 3. MANTENER: lint periódico
 report = brain.lint()
@@ -290,7 +286,7 @@ brain.search("machine learning")     # case-insensitive, rankeado
 brain.append_to_page("mantrams", "- Nuevo", heading="2026-06-10")
 
 # Tareas
-brain.create_todo("Revisar PR", domain="proyectos")
+brain.create_todo("Revisar PR", related_slugs=["proyecto-x"])
 brain.todos(status="today")
 brain.move_todo(id, "done")
 
@@ -301,7 +297,6 @@ brain.get_goal_tree()
 
 # Proyectos
 brain.create_page("App Móvil", page_type="project")
-brain.create_deliverable("app-movil", filepath="/tmp/specs.pdf", title="Specs", version="v1")
 
 # Diario
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
@@ -309,7 +304,9 @@ brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
 # Recordatorios
 brain.create_reminder("Reunión", date="2026-06-15", time="10:00")
 brain.reminders(date="today")
+```
 
+```python
 # Auditoría
 brain.lint()           # huérfanos, broken links
 brain.index()          # catálogo
@@ -414,7 +411,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/schema-update.md` | Como actualizar colecciones en PocketBase existentes |
 | `references/pocketpages-migration.md` | Alternativa PocketPages: web UI server-rendered con EJS, FAB, Command Palette, Kanban drag & drop |
 | `references/view-activation-pitfall.md` | showIndex() y otras funciones deben activar view-wiki explícitamente |
-| `references/sidebar-layout.md` | Alineación icono-label-count en sidebar nav, eliminación de deliverables del nav |
+| `references/ui-validation-checklist.md` | Checklist de validación visual y de navegación tras cambios en la UI |
+| `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 | `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
@@ -422,7 +420,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
-| v2.25.1 | UI consistency pass: icon headers + icon tabs in all list views (goals, milestones, todos, reminders, journal, files, type views, wiki, graph, lint). Unified kanban markup. Replaced emoji with Heroicons. Added missing `view-type-project`/`view-type-deliverable` containers. Breadcrumbs fixed. |
+| v2.26.0 | README cleanup, graph legend capitalization, full screenshot refresh, fixed image paths (`../screenshots/NN.png`), removed real context names from examples. UI fixes: project graph data fallbacks, type view markdown stripping, mobile header stack order. |
 | v2.25.0 | Skill optimizado para uso headless: Setup reordenado, UI web documentada como opcional. Project detail completo: dashboard de métricas + 12 tabs (Contenido, Goals, Milestones, Ideas, Planes, Todo kanban, Notas, Reminders, Journal, Archivos, Pages, Graph). brain.py: PAGE_TYPES, validaciones en create_page/create_goal/create_todo/create_reminder, list_goals filtra por project_slug. brain_web.py: fix `related` no definido en `get_todos` cuando related_pages es lista. |
 | v2.24.1 | Modular SPA refactor completado: view stacking fix, project detail con todas las tabs y counts reales, cards navegables, wikilinks/backlinks navegables sin stacking, sidebar iconos alineados, Entregables eliminado. Backend: normalizar `expand.related_pages` (dict vs list) en `brain_web.py`. Seed: reminders/journal ahora vinculan `page_slug`. Nuevas referencias: `backend-relations-shape.md`, `project-detail-validation.md`, `modular-spa-project-tabs.md`, `modular-spa-journal.md`, `brain-py-improvement-plan.md`. |
 | v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0). |
@@ -483,6 +481,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 ### Workflow notes (Alvaro's style)
 
 - **Sample data must stay generic.** Seed scripts, SKILL.md examples, and any reusable skill code must NOT mention the user's company, role, or real projects (e.g., no "Bravo", "CTO", work-specific domains). Default to generic placeholders (`proyectos`, `work`, `personal`) and ask before inserting real context.
+- **`bravo` is a context, not a domain.** In PocketBrain, `personal`, `projects`, `bravo`, `learning`, and `health` are **contexts** passed to `Brain('...')`. They are NOT values for the `domain` field. Keep all examples neutral and avoid using real context names as domains. If you need a domain example, use generic placeholders like `"proyectos"`, `"investigacion"`, or `"personal"`.
 - **"commit"** = commit inmediato sin discusion. git add + commit, reporta el hash.
 - **Terse, directo, sin branding.** UI limpia sin texto de producto.
 - **Diff contra runtime antes de editar repo.** Sync primero.
@@ -497,12 +496,13 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Modular SPA: validar imports y registros de router**: al extraer funciones a módulos ES (ej. `views/project-detail.js`), asegurar que el handler registrado en `Router.register('project', handler)` coincida con la firma `(slug, ptab)`. Si el router pasa `ptab` pero el handler lo ignora, las tabs internas no se restauran desde el hash.
 - **Validación mínima de project detail**: al terminar el project detail, confirmar en browser: (a) todas las tabs visibles con counts reales, (b) tab Contenido renderiza markdown, (c) click en goal/todo/reminder/journal/file navega a la página sin stacking (`#main > div.active` === 1), (d) wikilinks dentro del markdown y backlinks también navegan sin stacking.
 - **Breadcrumb links must use valid targets**: in `wiki.js` the page-type breadcrumb calls `showTab('type_' + type)`. That only works if the matching `view-type-*` container exists in `web_ui.html`. When adding a new `page_type`, also add its `<div id="view-type-NAME">` to `web_ui.html` or the breadcrumb click will blank the main area without an error. Verified by checking `document.querySelectorAll('#main > div.active').length === 1` after navigation.
-- **Missing `view-type-project` / `view-type-deliverable` containers break wiki breadcrumbs**: `web_ui.html` shipped without containers for `project` and `deliverable`, so clicking the page-type link in the wiki breadcrumb for those types left the main area blank. Add every type that can appear in `page_type` to `web_ui.html`, including `project`, `deliverable`, `concept`, `entity`, `comparison`, `query`, `raw`, `plan`, `note`, `idea`, and `file`.
-- **Missing `view-type-project` / `view-type-deliverable` containers break wiki breadcrumbs**: `web_ui.html` shipped without containers for `project` and `deliverable`, so clicking the page-type link in the wiki breadcrumb for those types left the main area blank. Add every type that can appear in `page_type` to `web_ui.html`, including `project`, `deliverable`, `concept`, `entity`, `comparison`, `query`, `raw`, `plan`, `note`, `idea`, and `file`.
-- **`Store.setFilter` throws on unknown view keys**: `initialState.filters` only defines slots for `page`, `goal`, `todo`, `reminder`, `file`, `dep`, and `journal`. Type views call `Store.setFilter(typeName, value)` with keys like `concept` or `project`, which used to throw. Fix: make `setFilter` silently ignore unknown keys instead of throwing, or pre-register every `page_type` in `initialState.filters`.
+- **`Store.setFilter` throws on unknown view keys**: `initialState.filters` only defines slots for `page`, `goal`, `todo`, `reminder`, `file`, and `journal`. Type views call `Store.setFilter(typeName, value)` with keys like `concept` or `project`, which used to throw. Fix: make `setFilter` silently ignore unknown keys instead of throwing, or pre-register every `page_type` in `initialState.filters`.
 - **Header icon alignment**: `web_ui.css` must style `.view-header h1` with `display:inline-flex;align-items:center;gap:10px` and `.view-header h1 svg { display:block; flex-shrink:0; color:var(--body) }`, otherwise the Heroicon may appear misaligned or not render at all in the accessibility tree. Also make sure `.project-tabs a .tab-label` uses `display:inline-flex;align-items:center;gap:6px` so icons align with labels inside tabs.
 - **Browser cache on `brain_web.py` assets**: `brain_web.py` serves JS/CSS with `Cache-Control: max-age=3600`. Restarting the server is not enough after editing modules; use `?nocache=N`, DevTools disable cache, or hard refresh to see changes.
 - **UI consistency across all views**: headers, tabs, status filters, kanban columns, and cards must all use Heroicons. No emoji. Filter select is always `Todos / Con proyecto / Sin proyecto`. See `references/ui-consistency-patterns.md`.
-- **Project graph tab must render a real network**: when `ptab=graph`, `renderProjectGraph()` must receive data that includes `goals`, `todos`, and `reminders` (not `rems`). The graph container must be visible; if the tab bar clips, add `flex-wrap:wrap` to `.project-tabs`. Verify with `document.querySelector('#project-graph-view canvas, #project-graph-view svg')`. See `references/ui-validation-checklist.md`.
-- **Type view summaries must render markdown**: `summary` fields can contain markdown; do not escape them with `esc()`. Render with `mdToHtml()` and add `class="md-content"`. Verify cards do not show literal `**` asterisks. See `references/ui-validation-checklist.md`.
+- **Project graph tab must render a real network**: when `ptab=graph`, `renderProjectGraph()` must receive data that includes `goals`, `todos`, and `reminders` (not `rems`). The graph container must be visible; if the tab bar clips, add `flex-wrap:wrap` to `.project-tabs`. Verify with `document.querySelector('#project-graph-view canvas, #project-graph-view svg')`.
+- **Graph legend labels must start with capital letter**: any label rendered in the graph legend should use `capitalize()` or a mapped display name so the first letter is uppercase. This applies to both global graph (`graph.counts`) and project graph (`ptypes`) legends. Mixed casing looks inconsistent in the UI.
+- **Type view summaries must not leak markdown headings into cards**: `summary` fields can contain markdown, but card summaries should not render as full-size headings. Strip markdown to plain text or clamp `.card .md-content` styles. Verify cards do not show literal `**` asterisks.
 - **Every hash-driven walkthrough must leave exactly one active view**: after navigating to any `#tab=...`, `#project=...`, or `#page=...` URL, run `document.querySelectorAll('#main > div.active').length === 1`. More than one means a view activation pitfall. See `references/ui-validation-checklist.md`.
+- **Mobile header must stack title → breadcrumb → select**: on narrow viewports, the `.view-header` should use a flex column layout where the H1 is first, the breadcrumb is second, and the filter select is third. Do not leave them in a single horizontal row. This is the expected mobile layout. See `references/ui-validation-checklist.md`.
+- **Screenshots and README must be refreshed together after UI changes**: when the user asks to update screenshots, follow the workflow in `references/screenshots-readme-workflow.md`: delete old PNGs, capture each view, update README paths/captions, sync runtime→repo, commit, and push.
