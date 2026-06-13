@@ -20,6 +20,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8899/
 # expect 200
 ```
 
+If the server was restarted, confirm the old process is actually gone:
+```bash
+lsof -i :8899 | grep -v COMMAND || echo "port clear"
+```
+
 ## 3. Browser hash walkthrough
 
 Visit each URL and verify `#main > div.active` length is exactly 1.
@@ -69,6 +74,7 @@ Then re-check `#tab=milestones` and `#project=<slug>&ptab=graph`.
 | Clicking project card does nothing | `renderProjectPlaceholder` not called or `showProject` signature mismatch | `typeof window.showProject === 'function'` |
 | Project detail tabs unresponsive or multi-fire | `click` listener added on every render without cleanup | remove previous handler before adding new one |
 | Project graph tab blank | `renderProjectGraph` expects `d.rems` but `collectProjectData` returns `d.reminders` | use fallbacks: `const reminders = d.reminders \|\| d.rems \|\| []` |
+| Type view summaries show raw `**markdown**` or giant headings | summary passed through `esc()` or body heading leaked into card | strip markdown to plain text or clamp `.card .md-content` CSS styles |
 | Type view summaries show raw `**markdown**` or giant headings | summary passed through `esc()` or body heading leaked into card | strip markdown or render with `.card .md-content` CSS clamp |
 | Wiki breadcrumb type link blanks main area | missing `<div id="view-type-<type>">` in `web_ui.html` | verify all `page_type` values have containers |
 | `Store.setFilter` throws for type views | `initialState.filters` lacks keys for page_types | make `setFilter` ignore unknown keys silently |

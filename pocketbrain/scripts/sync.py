@@ -12,18 +12,11 @@ Uso:
     --context  Solo sync de un contexto específico (default: todos)
     --full     Forzar sync completo (ignora estado incremental)
     --output   Directorio de salida (default: ~/brain-sync)
-
-Ejemplos:
-    python3 sync.py                          # todos los contextos, incremental
-    python3 sync.py --context personal       # solo el contexto 'personal'
-    python3 sync.py --full --output ~/wiki   # sync completo a ~/wiki
 """
 
-import sys, os, json, hashlib, re
+import sys, os, json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
-import urllib.parse
 
 # ── Setup ──────────────────────────────────────────────────────────
 
@@ -38,19 +31,16 @@ with open(env_path) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
-os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
-os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
-from pb import PB, quick_pb
+from pb import quick_pb
 
 
-    # ═════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════
 #  SYNC ENGINE
-    # ═════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════
 
 class SyncEngine:
-    """Exporta cerebros PocketBase → archivos markdown locales."""
+    """Exporta contextos PocketBase → archivos markdown locales."""
 
     def __init__(self, output_dir: str, full: bool = False):
         self.output_dir = Path(output_dir).expanduser().resolve()
@@ -58,7 +48,7 @@ class SyncEngine:
         self.pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
         self.state_file = self.output_dir / ".sync_state.json"
         self.state = self._load_state()
-        self.stats = {"created": 0, "updated": 0, "skipped": 0, "attachments": 0}
+        self.stats = {"updated": 0, "skipped": 0, "attachments": 0}
 
     # ── State ──────────────────────────────────────────────────────
 
@@ -89,9 +79,7 @@ class SyncEngine:
             "slug": page.get("slug", ""),
             "page_type": page.get("page_type", ""),
             "confidence": page.get("confidence", ""),
-            "contested": page.get("contested", False),
             "source_url": page.get("source_url", ""),
-            "source_sha256": page.get("source_sha256", ""),
             "created": page.get("created", ""),
             "updated": page.get("updated", ""),
         }
@@ -105,11 +93,10 @@ class SyncEngine:
         lines = ["---"]
         for k, v in fm.items():
             if isinstance(v, list):
-                lines.append(f"{k}: [{', '.join(v)}]")
+                lines.append(f"{k}: [{', '.join(str(x) for x in v)}]")
             elif isinstance(v, bool):
                 lines.append(f"{k}: {str(v).lower()}")
             elif v:
-                # Escape YAML special chars minimally
                 val = str(v).replace('"', '\\"')
                 if any(c in val for c in ':{}[]&*!|>%#@`,'):
                     lines.append(f'{k}: "{val}"')
@@ -120,12 +107,12 @@ class SyncEngine:
 
     # ── Schema export ──────────────────────────────────────────────
 
-    def _write_schema(self, brain: dict, brain_dir: Path):
+    def _write_schema(self, context: dict, context_dir: Path):
         """Genera SCHEMA.md desde schema_config."""
         schema = context.get("schema_config", {}) or {}
         lines = [
             "# Wiki Schema\n",
-            f"## Domain\n{brain.get('description', brain.get('name', ''))}\n",
+            f"## Context\n{context.get('description', context.get('name', ''))}\n",
         ]
         if schema:
             lines.append("## Conventions\n")
@@ -141,10 +128,10 @@ class SyncEngine:
 
     # ── Log export ─────────────────────────────────────────────────
 
-    def _write_log(self, context_id: str, brain_dir: Path):
+    def _write_log(self, context_id: str, context_dir: Path):
         """Genera log.md desde brain_log."""
         logs = self.pb.all("brain_log",
-            filter="(brain='" + context_id + "')", perPage=200)
+            filter=f"(brain='{context_id}')", sort="-created", perPage=200)
 
         lines = [
             "# Wiki Log\n",
@@ -157,8 +144,10 @@ class SyncEngine:
             action = entry.get("action", "?")
             desc = entry.get("description", "")
             page_name = ""
-            if entry.get("expand", {}).get("page"):
-                page_name = f" | [[{entry['expand']['page'].get('slug', '?')}]]"
+            expand = entry.get("expand", {})
+            page = expand.get("page") if isinstance(expand, dict) else None
+            if page:
+                page_name = f" | [[{page.get('slug', '?')}]]"
             lines.append(f"## [{created}] {action}{page_name}")
             if desc:
                 lines.append(f"- {desc}")
@@ -168,11 +157,11 @@ class SyncEngine:
 
     # ── Journal export ──────────────────────────────────────────────
 
-    def _write_journal(self, context_id: str, brain_dir: Path):
+    def _write_journal(self, context_id: str, context_dir: Path):
         """Exporta journal entries de brain_pages a journal.md."""
         entries = self.pb.all("brain_pages",
-            filter="(brain='" + context_id + "' && page_type='journal')",
-            sort="date", perPage=500)
+            filter=f"(brain='{context_id}' && page_type='journal')",
+            sort="-date", perPage=500)
 
         if not entries:
             return
@@ -184,17 +173,15 @@ class SyncEngine:
             "# Journal",
             "",
             "> Diario personal. Auto-generado desde PocketBrain.",
-            "> Total entries: " + str(len(entries)),
+            f"> Total entries: {len(entries)}",
             "",
         ]
 
         for entry in entries:
             date_str = entry.get("date", "?")[:10]
             mood = entry.get("mood", "")
-            mood_icon = {"great": "🟢", "meh": "🟡", "bad": "🔴"}.get(mood, "")
             body = entry.get("body", "") or ""
-
-            lines.append("## " + date_str + " " + mood_icon)
+            lines.append("## " + date_str + (f" ({mood})" if mood else ""))
             if body:
                 lines.append(body)
             lines.append("")
@@ -204,10 +191,10 @@ class SyncEngine:
 
     # ── Todos export ────────────────────────────────────────────────
 
-    def _write_todos(self, context_id: str, brain_dir: Path):
+    def _write_todos(self, context_id: str, context_dir: Path):
         """Exporta todos de brain_pages (page_type='todo') a todos.md agrupado por status."""
         todos = self.pb.all("brain_pages",
-            filter="(brain='" + context_id + "' && page_type='todo')",
+            filter=f"(brain='{context_id}' && page_type='todo')",
             expand="domain",
             perPage=500)
 
@@ -225,8 +212,8 @@ class SyncEngine:
         lines = [
             "# Todos",
             "",
-            "> Tareas del cerebro. Auto-generado desde PocketBrain.",
-            "> Total: " + str(len(todos)),
+            "> Tareas del contexto. Auto-generado desde PocketBrain.",
+            f"> Total: {len(todos)}",
             "",
         ]
 
@@ -238,11 +225,9 @@ class SyncEngine:
             lines.append("")
             for t in items:
                 title = t.get("title", "?")
-                # domain is a relation in brain_pages, extract name via expand
                 dom_exp = t.get("expand", {}).get("domain", {})
-                domain = dom_exp.get("name", "") if isinstance(dom_exp, dict) else t.get("domain", "?")
-                owner = t.get("owner", "?")
-                content = (t.get("body", "") or "")[:200]  # body maps to old content field
+                domain = dom_exp.get("name", "") if isinstance(dom_exp, dict) else ""
+                content = (t.get("body", "") or "")[:200]
                 comment = t.get("comment", "") or ""
                 started = (t.get("started_date", "") or "")[:10]
                 completed = (t.get("completed_date", "") or "")[:10]
@@ -251,8 +236,6 @@ class SyncEngine:
                 meta = []
                 if domain:
                     meta.append("domain: " + domain)
-                if owner and owner != "alvaro":
-                    meta.append("owner: " + owner)
                 if started:
                     meta.append("started: " + started)
                 if completed:
@@ -275,10 +258,10 @@ class SyncEngine:
 
     # ── Files export ─────────────────────────────────────────────────
 
-    def _write_files(self, context_id: str, brain_dir: Path):
+    def _write_files(self, context_id: str, context_dir: Path):
         """Descarga archivos adjuntos de brain_pages (page_type='file')."""
         files = self.pb.all("brain_pages",
-            filter="(brain='" + context_id + "' && page_type='file' && attachment!='')",
+            filter=f"(brain='{context_id}' && page_type='file' && attachment!='')",
             expand="related_pages", perPage=500)
 
         if not files:
@@ -286,31 +269,25 @@ class SyncEngine:
 
         import subprocess
         t = self.pb.get_token()
-        os.environ["SYNC_T"] = t
         downloaded = 0
         for f_rec in files:
             filename = f_rec.get("attachment", "")
             if not filename:
                 continue
 
-            # Get parent page slug from related_pages
             page_slug = ""
             rel = f_rec.get("expand", {}).get("related_pages", [])
             if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
                 page_slug = rel[0].get("slug", "")
 
-            if page_slug:
-                dest_dir = brain_dir / "files" / page_slug
-            else:
-                dest_dir = brain_dir / "files"
+            dest_dir = context_dir / "files" / page_slug if page_slug else context_dir / "files"
             dest_dir.mkdir(parents=True, exist_ok=True)
 
             host = self.pb.host
             url = host + "/api/files/brain_pages/" + f_rec["id"] + "/" + filename
             out = str(dest_dir / filename)
-            subprocess.run(
-                "curl -s -o " + out + " " + url + " -H " + chr(34) + "Authorization: Bearer $SYNC_T" + chr(34),
-                shell=True, capture_output=True, env=os.environ)
+            auth = f"Authorization: Bearer {t}"
+            subprocess.run(["curl", "-s", "-o", out, url, "-H", auth], capture_output=True)
             if Path(out).exists():
                 downloaded += 1
                 self.stats["attachments"] += 1
@@ -318,19 +295,14 @@ class SyncEngine:
         if downloaded:
             print("   Files: " + str(downloaded) + " downloaded")
 
-
     # ── Index export ───────────────────────────────────────────────
 
-    def _write_index(self, pages: list, brain_dir: Path):
+    def _write_index(self, pages: list, context_dir: Path):
         """Genera index.md con todas las páginas agrupadas por page_type."""
-        by_type = {
-            "entity": [], "concept": [], "comparison": [],
-            "query": [], "raw": [], "project": [],
-        }
+        by_type: dict = {}
         for p in pages:
             pt = p.get("page_type", "concept")
-            if pt in by_type:
-                by_type[pt].append(p)
+            by_type.setdefault(pt, []).append(p)
 
         lines = [
             "# Wiki Index\n",
@@ -338,7 +310,7 @@ class SyncEngine:
             f"> Total pages: {len(pages)} | Generated: {datetime.now(timezone.utc).isoformat()}\n",
             "",
         ]
-        for section, section_pages in by_type.items():
+        for section, section_pages in sorted(by_type.items()):
             if not section_pages:
                 continue
             lines.append(f"## {section.capitalize()}\n")
@@ -357,23 +329,24 @@ class SyncEngine:
 
     # ── Page export ────────────────────────────────────────────────
 
-    def _write_page(self, page: dict, brain_dir: Path, context_name: str):
+    def _write_page(self, page: dict, context_dir: Path):
         """Escribe una página individual como archivo .md."""
         pt = page.get("page_type", "concept")
         slug = page.get("slug", "")
         body = page.get("body", "") or ""
 
-        # Determinar directorio según page_type
         type_dirs = {
             "entity": "entities", "concept": "concepts",
             "comparison": "comparisons", "query": "queries", "raw": "raw",
-            "project": "projects",
+            "project": "projects", "plan": "plans",
+            "note": "notes", "idea": "ideas", "todo": "todos",
+            "goal": "goals", "milestone": "milestones",
+            "reminder": "reminders", "journal": "journal", "file": "files",
         }
         subdir = type_dirs.get(pt, "concepts")
-        page_dir = brain_dir / subdir
+        page_dir = context_dir / subdir
         page_dir.mkdir(parents=True, exist_ok=True)
 
-        # Extraer tags y domain del expand
         expand = page.get("expand", {})
         expanded_tags = expand.get("tags", [])
         tag_names = []
@@ -381,7 +354,7 @@ class SyncEngine:
             if isinstance(expanded_tags[0], dict):
                 tag_names = [t.get("name", "") for t in expanded_tags]
             else:
-                tag_names = expanded_tags  # IDs crudos
+                tag_names = expanded_tags
 
         domain_name = ""
         expanded_domain = expand.get("domain")
@@ -390,15 +363,13 @@ class SyncEngine:
         elif isinstance(expanded_domain, str) and expanded_domain:
             domain_name = expanded_domain
 
-        # Frontmatter + body
         md_content = self._build_frontmatter(page, tag_names, domain_name) + body
-        if not body.endswith("\n"):
+        if not md_content.endswith("\n"):
             md_content += "\n"
 
         md_path = page_dir / f"{slug}.md"
         md_path.write_text(md_content)
 
-        # Download attachment for raw pages
         attachment = page.get("attachment", "")
         if attachment and pt == "raw":
             self._download_attachment(page["id"], attachment, page_dir, slug)
@@ -415,7 +386,7 @@ class SyncEngine:
         ext = Path(filename).suffix or ""
         out_path = page_dir / (slug + ext)
 
-        auth = "Authorization: Bearer %s" % token
+        auth = f"Authorization: Bearer {token}"
         result = subprocess.run(
             ["curl", "-s", "-o", str(out_path), url, "-H", auth],
             capture_output=True, text=True)
@@ -428,15 +399,14 @@ class SyncEngine:
     # ── Main sync ──────────────────────────────────────────────────
 
     def sync_context(self, context: dict):
-        """Sincroniza un cerebro completo."""
+        """Sincroniza un contexto completo."""
         context_id = context["id"]
         context_name = context["name"]
         context_dir = self.output_dir / context_name
 
-        print(f"\n🧠 Syncing context: {brain_name}")
+        print(f"\n🧠 Syncing context: {context_name}")
         context_dir.mkdir(parents=True, exist_ok=True)
 
-        # Obtener todas las páginas (no archivadas) con tags y domain expandidos
         pages = self.pb.all("brain_pages",
             filter=f"(brain='{context_id}' && archived=false)",
             expand="tags,domain",
@@ -444,7 +414,6 @@ class SyncEngine:
 
         print(f"   Pages: {len(pages)}")
 
-        # Sync cada página
         synced_pages = []
         for page in pages:
             pid = page["id"]
@@ -452,7 +421,7 @@ class SyncEngine:
             slug = page.get("slug", "?")
 
             if self._needs_update(pid, updated):
-                self._write_page(page, context_dir, context_name)
+                self._write_page(page, context_dir)
                 self._mark_synced(pid, updated)
                 synced_pages.append(page)
                 self.stats["updated"] += 1
@@ -461,29 +430,28 @@ class SyncEngine:
                 synced_pages.append(page)
                 self.stats["skipped"] += 1
 
-        # Escribir archivos de navegación
         self._write_schema(context, context_dir)
         self._write_index(synced_pages, context_dir)
         self._write_log(context_id, context_dir)
         self._write_journal(context_id, context_dir)
         self._write_todos(context_id, context_dir)
         self._write_files(context_id, context_dir)
-
-        # Limpiar páginas que ya no existen en PB
-        self._cleanup_stale(brain, synced_pages)
+        self._cleanup_stale(context, synced_pages)
 
         print(f"   Schema: ✓ | Index: ✓ | Log: ✓ | Journal: ✓ | Todos: ✓ | Files: ✓")
         print(f"   Updated: {self.stats['updated']} | Skipped: {self.stats['skipped']}"
               f" | Attachments: {self.stats['attachments']}")
 
-    def _cleanup_stale(self, brain: dict, synced_pages: list):
+    def _cleanup_stale(self, context: dict, synced_pages: list):
         """Elimina archivos .md locales de páginas que ya no existen en PB."""
         context_dir = self.output_dir / context["name"]
-        if not brain_dir.exists():
+        if not context_dir.exists():
             return
 
         active_slugs = {p["slug"] for p in synced_pages}
-        type_dirs = ["entities", "concepts", "comparisons", "queries", "raw", "projects"]
+        type_dirs = ["entities", "concepts", "comparisons", "queries", "raw", "projects",
+                     "plans", "notes", "ideas", "todos", "goals", "milestones",
+                     "reminders", "journal", "files"]
 
         for subdir in type_dirs:
             d = context_dir / subdir
@@ -493,16 +461,15 @@ class SyncEngine:
                 slug = md_file.stem
                 if slug not in active_slugs:
                     md_file.unlink()
-                    print(f"   🗑️  Removed stale: {subdir}/{slug}.md")
-                    # También limpiar attachment
+                    print(f"   🗑  Removed stale: {subdir}/{slug}.md")
                     for ext_file in d.glob(f"{slug}.*"):
                         if ext_file.suffix != ".md":
                             ext_file.unlink()
 
     def sync_all(self):
-        """Sincroniza todos los cerebros."""
-        brains = self.pb.all("contexts")
-        print(f"Found {len(brains)} brain(s)")
+        """Sincroniza todos los contextos."""
+        contexts = self.pb.all("contexts")
+        print(f"Found {len(contexts)} context(s)")
         for context in contexts:
             self.sync_context(context)
         self._save_state()
@@ -510,16 +477,16 @@ class SyncEngine:
 
     def _print_summary(self):
         print(f"\n{'='*50}")
-        print(f"Sync complete!")
-        print(f"  Created/Updated: {self.stats['updated']}")
+        print("Sync complete!")
+        print(f"  Updated: {self.stats['updated']}")
         print(f"  Skipped: {self.stats['skipped']}")
         print(f"  Attachments: {self.stats['attachments']}")
         print(f"  Output: {self.output_dir}")
 
 
-    # ═════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════
 #  CLI
-    # ═════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════════
 
 def parse_args():
     args = sys.argv[1:]
@@ -541,7 +508,7 @@ def parse_args():
         else:
             i += 1
 
-    return brain_name, full, output
+    return context_name, full, output
 
 
 if __name__ == "__main__":
@@ -550,9 +517,9 @@ if __name__ == "__main__":
     engine = SyncEngine(output_dir=output, full=full)
 
     if context_name:
-        contexts = engine.pb.list("contexts", filter=f"(name='{brain_name}')")
+        contexts = engine.pb.all("contexts", filter=f"(name='{context_name}')")
         if not contexts:
-            print(f"Brain '{brain_name}' not found.")
+            print(f"Context '{context_name}' not found.")
             sys.exit(1)
         engine.sync_context(contexts[0])
         engine._save_state()

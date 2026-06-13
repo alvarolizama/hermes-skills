@@ -378,7 +378,7 @@ def setup_contexts(pb: PB) -> dict:
 PAGE_TYPES = [
     'entity', 'concept', 'comparison', 'query', 'raw',
     'project', 'plan', 'note', 'idea', 'todo',
-    'goal', 'milestone', 'okr', 'reminder', 'journal', 'file', 'deliverable'
+    'goal', 'milestone', 'reminder', 'journal', 'file'
 ]
 
 
@@ -1482,96 +1482,7 @@ class Brain:
         """Elimina un archivo adjunto (soft delete archiving the brain_page)."""
         return self.pb.update("brain_pages", file_id, {"archived": True})
 
-    # ── Deliverables ─────────────────────────────────────────────
-
-    def create_deliverable(self, project_slug: str, filepath: str,
-                           title: str, version: str = 'v1',
-                           status: str = 'draft',
-                           description: str = '',
-                           milestone: str = '',
-                           tags: Optional[list] = None) -> dict:
-        """Crea un entregable versionado para un proyecto en brain_pages.
-
-        Args:
-            project_slug: Slug del proyecto (page_type: project).
-            filepath: Ruta al archivo en disco.
-            title: Nombre del entregable.
-            version: Version (ej. 'v1', 'draft-2', 'final').
-            status: 'draft', 'review', 'final', 'archived'.
-            description: Descripcion del entregable.
-            milestone: Fase del proyecto (ej. 'MVP', 'Fase 1').
-            tags: Lista de nombres de tags.
-        """
-        if not self._context_id:
-            self.orient()
-
-        page = self._get_page(project_slug)
-        if not page:
-            raise ValueError("Proyecto '" + project_slug + "' no encontrado")
-
-        # Milestone se guarda en comment (brain_pages no tiene campo milestone)
-        return self.create_page(
-            title=title,
-            body=description or '',
-            page_type='deliverable',
-            version=version,
-            status=status,
-            comment=milestone,
-            tags=tags,
-            related_slugs=[project_slug],
-            filepath=filepath,
-        )
-
-    def list_deliverables(self, project_slug: str,
-                          status: Optional[str] = None) -> list:
-        """Lista entregables de un proyecto desde brain_pages."""
-        if not self._context_id:
-            self.orient()
-        filters = [f"(brain='{self._context_id}' && page_type='deliverable' && archived=false)"]
-        if project_slug:
-            proj = self._get_page(project_slug)
-            if proj:
-                filters.append(f"(related_pages?='{proj['id']}')")
-        if status:
-            filters.append(f"(status='{status}')")
-        return self.pb.list("brain_pages",
-            filter="&&".join(filters) if len(filters) > 1 else filters[0],
-            expand="related_pages",
-            perPage=100)
-
-    def version_deliverable(self, deliverable_id: str,
-                            filepath: str, new_version: str) -> dict:
-        """Sube una nueva version de un entregable (en brain_pages).
-
-        Crea un NUEVO registro con el mismo titulo pero nueva version.
-        La version anterior se marca como 'archived'.
-        """
-        old = self.pb.get("brain_pages", deliverable_id)
-        if not old:
-            raise ValueError("Deliverable no encontrado")
-
-        # Archivar version anterior
-        self.pb.update("brain_pages", deliverable_id, {"archived": True})
-
-        # Crear nueva version
-        return self.create_page(
-            title=old.get("title", ""),
-            body=old.get("body", ""),
-            page_type='deliverable',
-            version=new_version,
-            status='draft',
-            related_slugs=self._slugs_from_related(old),
-            filepath=filepath,
-        )
-
-    def update_deliverable(self, deliverable_id: str, **updates) -> dict:
-        """Actualiza metadata de un entregable (status, milestone, etc.) en brain_pages."""
-        # Map 'milestone' kwarg to 'comment' since brain_pages uses comment for milestone
-        if 'milestone' in updates:
-            updates['comment'] = updates.pop('milestone')
-        return self.update_page(deliverable_id, **updates)
-
-    # ── Goals / Milestones / OKRs ──────────────────────────────
+    # ── Goals / Milestones ─────────────────────────────────────
 
     def create_goal(self, title: str, type: str = 'goal',
                     project_slug: Optional[str] = None,
@@ -1579,9 +1490,9 @@ class Brain:
                     deadline: str = '',
                     parent_id: Optional[str] = None,
                     status: str = 'planned') -> dict:
-        """Crea un goal, milestone u OKR como pagina."""
-        if type not in ('goal', 'milestone', 'okr'):
-            raise ValueError(f"type '{type}' no válido. Debe ser 'goal', 'milestone' u 'okr'.")
+        """Crea un goal o milestone como pagina."""
+        if type not in ('goal', 'milestone'):
+            raise ValueError(f"type '{type}' no válido. Debe ser 'goal' o 'milestone'.")
         related = [project_slug] if project_slug else None
         return self.create_page(
             title=title,

@@ -28,7 +28,7 @@ Los agentes guardan. Tú consultas.
 
 ## Features
 
-- **15 page types**: entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, okr, reminder, journal, file
+- **14 page types**: entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, reminder, journal, file
 - **Auto-linking**: `[[wikilinks]]` resuelven slugs existentes y generan backlinks automáticos
 - **Auto-suggest page_type**: el agente infiere el tipo de página del título y contenido
 - **Interactive graph**: grafos con vis.js, nodos coloreados por tipo

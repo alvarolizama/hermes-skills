@@ -209,7 +209,6 @@ brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
 **Para goals, usa el tipo correcto:**
 - `goal` → objetivo amplio sin fecha: "Mejorar rendimiento"
 - `milestone` → hito con deadline: "Lanzar MVP 30 Sep"
-- `okr` → OKR con key results: "OKR Q3: Reducir latencia 50%"
 
 **Para todos, usa el sistema kanban integrado:**
 - `backlog` → ideas pendientes de priorizar
@@ -385,7 +384,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/llm-wiki-comparison.md` | Mapeo PocketBrain vs LLM Wiki de Karpathy |
 | `references/schema.md` | Detalle de las 6 colecciones y sus campos, historial de unificación |
 | `references/schema-audit.md` | Auditoría de integridad del schema: checklist 10 puntos para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
-| `references/goals.md` | Sistema de goals, milestones y OKRs |
+| `references/goals.md` | Sistema de goals y milestones |
 | `references/web-ui.md` | Navegación y vistas del servidor web live (opcional) |
 | `references/web-ui-patterns.md` | Refactor frontend: tabs, progreso, toasts, markdown, modular SPA |
 | `references/frontend-es-modules.md` | Guía completa para refactorizar web_ui.html a módulos ES |
@@ -458,7 +457,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **showIndex() debe activar view-wiki**: `showIndex()` renderiza el índice completo en `view-wiki` pero NO activa la vista (no remueve `active` de las otras vistas, no llama `closeSidebar()`). Fix: agregar `document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});closeSidebar();document.getElementById('view-wiki').classList.add('active');` al inicio de `showIndex()`. Igual que el fix de `showPage()`.
 - **browser_vision poco confiable para detectar stacking de vistas**: el modelo de visión puede reportar "se ve solo una vista" cuando en realidad hay dos divs con `display:block` apilados. Para verificar stacking, usar `browser_console` con expresión `document.querySelectorAll('#main > div.active').length` para contar vistas activas, o inspeccionar el HTML servido con curl.
 - **Layout unificado: H1 + select en view-header, tabs debajo**: todas las vistas tienen el H1 y el *filter select* juntos en `view-header` (select a la derecha del H1). Los *status tabs* van debajo en `div.project-tabs` con `margin:12px 0`. NO poner status tabs inline con el H1. Ver `references/ui-filter-pattern.md` seccion "Layout correcto".
-- **Cards minimalistas (solo titulo)**: en listas de proyectos, goals, milestones y type views, las cards deben mostrar solo el titulo. Sin chips de tipo (goal/milestone/okr), sin contadores de tareas, sin status/deadline. Solo `<h3>title</h3>`.
+- **Cards minimalistas (solo titulo)**: en listas de proyectos, goals, milestones y type views, las cards deben mostrar solo el titulo. Sin chips de tipo (goal/milestone), sin contadores de tareas, sin status/deadline. Solo `<h3>title</h3>`.
 - **Sidebar onclicks con return false**: todos los `<a href="#" class="nav-link">` del sidebar deben tener `;return false` al final del onclick para que el sidebar se cierre en mobile. Si no, el `href="#"` puede causar navegacion antes de que JS ejecute `closeSidebar()`.
 - **renderTypeView usa `var h=` no `h+=` para la primera linea**: `renderTypeView()` asigna `var h=...` mientras que las otras vistas usan `h+=...` despues de `var h=...`. Al hacer patch, diferenciar entre `var h=` (primera linea) y `h+=` (concatenacion).
 - **Toda navegacion debe generar hash URL**: cada vez que se agrega un sub-tab o filtro, debe llamar a `setHashParams()` para reflejar el estado en la URL. Puntos clave: `switchProjectTab()`, `switchPageTab()`, goal status tabs, reminder status tabs. Si agregas un nuevo sub-tab, agrega `setHashParams` en el template Y actualiza `restoreFromHash()`.
