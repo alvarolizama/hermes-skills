@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """PocketBrain Web — Servidor live. python3 brain_web.py [--port 8080] [--context personal]"""
-import sys, os, json, re, http.server, urllib.parse, time
+import sys, os, json, re, http.server, urllib.parse, time, threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from datetime import datetime, timezone
@@ -37,20 +37,23 @@ def parse_args():
     return ctx, port
 
 # ── Brain cache (evita re-autenticar en cada request) ──────────
-_brain_cache = {}  # CTX -> Brain
+_brain_cache = {}  # ctx -> Brain
+_brain_lock = threading.Lock()
 
-def get_brain():
-    global CTX
-    if CTX in _brain_cache:
-        return _brain_cache[CTX]
-    pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
-    brain = Brain(CTX, pb=pb)
-    brain.orient()
-    _brain_cache[CTX] = brain
-    return brain
+def get_brain(ctx=None):
+    if ctx is None:
+        ctx = CTX
+    with _brain_lock:
+        if ctx in _brain_cache:
+            return _brain_cache[ctx]
+        pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
+        brain = Brain(ctx, pb=pb)
+        brain.orient()
+        _brain_cache[ctx] = brain
+        return brain
 
-def get_pages(include_archived=False):
-    brain = get_brain()
+def get_pages(ctx, include_archived=False):
+    brain = get_brain(ctx)
     pages = brain.list_pages(include_archived=include_archived, per_page=500)
     smap = {p["slug"]: p for p in pages}
     bls = {p["slug"]: [] for p in pages}
@@ -78,12 +81,12 @@ def get_pages(include_archived=False):
             "created":(pg.get("created","") or "")[:10],"updated":(pg.get("updated","") or "")[:10]})
     return result
 
-def get_lint():
-    brain = get_brain()
+def get_lint(ctx):
+    brain = get_brain(ctx)
     return brain.lint()
 
-def get_goals():
-    brain = get_brain()
+def get_goals(ctx):
+    brain = get_brain(ctx)
     result = []
     for pt in ['goal', 'milestone', 'okr']:
         pages = brain.pb.all("brain_pages",
@@ -91,30 +94,41 @@ def get_goals():
             expand="related_pages")
         for p in pages:
             rel = p.get("expand", {}).get("related_pages", [])
-            ps = ""
+            ps = ""; parent_id = ""
             if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
                 ps = rel[0].get("slug", "")
+                parent_id = rel[0].get("id", "")
             result.append({
                 "id": p["id"], "slug": p.get("slug", ""), "title": p.get("title", ""), "type": pt,
                 "status": p.get("status", "planned"),
                 "deadline": (p.get("deadline", "") or "")[:10],
                 "description": p.get("body", "") or "",
-                "page": ps, "page_slug": ps, "parent": "",
+                "page": ps, "page_slug": ps, "parent": parent_id,
             })
+    goal_ids = {g["id"] for g in result}
+    for g in result:
+        if g["parent"] and g["parent"] in goal_ids:
+            pass
+        else:
+            g["parent"] = ""
     return result
 
-def get_todos():
-    brain = get_brain()
+def get_todos(ctx):
+    brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id),
         expand="related_pages,domain")
     result = []
     for p in pages:
         rel = p.get("expand", {}).get("related_pages", [])
-        ps = ""; pt = ""
+        ps = ""; pt = ""; goal_id = ""; goal_title = ""
         if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
-            ps = rel[0].get("slug", "")
-            pt = rel[0].get("title", "")
+            related = rel[0]
+            ps = related.get("slug", "")
+            pt = related.get("title", "")
+            if related.get("page_type") in ('goal', 'milestone', 'okr'):
+                goal_id = related.get("id", "")
+                goal_title = related.get("title", "")
         dom = p.get("expand", {}).get("domain", {})
         dn = dom.get("name", "") if isinstance(dom, dict) else p.get("domain", "")
         result.append({
@@ -122,12 +136,12 @@ def get_todos():
             "domain": dn, "owner": p.get("owner", ""),
             "content": p.get("body", "") or "",
             "page_slug": ps, "page_title": pt,
-            "goal_id": "", "goal_title": "",
+            "goal_id": goal_id, "goal_title": goal_title,
         })
     return result
 
-def get_deps():
-    brain = get_brain()
+def get_deps(ctx):
+    brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id),
         expand="related_pages")
@@ -143,8 +157,8 @@ def get_deps():
             "milestone":p.get("milestone","") or ""})
     return result
 
-def get_files():
-    brain = get_brain()
+def get_files(ctx):
+    brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='file' && archived=false)".format(brain._context_id),
         expand="related_pages")
@@ -158,8 +172,8 @@ def get_files():
             "page_slug":ps,"page_title":pt})
     return result
 
-def get_reminders():
-    brain = get_brain()
+def get_reminders(ctx):
+    brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id),
         expand="related_pages")
@@ -181,8 +195,8 @@ def get_reminders():
         })
     return result
 
-def get_journal():
-    brain = get_brain()
+def get_journal(ctx):
+    brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
         filter="(brain='{}' && page_type='journal' && archived=false)".format(brain._context_id),
         expand="related_pages,tags", sort="date")
@@ -202,18 +216,32 @@ def get_journal():
         })
     return result
 
-def get_graph():
-    brain = get_brain()
+def _first_related_id(page):
+    rel = page.get("expand", {}).get("related_pages") or page.get("related_pages") or []
+    if isinstance(rel, dict):
+        return rel.get("id")
+    if isinstance(rel, str):
+        return rel if rel else None
+    if not rel:
+        return None
+    first = rel[0]
+    if isinstance(first, dict):
+        return first.get("id")
+    return first
+
+def get_graph(ctx):
+    brain = get_brain(ctx)
     pages = brain.list_pages(include_archived=False, per_page=500)
     smap = {p["slug"]: p for p in pages}
     pid_map = {pg.get("id",""): pg["slug"] for pg in pages if pg.get("id")}
     goals = []
     for pt in ['goal', 'milestone', 'okr']:
         goals.extend(brain.pb.all("brain_pages",
-            filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt)))
-    todos = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id))
-    deps = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id))
-    reminders = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id))
+            filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
+            expand="related_pages"))
+    todos = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id), expand="related_pages")
+    deps = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id), expand="related_pages")
+    reminders = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id), expand="related_pages")
     nodes, edges, nids = [], [], set()
     for pg in pages:
         slug = pg["slug"]
@@ -230,30 +258,27 @@ def get_graph():
             nids.add(gid)
             gc = {"goal":"#4CAF50","milestone":"#FF9800","okr":"#E91E63"}.get(g.get("page_type",""),"#888")
             nodes.append({"id":gid,"label":g.get("title",""),"color":gc,"group":"goal"})
-        # Link via related_pages (first is project/page)
-        rel = g.get("related_pages", []) or []
-        if rel and isinstance(rel, list) and len(rel) > 0:
-            first = rel[0] if isinstance(rel[0], str) else (rel[0].get("id","") if isinstance(rel[0], dict) else "")
-            if first in pid_map: edges.append({"from":gid,"to":pid_map[first]})
+        rel_id = _first_related_id(g)
+        if rel_id and rel_id in pid_map:
+            edges.append({"from":gid,"to":pid_map[rel_id]})
     for t in todos:
         tid = "t-"+t["id"]
         if tid not in nids: nids.add(tid); nodes.append({"id":tid,"label":t.get("title",""),"color":"#9C27B0","group":"todo"})
-        rel = t.get("related_pages", []) or []
-        if rel and isinstance(rel, list) and len(rel) > 0:
-            first = rel[0] if isinstance(rel[0], str) else (rel[0].get("id","") if isinstance(rel[0], dict) else "")
-            if first in pid_map: edges.append({"from":tid,"to":pid_map[first]})
+        rel_id = _first_related_id(t)
+        if rel_id and rel_id in pid_map:
+            edges.append({"from":tid,"to":pid_map[rel_id]})
     for d in deps:
         did = "d-"+d["id"]
         if did not in nids: nids.add(did); nodes.append({"id":did,"label":d.get("title",""),"color":"#00BCD4","group":"deliverable"})
-        if d.get("page") and d["page"] in pid_map: edges.append({"from":did,"to":pid_map[d["page"]]})
+        rel_id = _first_related_id(d)
+        if rel_id and rel_id in pid_map:
+            edges.append({"from":did,"to":pid_map[rel_id]})
     for r in reminders:
         rid = "r-"+r["id"]
         if rid not in nids: nids.add(rid); nodes.append({"id":rid,"label":r.get("title",""),"color":"#FFC107","group":"reminder"})
-        if r.get("related_pages"):
-            rids = r["related_pages"]
-            if isinstance(rids, list) and len(rids) > 0:
-                first = rids[0] if isinstance(rids[0], str) else (rids[0].get("id","") if isinstance(rids[0], dict) else "")
-                if first in pid_map: edges.append({"from":rid,"to":pid_map[first]})
+        rel_id = _first_related_id(r)
+        if rel_id and rel_id in pid_map:
+            edges.append({"from":rid,"to":pid_map[rel_id]})
     counts = {}
     for n in nodes:
         g = n.get("group", "unknown")
@@ -262,17 +287,13 @@ def get_graph():
 
 
 
-def get_logs():
-    brain = get_brain()
+def get_logs(ctx):
+    brain = get_brain(ctx)
     logs = brain.pb.all("brain_log", filter="(brain='{}')".format(brain._context_id), sort="-created", per_page=100)
     return [{"id":l["id"],"operation":l.get("operation",""),"created":(l.get("created") or "")[:10],"details":l.get("details","") or "","page":l.get("page","") or "","goal":l.get("goal","") or "","todo":l.get("todo","") or ""} for l in logs]
 
-def get_versions(slug=None):
-    try:
-        from brain import Brain
-    except Exception:
-        pass
-    brain = get_brain()
+def get_versions(ctx, slug=None):
+    brain = get_brain(ctx)
     page_id = None
     if slug:
         try:
@@ -300,37 +321,142 @@ def get_versions(slug=None):
         })
     return result
 
+# ── CRUD helpers ───────────────────────────────────────────────
+
+def _ctx_from_qs(path):
+    qs = urllib.parse.parse_qs(urllib.parse.urlparse(path).query)
+    return qs.get('context', [CTX])[0]
+
+def _read_json(handler):
+    length = int(handler.headers.get('Content-Length', 0))
+    if not length:
+        return {}
+    return json.loads(handler.rfile.read(length).decode('utf-8'))
+
+def create_todo(ctx, payload):
+    brain = get_brain(ctx)
+    return brain.create_todo(
+        title=payload["title"],
+        domain=payload.get("domain", ""),
+        page_slug=payload.get("page_slug"),
+        goal_id=payload.get("goal_id"),
+        content=payload.get("content", ""),
+        status=payload.get("status", "backlog"),
+        owner=payload.get("owner", "alvaro"),
+    )
+
+def move_todo(ctx, todo_id, status):
+    brain = get_brain(ctx)
+    return brain.move_todo(todo_id, status)
+
+def create_page(ctx, payload):
+    brain = get_brain(ctx)
+    return brain.create_page(
+        title=payload["title"],
+        body=payload.get("body", ""),
+        page_type=payload.get("page_type", "concept"),
+        domain=payload.get("domain"),
+        tags=payload.get("tags"),
+        summary=payload.get("summary", ""),
+        confidence=payload.get("confidence"),
+        related_slugs=payload.get("related_slugs", []),
+    )
+
+def update_page(ctx, slug, payload):
+    brain = get_brain(ctx)
+    return brain.update_page(slug, **payload)
+
+def delete_page(ctx, slug):
+    brain = get_brain(ctx)
+    return brain.delete_page(slug)
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        global CTX
         parts = urllib.parse.urlparse(self.path)
         path = parts.path
         qs = urllib.parse.parse_qs(parts.query)
-        if 'context' in qs: CTX = qs['context'][0]
-        if path == "/": self.serve_html()
-        elif path == "/api/pages": self.serve_json(get_pages("archived" in qs))
-        elif path == "/api/goals": self.serve_json(get_goals())
-        elif path == "/api/todos": self.serve_json(get_todos())
-        elif path == "/api/deps": self.serve_json(get_deps())
-        elif path == "/api/files": self.serve_json(get_files())
-        elif path == "/api/reminders": self.serve_json(get_reminders())
-        elif path == "/api/journal": self.serve_json(get_journal())
-        elif path == "/api/lint": self.serve_json(get_lint())
-        elif path == "/api/graph": self.serve_json(get_graph())
-        elif path == "/api/versions": 
-            self.serve_json(get_versions(qs.get('slug',[None])[0]))
-        elif path == "/api/logs": self.serve_json(get_logs())
-        elif path == "/api/contexts":
-            pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
-            self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
-        elif path == "/api/config":
-            brain = get_brain()
-            self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "token": brain.pb.get_token(), "context": CTX})
-        elif path == "/vis-network.min.js":
-            self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
-            js_path = Path(__file__).parent / "vis-network.min.js"
-            self.wfile.write(js_path.read_bytes())
-        else: self.send_response(404); self.end_headers()
+        ctx = qs.get('context', [CTX])[0]
+        try:
+            if path == "/": self.serve_html()
+            elif path == "/api/pages": self.serve_json(get_pages(ctx, "archived" in qs))
+            elif path == "/api/goals": self.serve_json(get_goals(ctx))
+            elif path == "/api/todos": self.serve_json(get_todos(ctx))
+            elif path == "/api/deps": self.serve_json(get_deps(ctx))
+            elif path == "/api/files": self.serve_json(get_files(ctx))
+            elif path == "/api/reminders": self.serve_json(get_reminders(ctx))
+            elif path == "/api/journal": self.serve_json(get_journal(ctx))
+            elif path == "/api/lint": self.serve_json(get_lint(ctx))
+            elif path == "/api/graph": self.serve_json(get_graph(ctx))
+            elif path == "/api/versions": 
+                self.serve_json(get_versions(ctx, qs.get('slug',[None])[0]))
+            elif path == "/api/logs": self.serve_json(get_logs(ctx))
+            elif path == "/api/contexts":
+                pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
+                self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
+            elif path == "/api/config":
+                self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "context": ctx})
+            elif path == "/vis-network.min.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "vis-network.min.js"
+                self.wfile.write(js_path.read_bytes())
+            else: self.send_response(404); self.end_headers()
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
+
+    def do_POST(self):
+        path = urllib.parse.urlparse(self.path).path
+        ctx = _ctx_from_qs(self.path)
+        try:
+            body = _read_json(self)
+            if path == "/api/todos":
+                self.serve_json(create_todo(ctx, body))
+            elif path == "/api/pages":
+                self.serve_json(create_page(ctx, body))
+            else:
+                self.send_response(404); self.end_headers()
+        except Exception as e:
+            self._send_error(500, str(e))
+
+    def do_PATCH(self):
+        path = urllib.parse.urlparse(self.path).path
+        ctx = _ctx_from_qs(self.path)
+        try:
+            body = _read_json(self)
+            m = re.match(r"^/api/todos/([^/]+)/status/([^/]+)$", path)
+            if m:
+                self.serve_json(move_todo(ctx, m.group(1), m.group(2)))
+                return
+            m = re.match(r"^/api/pages/([^/]+)$", path)
+            if m:
+                self.serve_json(update_page(ctx, m.group(1), body))
+                return
+            self.send_response(404); self.end_headers()
+        except Exception as e:
+            self._send_error(500, str(e))
+
+    def do_DELETE(self):
+        path = urllib.parse.urlparse(self.path).path
+        ctx = _ctx_from_qs(self.path)
+        try:
+            m = re.match(r"^/api/pages/([^/]+)$", path)
+            if m:
+                self.serve_json({"deleted": delete_page(ctx, m.group(1))})
+                return
+            self.send_response(404); self.end_headers()
+        except Exception as e:
+            self._send_error(500, str(e))
+
+    def _send_error(self, code, msg):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps({"error": msg}).encode())
+
     def serve_json(self, data):
         self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
