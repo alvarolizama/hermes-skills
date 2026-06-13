@@ -63,8 +63,8 @@ brain = Brain('personal')
 brain.create_page("GPT-4o", body="Modelo multimodal de [[OpenAI]]", page_type="entity")
 
 # Proyectos y tareas
-brain.create_page("Migración K8s", page_type="project", domain="bravo")
-brain.create_todo("Configurar CI/CD", domain="bravo")
+brain.create_page("Migración K8s", page_type="project")
+brain.create_todo("Configurar CI/CD")
 brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30")
 
 # Diario y recordatorios
