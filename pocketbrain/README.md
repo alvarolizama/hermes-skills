@@ -1,38 +1,87 @@
 # PocketBrain
 
-Un segundo cerebro digital multi-contexto. Backend en PocketBase (12 colecciones), servidor web live, y un cliente Python para que los agentes de IA escriban conocimiento, gestionen tareas y proyectos.
+Un segundo cerebro digital multi-contexto. Backend en PocketBase, servidor web live, y cliente Python para que los agentes de IA escriban conocimiento, gestionen tareas y proyectos.
 
 Los agentes guardan. Tú consultas.
+
+---
 
 ## Screenshots
 
 ### Proyectos
-Vista principal con tarjetas de proyecto, sidebar de navegación por tipo, y conteos.
+Vista principal con tarjetas de proyecto, sidebar de navegación por tipo, conteos y filtro.
 
-![Proyectos](../assets/screenshot-projects.png)
+![Proyectos](screenshots/01-projects.png)
+
+### Project Detail
+Dashboard de proyecto con métricas, tabs de contenido/goals/milestones/todo/reminders/journal/archivos/pages/graph, y breadcrumb de navegación.
+
+![Project Detail](screenshots/02-project-detail.png)
+
+### Project Graph
+Grafo de relaciones dentro de un proyecto: goals, tareas, reminders y páginas linkeadas.
+
+![Project Graph](screenshots/03-project-graph.png)
+
+### Todo
+Vista kanban global con columnas backlog/today/this week/in progress/done/cancelled.
+
+![Todo](screenshots/04-todo.png)
+
+### Project Kanban
+Kanban de tareas dentro de un proyecto con movimiento entre estados.
+
+![Project Kanban](screenshots/05-project-kanban.png)
 
 ### Goals
-Goals filtrables por estado: activos, terminados, cancelados. Con filtro de proyecto.
+Goals y milestones filtrables por estado y proyecto.
 
-![Goals](../assets/screenshot-goals.png)
+![Goals](screenshots/06-goals.png)
 
-### Grafo de Conocimiento
-Visualización de nodos (páginas, goals, tareas, recordatorios) y sus relaciones via vis.js.
+### Reminders
+Recordatorios agrupados por vencimiento con filtro de proyecto.
 
-![Graph](../assets/screenshot-graph.png)
+![Reminders](screenshots/07-reminders.png)
+
+### Journal
+Entradas de diario filtrables por proyecto y mes/año.
+
+![Journal](screenshots/08-journal.png)
+
+### Wiki
+Índice de páginas de conocimiento con filtros por tipo.
+
+![Wiki](screenshots/09-wiki.png)
+
+### Wiki Page
+Vista de página markdown con metadatos, backlinks, relaciones y actividad reciente.
+
+![Wiki Page](screenshots/10-wiki-page.png)
+
+### Graph Global
+Visualización de todos los nodos y relaciones del contexto vía vis.js, con leyenda coloreada por tipo.
+
+![Graph](screenshots/11-graph.png)
+
+### Lint
+Métricas de calidad: links rotos, huérfanos, sin summary, sin tags.
+
+![Lint](screenshots/12-lint.png)
 
 ---
 
 ## Features
 
 - **16 page types**: entity, concept, comparison, query, raw, project, plan, note, idea, todo, goal, milestone, okr, reminder, journal, file, deliverable
-- **Auto-linking**: `[[wikilinks]]` en el body resuelven slugs existentes y generan backlinks automáticos
+- **Auto-linking**: `[[wikilinks]]` resuelven slugs existentes y generan backlinks automáticos
 - **Auto-suggest page_type**: el agente infiere el tipo de página del título y contenido
-- **Interactive graph**: grafos con vis.js, nodos coloreados por tipo, filtros por leyenda
-- **Project management**: proyectos con goals, milestones, todos kanban, reminders, journal
+- **Interactive graph**: grafos con vis.js, nodos coloreados por tipo, leyenda con primera letra capitalizada
+- **Project management**: proyectos con goals, milestones, todos kanban, reminders, journal, archivos, pages y graph propio
 - **Hash-based URLs**: toda navegación genera URLs compartibles
 - **Live status**: heartbeat polling con indicador live/offline
 - **Multi-contexto**: 5 contextos (personal, projects, bravo, learning, health)
+- **Mobile header**: en pantallas pequeñas el breadcrumb se apila debajo del título y el select queda abajo
+- **Consistente UI**: iconos Heroicons en headers, tabs, breadcrumbs y cards
 
 ---
 
@@ -185,8 +234,7 @@ Toda navegación genera URLs con hash:
 |-------|------|
 | Projects | `#tab=projects` |
 | Goals | `#tab=goals` |
-| Goals con filtro | `#tab=goals&gstatus=active` |
-| Reminders semanales | `#tab=reminders&rstatus=week` |
+| Reminders semanales | `#tab=reminders` |
 | Proyecto detalle | `#project=slug` |
 | Proyecto tab | `#project=slug&ptab=goals` |
 | Wiki page | `#tab=wiki&page=slug` |

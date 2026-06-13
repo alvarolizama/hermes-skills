@@ -169,6 +169,32 @@ if (back) {
 
 Apply this to: Goals, Milestones, Todo, Reminders, Journal, Files, all type views, Wiki, Graph, Lint.
 
+## Mobile header stacking
+
+On narrow viewports (`max-width: 768px`) the `.view-header` must stack vertically so the title is readable and the breadcrumb does not collide with the filter select.
+
+Correct order:
+1. **Title + icon** (`.view-title-row`) at the top.
+2. **Breadcrumb** (`.project-breadcrumb`) below the title.
+3. **Filter select / subtitle** at the bottom.
+
+CSS:
+
+```css
+@media(max-width:768px){
+  .view-header { display: flex; flex-direction: column; }
+  .view-title-row { order: 1; width: 100%; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .view-title-row h1 { width: 100%; }
+  .project-breadcrumb { order: 2; width: 100%; margin-top: 4px; margin-bottom: 8px; }
+  .view-subtitle { order: 3; width: 100%; }
+  .filter-select { align-self: flex-start; }
+}
+```
+
+Wrong layout (do not use):
+- Breadcrumb and select inline with the title on mobile — causes the breadcrumb to wrap awkwardly beside the title and the select to be pushed off-screen.
+- Breadcrumb above the title — breaks the visual hierarchy; the user expects the page title first.
+
 ## Project detail tab bar must wrap
 
 Project detail has 12 tabs. If `.project-tabs` is configured as a single horizontal scrollable row (`overflow-x:auto` without `flex-wrap`), the rightmost tabs (Archivos, Pages, Graph) will be hidden outside the viewport on common screen sizes. Users will not see them and may report that the Graph tab does not exist.
@@ -226,7 +252,7 @@ document.querySelectorAll('#main > div.active').length === 1
 
 ## Type view summaries must render markdown
 
-Cards in type views (`type_entity`, `type_concept`, `type_comparison`, `type_query`, `type_raw`, etc.) display the page summary below the title. Summaries may contain markdown (e.g., `**bold**`, `[[wikilinks]]`). Escaping the summary with `esc()` shows literal asterisks and brackets to the user.
+Cards in type views (`type_entity`, `type_concept`, `type_comparison`, `type_query`, `type_raw`, etc.) display the page summary below the title. Summaries may contain markdown (e.g., `**bold**`, `[[wikilinks]]`, headings from `body`). Escaping the summary with `esc()` shows literal asterisks, brackets, and giant headings to the user.
 
 Fix in `views/type.js`:
 
@@ -241,6 +267,15 @@ html += `<div class="card ..." data-pb-page="${esc(p.slug)}">`
   + `</div>`;
 ```
 
+Also add CSS so headings inside card summaries do not look like page headings:
+
+```css
+.card .md-content h1, .card .md-content h2, ..., .card .md-content h6 {
+  font-size: 12px; font-weight: 500; margin: 0 0 2px; line-height: 1.3; color: var(--mute);
+}
+.card .md-content { max-height: 80px; overflow: hidden; }
+```
+
 After rendering, bind markdown links if summaries may contain `[[wikilinks]]`:
 
 ```js
@@ -248,10 +283,13 @@ const grid = container.querySelector('.cards-grid');
 if (grid && typeof bindMarkdownLinks === 'function') bindMarkdownLinks(grid);
 ```
 
+If the summary is empty but the body starts with a markdown heading, the body itself may render a huge heading inside the card. Prefer to extract a plain-text summary by stripping markdown (headings, bold, links) before displaying it in a card, or clamp the rendered markdown with the `.card .md-content` CSS above.
+
 Verify with:
 
 ```js
 !document.querySelector('.cards-grid').innerText.includes('**')
+document.querySelectorAll('.card h2').length === 0  // no page-level headings inside cards
 ```
 
 ## Hash walkthrough leaves exactly one active view

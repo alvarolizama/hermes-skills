@@ -19,8 +19,13 @@ const GCOLORS = {
 const GTYPE_NAMES = {
   entity: 'Entidades', concept: 'Conceptos', comparison: 'Comparaciones', query: 'Consultas', raw: 'Raw',
   project: 'Proyectos', plan: 'Planes', note: 'Notas', idea: 'Ideas',
-  goal: 'Goals', milestone: 'Hitos', okr: 'OKRs', todo: 'Todo', deliverable: 'Entregables', reminder: 'Reminders'
+  goal: 'Goals', milestone: 'Milestones', okr: 'OKRs', todo: 'Todo', deliverable: 'Entregables', reminder: 'Reminders'
 };
+
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 export function renderGraph() {
   const container = document.getElementById('view-graph');
@@ -70,7 +75,7 @@ export function renderGraph() {
     const counts = graph.counts || {};
     for (const group in counts) {
       const color = GCOLORS[group] || '#888';
-      const label = GTYPE_NAMES[group] || group;
+      const label = GTYPE_NAMES[group] || capitalize(group);
       lh += `<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px;"></span>${label} (${counts[group]})</div>`;
     }
     legend.innerHTML = lh;
