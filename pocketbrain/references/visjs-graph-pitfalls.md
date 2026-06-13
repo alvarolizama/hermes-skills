@@ -97,3 +97,33 @@ var colors = {
   deliverable:'#00BCD4', file:'#607D8B', journal:'#795548'
 };
 ```
+
+## Project graph: datos mínimos para renderizar
+
+`renderProjectGraph(data)` espera un objeto con al menos:
+- `data.p` — el proyecto (con `.title`)
+- `data.goals` — array de goals/milestones asociados
+- `data.todos` — array de tareas asociadas
+- `data.rems` — array de reminders asociados
+
+Si no hay relaciones, el grafo renderiza solo el nodo central del proyecto. Eso es correcto visualmente; no es un bug.
+
+## Project graph legend: page_type de wikilinks
+
+Cuando se quiere mostrar en la leyenda los tipos de páginas mencionadas en el body del proyecto, hay que mapear slugs a page_type usando el store global de páginas:
+
+```javascript
+const ptCounts = {};
+const links = (data.p.body || '').match(/\[\[([^\]]+)\]\]/g) || [];
+links.forEach(raw => {
+  const slug = raw.replace(/[\[\]]/g, '').split('|')[0].trim();
+  const page = Store.mapPages()[slug];
+  if (page) {
+    const t = page.page_type || 'concept';
+    ptCounts[t] = (ptCounts[t] || 0) + 1;
+  }
+});
+```
+
+**Nota:** esta detección es case-sensitive. `[[PocketBrain]]` no encontrará el slug `pocketbrain`. Si se normaliza a minúsculas, considerar normalizar también el slug almacenado.
+

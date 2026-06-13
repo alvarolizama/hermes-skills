@@ -375,6 +375,13 @@ def setup_contexts(pb: PB) -> dict:
 # ═════════════════════════════════════════════════════════════════════
 
 
+PAGE_TYPES = [
+    'entity', 'concept', 'comparison', 'query', 'raw',
+    'project', 'plan', 'note', 'idea', 'todo',
+    'goal', 'milestone', 'okr', 'reminder', 'journal', 'file', 'deliverable'
+]
+
+
 def suggest_page_type(title: str, body: str = '') -> str:
     """Sugiere un page_type basado en el contenido.
 
@@ -391,7 +398,7 @@ def suggest_page_type(title: str, body: str = '') -> str:
         body: Contenido markdown (opcional).
 
     Returns:
-        Uno de: 'project', 'raw', 'comparison', 'query', 'entity', 'concept'
+        Uno de los PAGE_TYPES
     """
     t = title.lower().strip()
     b = (body or '').lower()
@@ -648,6 +655,8 @@ class Brain:
         effective_page_type = page_type
         if not effective_page_type or effective_page_type == '':
             effective_page_type = suggest_page_type(title, body)
+        if effective_page_type not in PAGE_TYPES:
+            raise ValueError(f"page_type '{effective_page_type}' no válido. Debe ser uno de: {', '.join(PAGE_TYPES)}")
 
         # Extraer [[wikilinks]] del body para auto-link
         links = extract_wikilinks(body)
@@ -930,7 +939,7 @@ class Brain:
         params = {
             'filter': "&&".join(filters),
             'perPage': per_page,
-            'expand': 'domain,tags',
+            'expand': 'domain,tags,related_pages',
         }
         if sort:
             params['sort'] = sort
@@ -1261,12 +1270,16 @@ class Brain:
 
     # ── Todos ───────────────────────────────────────────────────
 
-    def create_todo(self, title: str, domain: str,
+    def create_todo(self, title: str,
+                    domain: str = 'default',
                     page_slug: Optional[str] = None,
                     goal_id: Optional[str] = None,
                     content: str = "",
                     status: str = "backlog",
                     owner: str = "alvaro") -> dict:
+        valid_statuses = ('backlog', 'this week', 'today', 'in progress', 'done', 'cancelled')
+        if status not in valid_statuses:
+            raise ValueError(f"status '{status}' no válido. Debe ser uno de: {', '.join(valid_statuses)}")
         related = [page_slug] if page_slug else None
         return self.create_page(
             title=title,
@@ -1567,6 +1580,8 @@ class Brain:
                     parent_id: Optional[str] = None,
                     status: str = 'planned') -> dict:
         """Crea un goal, milestone u OKR como pagina."""
+        if type not in ('goal', 'milestone', 'okr'):
+            raise ValueError(f"type '{type}' no válido. Debe ser 'goal', 'milestone' u 'okr'.")
         related = [project_slug] if project_slug else None
         return self.create_page(
             title=title,
@@ -1581,7 +1596,17 @@ class Brain:
                    type: Optional[str] = None,
                    status: Optional[str] = None) -> list:
         """Lista goals como paginas con page_type."""
-        return self.list_pages(page_type=type, status=status)
+        filters = {}
+        if type:
+            filters['page_type'] = type
+        if status:
+            filters['status'] = status
+        goals = self.list_pages(**filters)
+        if project_slug:
+            project = self._get_page(project_slug)
+            if project and 'id' in project:
+                goals = [g for g in goals if project['id'] in (g.get('related_pages') or [])]
+        return goals
 
     def complete_goal(self, goal_id: str, retrospective: str = '') -> dict:
         return self.update_page(goal_id, status='done')
@@ -1601,6 +1626,9 @@ class Brain:
     def create_reminder(self, title: str, date: str, time: str = '',
                         content: str = '', page_slug: Optional[str] = None) -> dict:
         """Crea un recordatorio como pagina con page_type='reminder'."""
+        import re as _re
+        if not _re.match(r'^\d{4}-\d{2}-\d{2}$', date):
+            raise ValueError(f"date '{date}' no tiene formato YYYY-MM-DD")
         related = [page_slug] if page_slug else None
         return self.create_page(
             title=title,

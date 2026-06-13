@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundario."
-version: 2.23.0
+version: 2.25.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -22,7 +22,7 @@ El agente usa `POCKETBRAIN_CONTEXT` del env (o `'personal'` por default):
 
 ```python
 brain = Brain()           # → POCKETBRAIN_CONTEXT o 'personal'
-brain = Brain('bravo')    # → override explícito
+brain = Brain('work')       # → override explícito de contexto
 ```
 
 Cada contexto es un silo: sus propias páginas, dominios, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`.
@@ -36,11 +36,11 @@ Cuando el usuario pregunte sobre datos en PocketBrain, responde **directo en la 
 **Listar entidades con tabla:**
 ```markdown
 ## Proyectos (3)
-| Proyecto | Dominio | Goals | Tareas |
-|----------|---------|-------|--------|
-| PocketBrain | projects | 4 | 10 |
+| Proyecto | Domain | Pages | Links |
+|----------|--------|-------|-------|
+| PocketBrain | proyectos | 4 | 10 |
 | Viaje a Japon 2026 | personal | 2 | 5 |
-| Rediseno web Bravo | bravo | 1 | 3 |
+| Rediseno web | proyectos | 1 | 3 |
 ```
 
 **Detalle de una página con metadata:**
@@ -193,14 +193,14 @@ proyecto (page_type='project')
 **Flujo de proyecto:**
 ```python
 # 1. Crear el proyecto
-brain.create_page("Migración K8s", page_type="project", domain="bravo")
+brain.create_page("Migración K8s", page_type="project", domain="proyectos")
 
 # 2. Definir goals y milestones
 brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30",
-                  related_slugs=["migracion-k8s"])  # relaciona al proyecto
+                  project_slug="migracion-k8s")  # relaciona al proyecto
 
 # 3. Crear tareas
-brain.create_todo("Configurar CI/CD para K8s", domain="bravo",
+brain.create_todo("Configurar CI/CD para K8s", domain="proyectos",
                   related_slugs=["migracion-k8s"])
 brain.move_todo(todo_id, "in progress")
 
@@ -227,9 +227,8 @@ brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
 ```python
 # Domain: agrupa por área de la vida/trabajo
 domain="investigacion"     # papers, descubrimientos técnicos
-domain="proyectos"         # iniciativas personales concreto
+domain="proyectos"         # iniciativas personales concretas
 domain="learning"          # aprendizaje, cursos, lecturas
-domain="bravo"             # trabajo en Bravo (CTO)
 domain="personal"          # vida personal, viajes, salud
 domain="finanzas"          # inversiones, presupuestos
 
@@ -291,7 +290,7 @@ brain.search("machine learning")     # case-insensitive, rankeado
 brain.append_to_page("mantrams", "- Nuevo", heading="2026-06-10")
 
 # Tareas
-brain.create_todo("Revisar PR", domain="bravo")
+brain.create_todo("Revisar PR", domain="proyectos")
 brain.todos(status="today")
 brain.move_todo(id, "done")
 
@@ -315,11 +314,16 @@ brain.reminders(date="today")
 brain.lint()           # huérfanos, broken links
 brain.index()          # catálogo
 brain.recent_logs(20)  # trazabilidad
+
+# Seed data (para tests/demos)
+# python3 scripts/seed.py  # crea ~72 páginas interconectadas
 ```
 
 ---
 
-## Setup
+## Setup (headless por default)
+
+PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente se opera directamente sobre PocketBase y se responde al usuario con markdown.
 
 ### Dependencias
 
@@ -330,7 +334,7 @@ brain.recent_logs(20)  # trazabilidad
 | `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
 | `POCKETBRAIN_CONTEXT` | Contexto default del agente (`personal`, `projects`, etc.) | `~/.hermes/.env` o variable de entorno. Default: `personal` |
 
-### Quick Start
+### Quick Start headless
 
 ```bash
 # 0. Verificar dependencias
@@ -340,21 +344,36 @@ which curl || brew install curl
 cd ~/.hermes/skills/productivity/pocketbrain/scripts
 python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
-# 2. Servidor web live
-python3 brain_web.py --context personal --port 8899
-# → http://localhost:8899
-
-# 3. Exportar a markdown
+# 2. Exportar a markdown (opcional)
 python3 sync.py --context personal --full
 ```
 
 ```python
-# 4. Desde el agente
+# 3. Desde el agente — esto es el modo normal
 from brain import Brain
-brain = Brain('personal')
-brain.create_context(label='Contexto Personal')
+brain = Brain('personal')  # o Brain() usando POCKETBRAIN_CONTEXT
 brain.orient()
+brain.create_page("Nueva idea", page_type="idea")
+brain.create_todo("Revisar logs", page_slug="nueva-idea", status="today")
+brain.lint()
 ```
+
+### Levantar la UI web (opcional)
+
+Si quieres ver datos en navegador, el servidor live es opt-in:
+
+```bash
+cd ~/.hermes/skills/productivity/pocketbrain/scripts
+python3 brain_web.py --context personal --port 8899
+# → http://localhost:8899
+```
+
+Requisitos:
+- PocketBase corriendo con las colecciones creadas.
+- Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` en `~/.hermes/.env`.
+- El contexto por default es `personal`; cambia con `--context <name>`.
+
+Después de modificar módulos ES o CSS, reiniciar el servidor no basta por el cache del browser (`max-age=3600`). Usa `Cmd+Shift+R` o DevTools → Disable cache.
 
 ---
 
@@ -370,9 +389,14 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/schema.md` | Detalle de las 6 colecciones y sus campos, historial de unificación |
 | `references/schema-audit.md` | Auditoría de integridad del schema: checklist 10 puntos para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
 | `references/goals.md` | Sistema de goals, milestones y OKRs |
-| `references/web-ui.md` | Navegación y vistas del servidor web live |
-| `references/web-ui-patterns.md` | Refactor frontend: tabs, progreso, toasts, markdown |
-| `references/web-ui-debugging.md` | Debug de JS runtime, validacion node --check |
+| `references/web-ui.md` | Navegación y vistas del servidor web live (opcional) |
+| `references/web-ui-patterns.md` | Refactor frontend: tabs, progreso, toasts, markdown, modular SPA |
+| `references/frontend-es-modules.md` | Guía completa para refactorizar web_ui.html a módulos ES |
+| `references/modular-spa-pitfalls.md` | Pitfalls del refactor a módulos ES: imports/exports, cache del browser, lint view, wikilinks case-insensitive, view stacking, navegación de cards, backend relations |
+| `references/sidebar-layout.md` | Layout del sidebar: alineación icono-label-count y orden de items |
+| `references/backend-relations-shape.md` | PocketBase `expand=related_pages` puede devolver dict o list; cómo manejar ambas shapes en `brain_web.py` |
+| `references/project-detail-validation.md` | Checklist para completar y verificar la vista de detalle de proyecto: tabs, counts, navegación de cards, verificación de stacking |
+| `references/web-ui-debugging.md` | Debug de UI con browser_console, node --check, validación de backend relations |
 | `references/web-ui-js-escaping.md` | Pitfalls de escaping en web_ui.html |
 | `references/html-js-patching.md` | Modificar JS inline sin romperlo |
 | `references/design-systems.md` | Diseño visual: tokens, dark mode |
@@ -387,12 +411,19 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/collection-unification.md` | Como migrar colecciones a brain_pages y agregar nuevos tipos al sidebar |
 | `references/ui-filter-pattern.md` | Filtro Todos/Con proyecto/Sin proyecto en type views, basado en [[wikilinks]] al body |
 | `references/schema-update.md` | Como actualizar colecciones en PocketBase existentes |
+| `references/pocketpages-migration.md` | Alternativa PocketPages: web UI server-rendered con EJS, FAB, Command Palette, Kanban drag & drop |
+| `references/view-activation-pitfall.md` | showIndex() y otras funciones deben activar view-wiki explícitamente |
+| `references/sidebar-layout.md` | Alineación icono-label-count en sidebar nav, eliminación de deliverables del nav |
+| `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 
 ### Changelogs
 
 | Version | Cambios |
 |---------|--------|
-| v2.23.0 | Markdown-first: prioridad responder al usuario en conversación con tablas/listas/status. Reglas de respuesta para el agente. Web UI es secundaria. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0).
+| v2.25.0 | Skill optimizado para uso headless: Setup reordenado, UI web documentada como opcional. Project detail completo: dashboard de métricas + 12 tabs (Contenido, Goals, Milestones, Ideas, Planes, Todo kanban, Notas, Reminders, Journal, Archivos, Pages, Graph). brain.py: PAGE_TYPES, validaciones en create_page/create_goal/create_todo/create_reminder, list_goals filtra por project_slug. brain_web.py: fix `related` no definido en `get_todos` cuando related_pages es lista. |
+| v2.24.1 | Modular SPA refactor completado: view stacking fix, project detail con todas las tabs y counts reales, cards navegables, wikilinks/backlinks navegables sin stacking, sidebar iconos alineados, Entregables eliminado. Backend: normalizar `expand.related_pages` (dict vs list) en `brain_web.py`. Seed: reminders/journal ahora vinculan `page_slug`. Nuevas referencias: `backend-relations-shape.md`, `project-detail-validation.md`, `modular-spa-project-tabs.md`, `modular-spa-journal.md`, `brain-py-improvement-plan.md`. |
+| v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0). |
+| v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0).
 | v2.20.0 | Minimalist cards (title only, no chips/status/metadata). Sidebar `;return false` en todos los onclicks. Pitfall: read_file() corrompe archivos si se escribe de vuelta. |
 | v2.18.0 | Filter select: Todo y Reminders cambian a Todos/Con proyecto/Sin proyecto. Fix goal filter else-if bug ('project' atrapado por else-if generico). Actualizado ui-filter-pattern.md con page_slug filter y pitfall. |
 | v2.17.0 | fix: showPage() desactiva vistas previas antes de activar view-wiki para evitar stacking. |
@@ -423,6 +454,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Goal filter chaining**: en `renderGoalsView()`, `_goalFilter` y `typeFilter` se aplican secuencialmente. Si `_goalFilter` usa `GOALS.filter` en vez de `filtered.filter`, el typeFilter previo se pierde y filtra sobre el array completo. Siempre encadenar: `filtered = GOALS.filter(...)` primero, luego `filtered = filtered.filter(...)`.
 - **Status tabs en Goals/Milestones pierden el typeFilter**: los onclick de los tabs de status (Todos/Activos/Terminados/Cancelados) llaman a `renderGoalsView()` sin argumento, perdiendo el typeFilter actual ('goal' o 'milestone'). Fix: guardar `typeFilter` en `window._goalTypeFilter` y pasar `renderGoalsView(window._goalTypeFilter)` en los onclick.
 - **`gt` es undefined en onclick de status tabs**: la variable local `var gt=typeFilter||'goal'` dentro de `renderGoalsView()` se usa en los onclick generados como string HTML, pero cuando el onclick se ejecuta, `gt` ya salió de scope. Fix: usar `window._goalTypeFilter` en vez de `gt` en los onclick handlers.
+- **showIndex() debe activar view-wiki**: `showIndex()` renderiza el índice completo en `view-wiki` pero NO activa la vista (no remueve `active` de las otras vistas, no llama `closeSidebar()`). Fix: agregar `document.querySelectorAll('#main>div').forEach(function(d){d.classList.remove('active');});closeSidebar();document.getElementById('view-wiki').classList.add('active');` al inicio de `showIndex()`. Igual que el fix de `showPage()`.
 - **browser_vision poco confiable para detectar stacking de vistas**: el modelo de visión puede reportar "se ve solo una vista" cuando en realidad hay dos divs con `display:block` apilados. Para verificar stacking, usar `browser_console` con expresión `document.querySelectorAll('#main > div.active').length` para contar vistas activas, o inspeccionar el HTML servido con curl.
 - **Layout unificado: H1 + select en view-header, tabs debajo**: todas las vistas tienen el H1 y el *filter select* juntos en `view-header` (select a la derecha del H1). Los *status tabs* van debajo en `div.project-tabs` con `margin:12px 0`. NO poner status tabs inline con el H1. Ver `references/ui-filter-pattern.md` seccion "Layout correcto".
 - **Cards minimalistas (solo titulo)**: en listas de proyectos, goals, milestones y type views, las cards deben mostrar solo el titulo. Sin chips de tipo (goal/milestone/okr), sin contadores de tareas, sin status/deadline. Solo `<h3>title</h3>`.
@@ -441,11 +473,23 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **CDN script bloquea inline script
 - **node --check debe saltar scripts CDN**: al validar web_ui.html, extraer el SEGUNDO <script> tag (el inline, sin src). El primero suele ser el CDN de vis.js. Usar html.split('<script>')[2].split('</script>')[0] en vez de regex que empareje el primero.
 
+- **PocketPages data injection**: en templates EJS de PocketPages, los datos retornados por `+middleware.js` y `+load.js` se inyectan en la variable `data`, NO en `context`. Usa `const { ctxId, counts } = data` en las templates. `context` es el contexto interno de PocketPages (`ctx`, `params`, `log`, etc.). Ver `references/pocketpages-migration.md`.
+- **PocketPages API routes**: para endpoints POST, lee el body con `ctx.body()` y responde con `ctx.json(code, obj)`. No existen `request.body` ni `response.status` en el scope de las páginas EJS de PocketPages.
+- **PocketPages no tiene CLI**: `bunx pocketpages serve` no funciona. Es un plugin de JSVM de PocketBase; se corre con `./pocketbase serve --hooksDir=./pb_hooks`.
+
 ### Workflow notes (Alvaro's style)
 
+- **Sample data must stay generic.** Seed scripts, SKILL.md examples, and any reusable skill code must NOT mention the user's company, role, or real projects (e.g., no "Bravo", "CTO", work-specific domains). Default to generic placeholders (`proyectos`, `work`, `personal`) and ask before inserting real context.
 - **"commit"** = commit inmediato sin discusion. git add + commit, reporta el hash.
 - **Terse, directo, sin branding.** UI limpia sin texto de producto.
 - **Diff contra runtime antes de editar repo.** Sync primero.
 - **Siempre verificar visualmente** después de cambios UI. No decir "jala" sin ver screenshot.
+- **Subagentes con tareas UI grandes pueden quedarse atascados:** cuando una tarea requiere coordinar múltiples archivos JS/CSS/backend y verificación visual, es más seguro dividirla en pasos manuales directos (backend → CSS → JS → browser) que delegarla en una sola corrida larga a un subagente. El subagente puede dejar avance parcial e inconcluso si se queda sin tiempo.
 - **`--no-gpg-sign`** en commits. GPG key no disponible en este entorno.
 - **Layout UI preferido**: el *filter select* (Todos/Con proyecto/Sin proyecto) va dentro del `view-header` a la DERECHA del H1. Los *status tabs* (Todos/Activos/Terminados) van debajo en `div.project-tabs` con `margin:12px 0`. NO mover el select debajo del H1 (eso fue un error mio).
+- **Sidebar layout**: cada item debe ser un flex container con `align-items:center; justify-content:space-between`. El icono SVG y el label deben compartir una línea de base con `gap:8px` y `line-height` común. Los contadores van alineados a la derecha. Ver `references/sidebar-layout.md`.
+- **Entregables no va en sidebar**: Álvaro usa solo `Archivos`. Deliverables ya no es un item de navegación principal.
+- **Hard refresh obligatorio**: `brain_web.py` sirve assets JS con `Cache-Control: max-age=3600`. Después de cambiar módulos ES, reiniciar el servidor NO basta. Usar `Cmd+Shift+R` o DevTools con "Disable cache" para ver los cambios.
+- **Subagentes para fixes UI no son garantía**: los subagentes pueden llegar al límite de iteraciones sin aplicar el fix, dejando solo análisis parcial. Si el fix es pequeño y crítico (ej. un import roto, un `classList.add` que causa stacking), es más rápido hacerlo directamente, validar con `node --check`, y luego lanzar subagentes solo para verificación o tareas paralelas grandes. Siempre re-verificar visualmente después de subagentes.
+- **Modular SPA: validar imports y registros de router**: al extraer funciones a módulos ES (ej. `views/project-detail.js`), asegurar que el handler registrado en `Router.register('project', handler)` coincida con la firma `(slug, ptab)`. Si el router pasa `ptab` pero el handler lo ignora, las tabs internas no se restauran desde el hash.
+- **Validación mínima de project detail**: al terminar el project detail, confirmar en browser: (a) todas las tabs visibles con counts reales, (b) tab Contenido renderiza markdown, (c) click en goal/todo/reminder/journal/file navega a la página sin stacking (`#main > div.active` === 1), (d) wikilinks dentro del markdown y backlinks también navegan sin stacking.

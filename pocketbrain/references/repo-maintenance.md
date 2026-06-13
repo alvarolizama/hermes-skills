@@ -9,7 +9,7 @@ The repo `~/Repos/personal/hermes-skills` is a **public skills tap** for Hermes,
 | In repo | NOT in repo |
 |---------|-------------|
 | `SKILL.md`, `scripts/`, `references/`, `README.md` | `.hermes/plans/` (agent plans directory) |
-| Screenshots in `screenshots/` | Screenshots in repo root `screenshots/` |
+| Screenshots in `pocketbrain/screenshots/` | Screenshots in repo root `screenshots/` |
 | `.gitignore` ignoring `.hermes/` | `.hermes/` tracked by git |
 
 The `.gitignore` at repo root must contain:
@@ -33,8 +33,8 @@ Antes de commitear cambios al README, verificar:
 
 4. **Screenshots**: confirmar que los paths relativos apuntan a archivos que existen y están en git:
    ```bash
-   ls screenshots/ | wc -l
-   git ls-files screenshots/ | wc -l
+   ls pocketbrain/screenshots/ | wc -l
+   git ls-files pocketbrain/screenshots/ | wc -l
    # ambos deben coincidir
    ```
 

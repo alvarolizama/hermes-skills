@@ -56,11 +56,14 @@ def get_pages(ctx, include_archived=False):
     brain = get_brain(ctx)
     pages = brain.list_pages(include_archived=include_archived, per_page=500)
     smap = {p["slug"]: p for p in pages}
+    slug_by_lower = {s.lower(): s for s in smap}
     bls = {p["slug"]: [] for p in pages}
     for pg in pages:
         for link in extract_wikilinks(pg.get("body","") or ""):
             t = link.split("|")[0].strip()
-            if t in smap and t != pg["slug"]: bls[t].append(pg["slug"])
+            target = slug_by_lower.get(t.lower())
+            if target and target != pg["slug"]:
+                bls[target].append(pg["slug"])
     result = []
     for pg in pages:
         ed = pg.get("expand",{}).get("domain")
@@ -78,6 +81,10 @@ def get_pages(ctx, include_archived=False):
             "completed_date":(pg.get("completed_date","") or "")[:10],
             "cancelled_date":(pg.get("cancelled_date","") or "")[:10],
             "comment":pg.get("comment","") or "",
+            "source_url":pg.get("source_url","") or "",
+            "source_sha256":pg.get("source_sha256","") or "",
+            "contested":pg.get("contested",False),
+            "contradictions":pg.get("contradictions","") or "",
             "created":(pg.get("created","") or "")[:10],"updated":(pg.get("updated","") or "")[:10]})
     return result
 
@@ -95,7 +102,10 @@ def get_goals(ctx):
         for p in pages:
             rel = p.get("expand", {}).get("related_pages", [])
             ps = ""; parent_id = ""
-            if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
+            if isinstance(rel, dict):
+                ps = rel.get("slug", "")
+                parent_id = rel.get("id", "")
+            elif rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
                 ps = rel[0].get("slug", "")
                 parent_id = rel[0].get("id", "")
             result.append({
@@ -122,7 +132,14 @@ def get_todos(ctx):
     for p in pages:
         rel = p.get("expand", {}).get("related_pages", [])
         ps = ""; pt = ""; goal_id = ""; goal_title = ""
-        if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
+        if isinstance(rel, dict):
+            related = rel
+            ps = related.get("slug", "")
+            pt = related.get("title", "")
+            if related.get("page_type") in ('goal', 'milestone', 'okr'):
+                goal_id = related.get("id", "")
+                goal_title = related.get("title", "")
+        elif rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
             related = rel[0]
             ps = related.get("slug", "")
             pt = related.get("title", "")
@@ -149,7 +166,9 @@ def get_deps(ctx):
     for p in pages:
         rel = p.get("expand",{}).get("related_pages",[])
         ps = ""; pt = ""
-        if rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
+        if isinstance(rel, dict):
+            ps = rel.get("slug",""); pt = rel.get("title","")
+        elif rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
             ps = rel[0].get("slug",""); pt = rel[0].get("title","")
         result.append({"id":p["id"],"title":p.get("title",""),"version":p.get("version",""),
             "status":p.get("status","draft"),
@@ -166,7 +185,9 @@ def get_files(ctx):
     for p in pages:
         rel = p.get("expand",{}).get("related_pages",[])
         ps = ""; pt = ""
-        if rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
+        if isinstance(rel, dict):
+            ps = rel.get("slug",""); pt = rel.get("title","")
+        elif rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
             ps = rel[0].get("slug",""); pt = rel[0].get("title","")
         result.append({"id":p["id"],"name":p.get("title",""),"file_type":p.get("file_type","other"),
             "page_slug":ps,"page_title":pt})
@@ -181,7 +202,10 @@ def get_reminders(ctx):
     for p in pages:
         rel = p.get("expand", {}).get("related_pages", [])
         ps = ""; pt = ""
-        if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
+        if isinstance(rel, dict):
+            ps = rel.get("slug", "")
+            pt = rel.get("title", "")
+        elif rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
             ps = rel[0].get("slug", "")
             pt = rel[0].get("title", "")
         result.append({
@@ -204,7 +228,10 @@ def get_journal(ctx):
     for p in pages:
         rel = p.get("expand", {}).get("related_pages", [])
         ps = ""; pt = ""
-        if rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
+        if isinstance(rel, dict):
+            ps = rel.get("slug", "")
+            pt = rel.get("title", "")
+        elif rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
             ps = rel[0].get("slug", "")
             pt = rel[0].get("title", "")
         result.append({
@@ -233,6 +260,7 @@ def get_graph(ctx):
     brain = get_brain(ctx)
     pages = brain.list_pages(include_archived=False, per_page=500)
     smap = {p["slug"]: p for p in pages}
+    slug_by_lower = {s.lower(): s for s in smap}
     pid_map = {pg.get("id",""): pg["slug"] for pg in pages if pg.get("id")}
     goals = []
     for pt in ['goal', 'milestone', 'okr']:
@@ -250,7 +278,9 @@ def get_graph(ctx):
             nodes.append({"id":slug,"label":pg.get("title",slug),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),"group":pg.get("page_type","concept")})
         for link in extract_wikilinks(pg.get("body","") or ""):
             t = link.split("|")[0].strip()
-            if t in smap and t != slug: edges.append({"from":slug,"to":t})
+            target = slug_by_lower.get(t.lower())
+            if target and target != slug:
+                edges.append({"from":slug,"to":target})
     gmap = {}
     for g in goals:
         gid = "g-"+g["id"]; gmap[g["id"]] = gid
@@ -395,11 +425,49 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
             elif path == "/api/config":
                 self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "context": ctx})
+            elif path == "/api.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "api.js"
+                self.wfile.write(js_path.read_bytes())
             elif path == "/vis-network.min.js":
                 self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
                 js_path = Path(__file__).parent / "vis-network.min.js"
                 self.wfile.write(js_path.read_bytes())
-            else: self.send_response(404); self.end_headers()
+            elif path == "/web_ui.css":
+                self.send_response(200); self.send_header("Content-Type","text/css; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                css_path = Path(__file__).parent / "web_ui.css"
+                self.wfile.write(css_path.read_bytes())
+            elif path == "/app.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "app.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path == "/router.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "router.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path == "/store.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "store.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path == "/markdown.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "markdown.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path == "/components/Tabs.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "components" / "Tabs.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path == "/components/Icon.js":
+                self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                js_path = Path(__file__).parent / "components" / "Icon.js"
+                self.wfile.write(js_path.read_bytes())
+            elif path.startswith("/views/"):
+                js_path = Path(__file__).parent / path.lstrip('/')
+                if js_path.exists() and js_path.is_file():
+                    self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
+                    self.wfile.write(js_path.read_bytes())
+                else:
+                    self.send_response(404); self.end_headers()
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")

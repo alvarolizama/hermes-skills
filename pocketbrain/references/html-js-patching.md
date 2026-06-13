@@ -50,6 +50,62 @@ chunk = content[idx:idx+350]
 print(repr(chunk))
 ```
 
+## Byte-Level Editing for Escaping Nightmares
+
+When dealing with JS-in-HTML where backslash escaping creates layers of confusion (`'` vs `\'` vs `\\'` vs `\\\'`), the cleanest approach is **byte-level patching with hex values**:
+
+### Step 1: Dump the bytes
+
+```python
+with open(path, 'rb') as f:
+    data = f.read()
+
+idx = data.find(b'showTab')
+for i, b in enumerate(data[idx:idx+30]):
+    print(f"  {idx+i}: 0x{b:02x} = {chr(b) if 32 <= b < 127 else '.'}")
+```
+
+### Step 2: Build the old/new bytes from hex
+
+```python
+# 0x5c = backslash, 0x27 = single-quote
+# \\\' (3 backslashes + quote) → replace with just ' (quote)
+old_bytes = bytes([0x5c, 0x5c, 0x5c, 0x27, 0x2b, 0x70, 0x2e, 0x70, 0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x2b, 0x5c, 0x5c, 0x5c, 0x27])
+new_bytes = bytes([0x27, 0x2b, 0x70, 0x2e, 0x70, 0x61, 0x67, 0x65, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x2b, 0x27])
+
+# old = \\\'+p.page_type+\\\'  (3 backslashes + quote on each side)
+# new =  '+p.page_type+'       (just quote on each side, JS string terminators)
+
+if old_bytes in data:
+    data = data.replace(old_bytes, new_bytes)
+    print("Fix applied")
+else:
+    print("Pattern not found — dump hex around the area to debug")
+```
+
+### Step 3: Remove individual backslashes by position
+
+When the pattern is unique enough that you can pinpoint the byte positions:
+
+```python
+data = bytearray(data)
+# Remove backslash bytes (0x5c) at specific positions
+for pos in sorted([64519, 64508, 64501, 64486], reverse=True):
+    if data[pos] == 0x5c and data[pos+1] == 0x27:
+        del data[pos]
+```
+
+### Understanding the escaping layers
+
+In JS-in-HTML, when you see output like `'+p.page_type+'` as literal text instead of evaluated value:
+
+| Byte sequence | In JS file | JS interpretation | Rendered HTML |
+|---|---|---|---|
+| `'` (0x27) | `'` + expression + `'` | String terminator + concat + string start | _expression evaluated_ |
+| `\'` (0x5c 0x27) | `\'` + expression + `\'` | Escaped quote + concat + escaped quote | _expression as literal text_ |
+
+**Fix:** The `'` that serves as JS string terminator MUST be a bare `'` (0x27) with no preceding backslash. The `'` inside HTML attribute values (onclick handlers) MUST be `\'` (0x5c 0x27) to avoid terminating the outer JS string.
+
 ## Save and Run
 
 ```bash

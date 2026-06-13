@@ -120,10 +120,43 @@ Cuando se agrega un nuevo item al sidebar (o se refactoriza uno existente), es f
    ```
 3. Verificar que todos los items del sidebar usan el mismo patrón: `icon('name',16) + '<span>Texto</span>...'`.
 
+### Modular SPA: importar icon helper
+
+En un frontend modular, el helper de iconos debe vivir en `components/Icon.js` y exportar `icon(name, size)`:
+
+```javascript
+// components/Icon.js
+const ICONS = { 'squares-2x2': '...', ... };
+export function icon(name, size = 20) { ... }
+export default icon;
+```
+
+Y en `app.js`:
+
+```javascript
+import { icon } from './components/Icon.js';
+
+const item = (id, label, count, search, iconName) => {
+  const svg = iconName ? icon(iconName, 16) : '';
+  return `<a href="javascript:void(0)" class="nav-link" onclick="showTab('${id}')" data-search="${search || label.toLowerCase()}">`
+       + `<span class="nav-label">${svg}<span style="margin-left:8px">${label}</span></span>`
+       + `<span class="nav-count">${count}</span></a>`;
+};
+```
+
+### CSS para iconos en sidebar
+
+```css
+#nav a.nav-link .nav-label{display:flex;align-items:center;flex:1}
+#nav a.nav-link .nav-label svg{flex-shrink:0;margin-right:8px}
+#nav a.nav-link .nav-count{font-size:10px;color:var(--body);background:var(--hairline);padding:1px 6px;border-radius:9999px;min-width:20px;text-align:center;flex-shrink:0}
+```
+
 ## Verificación
 
 ```bash
-grep -n 'function icon(' ~/.hermes/skills/productivity/pocketbrain/scripts/web_ui.html
+# En frontend modular: verificar que Icon.js exporta icon()
+grep -n 'export function icon' ~/.hermes/skills/productivity/pocketbrain/scripts/components/Icon.js
 ```
 
 Debe devolver línea con el helper. Después de deploy, usar `browser_vision` para verificar que los iconos aparecen y no hay fallback vacío.
