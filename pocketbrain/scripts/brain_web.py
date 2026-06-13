@@ -162,18 +162,27 @@ def get_todos(ctx):
             related = rel
             ps = related.get("slug", "")
             pt = related.get("title", "")
-            if related.get("page_type") in ('goal', 'milestone', 'okr'):
+            if related.get("page_type") in ('goal', 'milestone'):
                 goal_id = related.get("id", "")
                 goal_title = related.get("title", "")
         elif rel and isinstance(rel, list) and len(rel) > 0 and isinstance(rel[0], dict):
             related = rel[0]
             ps = related.get("slug", "")
             pt = related.get("title", "")
-            if related.get("page_type") in ('goal', 'milestone', 'okr'):
+            if related.get("page_type") in ('goal', 'milestone'):
                 goal_id = related.get("id", "")
                 goal_title = related.get("title", "")
         dom = p.get("expand", {}).get("domain", {})
         dn = dom.get("name", "") if isinstance(dom, dict) else p.get("domain", "")
+        if not dn:
+            # fallback: try to resolve domain id
+            did = p.get("domain")
+            if did:
+                try:
+                    drec = brain.pb.get("brain_domains", did)
+                    dn = drec.get("name", "") if drec else ""
+                except Exception:
+                    dn = ""
         result.append({
             "id": p["id"], "title": p.get("title", ""), "status": p.get("status", "backlog"),
             "domain": dn, "owner": p.get("owner", ""),

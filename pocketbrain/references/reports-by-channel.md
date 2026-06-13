@@ -1,5 +1,11 @@
 # Reportes y respuestas por canal
 
+**Cuando el usuario pide información de PocketBrain por chat** ("proyectos", "status", "tareas", "journal", "recordatorios"), **nunca es una instrucción para modificar datos**. Es una consulta. El agente:
+
+1. Usa `clarify()` si la solicitud es ambigua.
+2. Obtiene datos con los métodos de reporte de `brain.py` o `/api/reports/*`.
+3. Formatea la respuesta según el canal de comunicación.
+
 PocketBrain expone datos estructurados vía `brain.py` y `/api/reports/*`. El agente formatea la respuesta según el canal y el tipo de reporte.
 
 ## Métodos de reporte en `brain.py`
@@ -36,9 +42,10 @@ clarify(
 
 ## Formatos por canal
 
-### Hermes Desktop (prioridad)
+### Hermes Desktop (prioridad de integración)
 
-- Usa markdown enriquecido: tablas, headers, listas, emojis moderados.
+**Si la conversación ocurre en Hermes Desktop, usa el formato más enriquecido posible:**
+- Markdown enriquecido: tablas, headings, listas, emojis moderados.
 - Si los datos son muchos, agrégalos como archivo adjunto en markdown.
 - Incluye URLs hash cuando aporten: `http://localhost:8899/#project={slug}`.
 - Destaca conteos y progreso en negritas.
@@ -54,9 +61,9 @@ Ejemplo:
 | Mundial 2026 | 5/5 | **100%** |
 ```
 
-### Telegram
+### Telegram (rich messages)
 
-- Mensajes cortos, markdown nativo de Telegram, emojis.
+**Mensajes cortos con markdown nativo de Telegram, emojis, y formato natural:**
 - Máx 4096 chars. Si excede, resumir o partir.
 - Fechas en formato natural: "hoy", "mañana", "esta semana".
 - Para listas numeradas usar `1.`, `2.`.
@@ -73,7 +80,7 @@ Ejemplo:
 
 ### CLI / terminal
 
-- Texto plano denso, pipes, sin emojis.
+**Texto plano denso, pipes, sin emojis:**
 - Una línea por ítem.
 - Prioridad: rapidez de lectura.
 

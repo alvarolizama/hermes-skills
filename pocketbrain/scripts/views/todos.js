@@ -71,12 +71,13 @@ export function renderTodosView() {
     items.forEach(t => {
       html += `<div class="kanban-card" data-pb-todo="${esc(t.id)}" style="cursor:pointer">`
         + `<div class="kanban-card-title">${esc(t.title)}</div>`
-        + (t.domain ? `<div class="kanban-card-meta">${esc(t.domain)}</div>` : '')
+        + (t.domain && t.domain !== 'default' ? `<div class="kanban-card-meta">${esc(t.domain)}</div>` : '')
         + (t.goal_title ? `<div class="kanban-card-meta">${esc(t.goal_title)}</div>` : '')
+        + `<div class="kanban-current-status">${esc(COLUMN_LABELS[c])}</div>`
         + `<div class="kanban-actions">`;
       COLUMNS.forEach(target => {
         if (target === c) return;
-        html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(target)}">${esc(COLUMN_LABELS[target])}</button>`;
+        html += `<button class="kanban-move" data-pb-move-todo="${esc(t.id)}:${esc(target)}" title="Mover a ${esc(COLUMN_LABELS[target])}">${esc(COLUMN_LABELS[target])}</button>`;
       });
       html += `</div></div>`;
     });

@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundario."
-version: 2.25.0
+version: 2.27.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -51,13 +51,14 @@ clarify(
 
 ### Formatos por canal
 
-**Hermes Desktop (prioridad):**
-- Markdown enriquecido: tablas, headers, listas, emojis moderados.
+**Hermes Desktop (prioridad de integración):**
+- Usa el formato más enriquecido posible: tablas, headings, listas, emojis moderados.
 - Si hay muchos datos, adjunta archivo markdown.
 - Destaca conteos y progreso en negritas.
+- Incluye URLs hash cuando aporten: `http://localhost:8899/#project={slug}`.
 
-**Telegram:**
-- Mensajes cortos, markdown nativo de Telegram, emojis.
+**Telegram (rich messages):**
+- Mensajes cortos con markdown nativo de Telegram, emojis.
 - Máximo 4096 caracteres; si excede, resume o parte.
 - Fechas en formato natural: "hoy", "mañana", "esta semana".
 
