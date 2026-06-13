@@ -74,48 +74,6 @@ brain.create_reminder("Reunión", date="2026-12-25", time="10:00")
 
 ---
 
-## Flujos Agentivos
-
-1. **Entiende** el contenido y clasifica con `page_type`
-2. **Busca** existentes con `brain.search()` antes de crear
-3. **Escribe** con `[[wikilinks]]` y metadatos correctos
-4. **Consulta** la UI web cuando necesites visualizar
-
-### Guardar conocimiento
-
-```python
-existing = brain.search("arquitectura cache")
-if existing:
-    brain.append_to_page(existing[0]['slug'], "- Nueva info: [[otra-pagina]]")
-else:
-    brain.create_page(
-        "Arquitectura de cache",
-        body="## Cache de write-through vs write-back\n\nRelacionado con [[rendimiento]]",
-        page_type="concept",
-        domain="bravo",
-        tags=["backend", "perf"]
-    )
-```
-
-### Gestión de Proyectos
-
-```python
-brain.create_page("App Móvil", body="## MVP\n- Auth con OAuth", page_type="project", domain="projects")
-brain.create_goal("Lanzar MVP", type="milestone", project_slug="app-movil", deadline="2026-09-30")
-brain.create_todo("Diseñar UI", domain="projects", related_slugs=["app-movil"])
-brain.create_reminder("Demo con cliente", date="2026-07-15", time="10:00", related_slugs=["app-movil"])
-```
-
-### Auditoría
-
-```python
-brain.lint()          # Links rotos, huérfanos
-brain.index()         # Catálogo completo
-brain.recent_logs(20) # Trazabilidad
-```
-
----
-
 ## Scripts
 
 | Script | Uso |
