@@ -62,8 +62,8 @@ def _pocketbrain_pb():
 # ═════════════════════════════════════════════════════════════════════
 
 BRAIN_SCHEMA = {
-    "contexts": {
-        "name": "contexts",
+    "brain_contexts": {
+        "name": "brain_contexts",
         "type": "base",
         "fields": [
             {"name": "name", "type": "text", "required": True, "unique": True},
@@ -78,7 +78,7 @@ BRAIN_SCHEMA = {
         "fields": [
             {"name": "name", "type": "text", "required": True},
             {"name": "category", "type": "text"},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
+            {"name": "context", "type": "relation", "collectionId": "brain_contexts",
              "cascadeDelete": False, "maxSelect": 1},
         ],
     },
@@ -88,7 +88,7 @@ BRAIN_SCHEMA = {
         "fields": [
             {"name": "title", "type": "text", "required": True},
             {"name": "slug", "type": "text", "required": True, "unique": True},
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
+            {"name": "context", "type": "relation", "collectionId": "brain_contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
              "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea", "file"], "maxSelect": 1},
@@ -151,7 +151,7 @@ BRAIN_SCHEMA = {
         "name": "brain_log",
         "type": "base",
         "fields": [
-            {"name": "brain", "type": "relation", "collectionId": "contexts",
+            {"name": "context", "type": "relation", "collectionId": "brain_contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "action", "type": "select", "required": True,
              "values": ["ingest", "update", "query", "lint", "create", "archive", "delete", "setup"],
@@ -164,7 +164,7 @@ BRAIN_SCHEMA = {
     },
 }
 
-CREATION_ORDER = ["contexts", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
+CREATION_ORDER = ["brain_contexts", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
 
 # Colecciones con campos self-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
@@ -177,9 +177,9 @@ SELF_REF_FIELDS = {
 
 # Dependencias para creación/verificación
 DEPENDENCIES = {
-    'brain_pages':     ['contexts', 'brain_tags'],
-    'brain_log':       ['contexts', 'brain_pages'],
-    'brain_page_versions': ['contexts', 'brain_pages'],
+    'brain_pages':     ['brain_contexts', 'brain_tags'],
+    'brain_log':       ['brain_contexts', 'brain_pages'],
+    'brain_page_versions': ['brain_contexts', 'brain_pages'],
 }
 
 
@@ -237,7 +237,7 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
 
     context_id = None
     if context_name:
-        contexts = pb.list('contexts', filter="(name='" + context_name + "')")
+        contexts = pb.list('brain_contexts', filter="(name='" + context_name + "')")
         if contexts:
             context_id = contexts[0]['id']
         else:
@@ -248,7 +248,7 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
         'brain_log',            # depende de brain_pages
         'brain_page_versions',  # depende de brain_pages
         'brain_pages',         # depende de brain_tags
-        'brain_tags',          # depende de contexts
+        'brain_tags',          # depende de brain_contexts
     ]
 
     stats = {}
@@ -256,7 +256,7 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
         try:
             if context_id:
                 # Contar y borrar solo los de este contexto
-                records = pb.all(col, filter="(brain='" + context_id + "')", perPage=500)
+                records = pb.all(col, filter="(context='" + context_id + "')", perPage=500)
                 count = len(records)
                 for r in records:
                     pb.delete(col, r['id'])
@@ -268,14 +268,14 @@ def nuke_context(pb, context_name: str = None, confirm: str = None):
         except Exception as e:
             stats[col] = 'ERROR: ' + str(e)[:80]
 
-    # Si es limpieza total, también borrar contexts
+    # Si es limpieza total, también borrar brain_contexts
     if not context_name:
         try:
-            count = len(pb.all('contexts', perPage=500))
-            pb._request('DELETE', '/api/collections/contexts/truncate')
-            stats['contexts'] = count
+            count = len(pb.all('brain_contexts', perPage=500))
+            pb._request('DELETE', '/api/collections/brain_contexts/truncate')
+            stats['brain_contexts'] = count
         except Exception as e:
-            stats['contexts'] = 'ERROR: ' + str(e)[:80]
+            stats['brain_contexts'] = 'ERROR: ' + str(e)[:80]
 
     return stats
 
@@ -493,7 +493,7 @@ class Brain:
 
         Llama esto al inicio de cada sesión antes de operar con un cerebro.
         """
-        contexts = self.pb.list('contexts', filter=f"(name='{self.context_name}')")
+        contexts = self.pb.list('brain_contexts', filter=f"(name='{self.context_name}')")
         if not contexts:
             raise ValueError(
                 f"Contexto '{self.context_name}' no encontrado. "
@@ -507,16 +507,16 @@ class Brain:
         # Cachear tags
         self._tag_cache = {}
         for t in self.pb.all('brain_tags',
-                             filter=f"(brain='{self._context_id}')"):
+                             filter=f"(context='{self._context_id}')"):
             self._tag_cache[t['name']] = t['id']
 
         # Contar páginas
         page_count = len(self.pb.list('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false)",
+            filter=f"(context='{self._context_id}' && archived=false)",
             perPage=1, skipTotal=False))
 
         return {
-            'brain': context,
+            'context': context,
             'tag_count': len(self._tag_cache),
             'page_count': page_count,
             'schema': self._schema,
@@ -549,7 +549,7 @@ class Brain:
                 "citation_format": "^[source-slug]",
             },
         }
-        result = self.pb.create('contexts', {
+        result = self.pb.create('brain_contexts', {
             'name': self.context_name,
             'label': label,
             'description': description,
@@ -568,7 +568,7 @@ class Brain:
             return self._tag_cache[name]
 
         existing = self.pb.list('brain_tags',
-            filter=f"(name='{name}' && brain='{self._context_id}')")
+            filter=f"(name='{name}' && context='{self._context_id}')")
         if existing:
             self._tag_cache[name] = existing[0]['id']
             return existing[0]['id']
@@ -576,7 +576,7 @@ class Brain:
         result = self.pb.create('brain_tags', {
             'name': name,
             'category': category,
-            'brain': self._context_id,
+            'context': self._context_id,
         })
         self._tag_cache[name] = result['id']
         return result['id']
@@ -643,7 +643,7 @@ class Brain:
         data = {
             'title': title,
             'slug': slug,
-            'brain': self._context_id,
+            'context': self._context_id,
             'page_type': effective_page_type,
             'body': body,
             'summary': summary or body[:200].split('\n')[0] if body else '',
@@ -696,7 +696,7 @@ class Brain:
                     "-H", f"Authorization: Bearer {token}",
                     "-F", f"title={title}",
                     "-F", f"slug={slug}",
-                    "-F", f"brain={self._context_id}",
+                    "-F", f"context={self._context_id}",
                     "-F", f"page_type={effective_page_type}",
                     "-F", f"body={body or ''}",
                     "-F", f"attachment=@{filepath}",
@@ -754,7 +754,7 @@ class Brain:
             pages = [self._get_page(slug)] if self._get_page(slug) else []
         else:
             pages = self.pb.all('brain_pages',
-                filter=f"(brain='{self._context_id}' && archived=false)")
+                filter=f"(context='{self._context_id}' && archived=false)")
 
         stats = {'scanned': 0, 'backlinks_added': 0}
         slug_map = {p['slug']: p for p in pages}
@@ -878,7 +878,7 @@ class Brain:
         """Lista páginas con filtros opcionales."""
         if not self._context_id:
             self.orient()
-        filters = [f"(brain='{self._context_id}' && archived=false)"]
+        filters = [f"(context='{self._context_id}' && archived=false)"]
         if page_type:
             filters.append(f"(page_type='{page_type}')")
         if tag:
@@ -918,7 +918,7 @@ class Brain:
 
         # Traer todas las páginas activas del cerebro
         candidates = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false)")
+            filter=f"(context='{self._context_id}' && archived=false)")
 
         if not candidates:
             return []
@@ -980,7 +980,7 @@ class Brain:
         meta['requested_by'] = self.user
 
         data = {
-            'brain': self._context_id,
+            'context': self._context_id,
             'action': action,
             'description': description,
             'details': meta,
@@ -992,7 +992,7 @@ class Brain:
     def recent_logs(self, limit: int = 30,
                     action: Optional[str] = None) -> list:
         """Últimas entradas del log."""
-        filters = [f"(brain='{self._context_id}')"]
+        filters = [f"(context='{self._context_id}')"]
         if action:
             filters.append(f"(action='{action}')")
         return self.pb.list('brain_log',
@@ -1014,7 +1014,7 @@ class Brain:
             self.orient()
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false)",
+            filter=f"(context='{self._context_id}' && archived=false)",
             expand='tags')
 
         report = {
@@ -1161,11 +1161,11 @@ class Brain:
             self.orient()
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false)",
+            filter=f"(context='{self._context_id}' && archived=false)",
             sort='title')
 
         index = {
-            'brain': self.context_name,
+            'context': self.context_name,
             'total_pages': len(pages),
             'entity': [],
             'concept': [],
@@ -1351,7 +1351,7 @@ class Brain:
         d_to = self._journal_date_str(to_date)
 
         return self.pb.list('brain_pages',
-            filter=f"(brain='{self._context_id}' && page_type='journal' && date>='{d_from}' && date<='{d_to}')",
+            filter=f"(context='{self._context_id}' && page_type='journal' && date>='{d_from}' && date<='{d_to}')",
             sort='date',
             perPage=100)
 
@@ -1365,7 +1365,7 @@ class Brain:
             self.orient()
 
         candidates = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && page_type='journal')")
+            filter=f"(context='{self._context_id}' && page_type='journal')")
 
         terms = [t.lower() for t in query.split() if len(t) > 1]
         if not terms:
@@ -1423,7 +1423,7 @@ class Brain:
         if not page:
             return []
         return self.pb.list("brain_pages",
-            filter=f"(brain='{self._context_id}' && page_type='file' && archived=false && related_pages?='{page['id']}')",
+            filter=f"(context='{self._context_id}' && page_type='file' && archived=false && related_pages?='{page['id']}')",
             perPage=100)
 
     def delete_file(self, file_id: str) -> bool:
@@ -1641,7 +1641,7 @@ class Brain:
             "-H", f"Authorization: Bearer {token}",
             "-F", f"title={title}",
             "-F", f"slug={slug}",
-            "-F", f"brain={self._context_id}",
+            "-F", f"context={self._context_id}",
             "-F", "page_type=raw",
             "-F", f"source_sha256={file_hash}",
             "-F", f"attachment=@{filepath}",
@@ -1682,7 +1682,7 @@ class Brain:
             self.orient()
 
         pages = self.pb.list('brain_pages',
-            filter=f"(brain='{self._context_id}' && page_type='raw' && source_sha256!='')",
+            filter=f"(context='{self._context_id}' && page_type='raw' && source_sha256!='')",
             perPage=limit)
 
         drifted = []
@@ -1729,7 +1729,7 @@ class Brain:
         }
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false)")
+            filter=f"(context='{self._context_id}' && archived=false)")
 
         results = {}
         for page in pages:
@@ -1766,7 +1766,7 @@ class Brain:
         cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S') + '.000Z'
 
         pages = self.pb.all('brain_pages',
-            filter=f"(brain='{self._context_id}' && archived=false && updated<'{cutoff_str}')",
+            filter=f"(context='{self._context_id}' && archived=false && updated<'{cutoff_str}')",
             sort='updated', perPage=100)
 
         results = []
@@ -1801,11 +1801,11 @@ class Brain:
 
         # Contar entradas aproximado
         count_result = self.pb.list('brain_log',
-            filter=f"(brain='{self._context_id}')",
+            filter=f"(context='{self._context_id}')",
             perPage=1, skipTotal=False)
         # No tenemos total exacto facil, asi que intentamos all
         all_logs = self.pb.all('brain_log',
-            filter=f"(brain='{self._context_id}')",
+            filter=f"(context='{self._context_id}')",
             sort='created', perPage=max_entries + 200)
         total = len(all_logs)
 
@@ -1848,7 +1848,7 @@ class Brain:
             self.orient()
         # Buscar por slug primero
         pages = self.pb.list('brain_pages',
-            filter=f"(brain='{self._context_id}' && slug='{slug_or_id}')",
+            filter=f"(context='{self._context_id}' && slug='{slug_or_id}')",
             perPage=1, expand=expand)
         if pages:
             return pages[0]

@@ -131,7 +131,7 @@ class SyncEngine:
     def _write_log(self, context_id: str, context_dir: Path):
         """Genera log.md desde brain_log."""
         logs = self.pb.all("brain_log",
-            filter=f"(brain='{context_id}')", sort="-created", perPage=200)
+            filter=f"(context='{context_id}')", sort="-created", perPage=200)
 
         lines = [
             "# Wiki Log\n",
@@ -160,7 +160,7 @@ class SyncEngine:
     def _write_journal(self, context_id: str, context_dir: Path):
         """Exporta journal entries de brain_pages a journal.md."""
         entries = self.pb.all("brain_pages",
-            filter=f"(brain='{context_id}' && page_type='journal')",
+            filter=f"(context='{context_id}' && page_type='journal')",
             sort="-date", perPage=500)
 
         if not entries:
@@ -194,7 +194,7 @@ class SyncEngine:
     def _write_todos(self, context_id: str, context_dir: Path):
         """Exporta todos de brain_pages (page_type='todo') a todos.md agrupado por status."""
         todos = self.pb.all("brain_pages",
-            filter=f"(brain='{context_id}' && page_type='todo')",
+            filter=f"(context='{context_id}' && page_type='todo')",
             expand="domain",
             perPage=500)
 
@@ -261,7 +261,7 @@ class SyncEngine:
     def _write_files(self, context_id: str, context_dir: Path):
         """Descarga archivos adjuntos de brain_pages (page_type='file')."""
         files = self.pb.all("brain_pages",
-            filter=f"(brain='{context_id}' && page_type='file' && attachment!='')",
+            filter=f"(context='{context_id}' && page_type='file' && attachment!='')",
             expand="related_pages", perPage=500)
 
         if not files:
@@ -408,7 +408,7 @@ class SyncEngine:
         context_dir.mkdir(parents=True, exist_ok=True)
 
         pages = self.pb.all("brain_pages",
-            filter=f"(brain='{context_id}' && archived=false)",
+            filter=f"(context='{context_id}' && archived=false)",
             expand="tags,domain",
             sort="title")
 
@@ -468,7 +468,7 @@ class SyncEngine:
 
     def sync_all(self):
         """Sincroniza todos los contextos."""
-        contexts = self.pb.all("contexts")
+        contexts = self.pb.all("brain_contexts")
         print(f"Found {len(contexts)} context(s)")
         for context in contexts:
             self.sync_context(context)
@@ -517,7 +517,7 @@ if __name__ == "__main__":
     engine = SyncEngine(output_dir=output, full=full)
 
     if context_name:
-        contexts = engine.pb.all("contexts", filter=f"(name='{context_name}')")
+        contexts = engine.pb.all("brain_contexts", filter=f"(name='{context_name}')")
         if not contexts:
             print(f"Context '{context_name}' not found.")
             sys.exit(1)

@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
-description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundario."
-version: 2.27.0
+description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundaria."
+version: 2.28.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -25,7 +25,7 @@ brain = Brain()             # → POCKETBRAIN_CONTEXT o contexto default
 brain = Brain('work')       # → override explícito de contexto
 ```
 
-Cada contexto es un silo: sus propias páginas, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `brain='{context_id}'`. Se crean los contextos que se requieran.
+Cada contexto es un silo: sus propias páginas, tags, goals, todos, reminders, journal, log. Las queries siempre filtran por `context='{context_id}'`. Se crean los contextos que se requieran.
 
 ## Cómo responder al usuario
 

@@ -121,7 +121,7 @@ def get_goals(ctx):
     result = []
     for pt in ['goal', 'milestone']:
         pages = brain.pb.all("brain_pages",
-            filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
+            filter="(context='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
             expand="related_pages")
         for p in pages:
             rel = p.get("expand", {}).get("related_pages", [])
@@ -150,7 +150,7 @@ def get_goals(ctx):
 def get_todos(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
-        filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id),
+        filter="(context='{}' && page_type='todo' && archived=false)".format(brain._context_id),
         expand="related_pages")
     result = []
     for p in pages:
@@ -182,7 +182,7 @@ def get_todos(ctx):
 def get_deps(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
-        filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id),
+        filter="(context='{}' && page_type='deliverable' && archived=false)".format(brain._context_id),
         expand="related_pages")
     result = []
     for p in pages:
@@ -201,7 +201,7 @@ def get_deps(ctx):
 def get_files(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
-        filter="(brain='{}' && page_type='file' && archived=false)".format(brain._context_id),
+        filter="(context='{}' && page_type='file' && archived=false)".format(brain._context_id),
         expand="related_pages")
     result = []
     for p in pages:
@@ -218,7 +218,7 @@ def get_files(ctx):
 def get_reminders(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
-        filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id),
+        filter="(context='{}' && page_type='reminder' && archived=false)".format(brain._context_id),
         expand="related_pages")
     result = []
     for p in pages:
@@ -244,7 +244,7 @@ def get_reminders(ctx):
 def get_journal(ctx):
     brain = get_brain(ctx)
     pages = brain.pb.all("brain_pages",
-        filter="(brain='{}' && page_type='journal' && archived=false)".format(brain._context_id),
+        filter="(context='{}' && page_type='journal' && archived=false)".format(brain._context_id),
         expand="related_pages,tags", sort="date")
     result = []
     for p in pages:
@@ -287,11 +287,11 @@ def get_graph(ctx):
     goals = []
     for pt in ['goal', 'milestone', 'okr']:
         goals.extend(brain.pb.all("brain_pages",
-            filter="(brain='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
+            filter="(context='{}' && page_type='{}' && archived=false)".format(brain._context_id, pt),
             expand="related_pages"))
-    todos = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='todo' && archived=false)".format(brain._context_id), expand="related_pages")
-    deps = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='deliverable' && archived=false)".format(brain._context_id), expand="related_pages")
-    reminders = brain.pb.all("brain_pages", filter="(brain='{}' && page_type='reminder' && archived=false)".format(brain._context_id), expand="related_pages")
+    todos = brain.pb.all("brain_pages", filter="(context='{}' && page_type='todo' && archived=false)".format(brain._context_id), expand="related_pages")
+    deps = brain.pb.all("brain_pages", filter="(context='{}' && page_type='deliverable' && archived=false)".format(brain._context_id), expand="related_pages")
+    reminders = brain.pb.all("brain_pages", filter="(context='{}' && page_type='reminder' && archived=false)".format(brain._context_id), expand="related_pages")
     nodes, edges, nids = [], [], set()
     for pg in pages:
         slug = pg["slug"]
@@ -341,7 +341,7 @@ def get_graph(ctx):
 
 def get_logs(ctx):
     brain = get_brain(ctx)
-    logs = brain.pb.all("brain_log", filter="(brain='{}')".format(brain._context_id), sort="-created", per_page=100)
+    logs = brain.pb.all("brain_log", filter="(context='{}')".format(brain._context_id), sort="-created", per_page=100)
     return [{"id":l["id"],"operation":l.get("operation",""),"created":(l.get("created") or "")[:10],"details":l.get("details","") or "","page":l.get("page","") or "","goal":l.get("goal","") or "","todo":l.get("todo","") or ""} for l in logs]
 
 def get_versions(ctx, slug=None):
@@ -349,7 +349,7 @@ def get_versions(ctx, slug=None):
     page_id = None
     if slug:
         try:
-            pages = brain.pb.all("brain_pages", filter="(slug='{}' && brain='{}')".format(slug, brain._context_id))
+            pages = brain.pb.all("brain_pages", filter="(slug='{}' && context='{}')".format(slug, brain._context_id))
             if pages:
                 page_id = pages[0].get("id")
         except Exception:
@@ -451,7 +451,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.serve_json(get_versions(ctx, qs.get('slug',[None])[0]))
             elif path == "/api/logs": self.serve_json(get_logs(ctx))
             elif path == "/api/contexts":
-                pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("contexts", perPage=50)
+                pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("brain_contexts", perPage=50)
                 self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
             elif path == "/api/config":
                 self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "context": ctx})

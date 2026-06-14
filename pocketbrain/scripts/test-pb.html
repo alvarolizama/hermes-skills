@@ -1,8 +1,0 @@
-<!DOCTYPE html><html><head><title>Test PB</title></head><body>
-<div id="out">loading...</div>
-<script>
-var PAGES=[],GOALS=[],TODOS=[],JOURNAL=[],REMINDERS=[];
-function api(path){var b='personal';return fetch('/api'+path+'?brain='+b).then(function(r){return r.json();});}
-function loadBrains(){api('/brains').then(function(brains){document.getElementById('out').textContent='brains: '+brains.length; return Promise.all([api('/pages'),api('/todos'),api('/goals'),api('/reminders'),api('/journal')]);}).then(function(results){document.getElementById('out').textContent+=' | pages:'+results[0].length+' todos:'+results[1].length+' goals:'+results[2].length+' reminders:'+results[3].length+' journal:'+results[4].length;}).catch(function(e){document.getElementById('out').textContent='ERROR: '+e.message;});}
-loadBrains();
-</script></body></html>
