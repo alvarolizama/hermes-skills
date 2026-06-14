@@ -16,7 +16,7 @@ Usage:
     brain.orient()
     
     # Operations
-    brain.ingest_text('## My Note\n\nContent here...', page_type='concept')
+    brain.create_note(title='My Note', body='Content here...')
     results = brain.search('transformer')
     report = brain.lint()
 """
@@ -32,7 +32,7 @@ from pb import PB, quick_pb
 # ── PocketBrain env loader ──────────────────────────────────────────
 
 def _load_pocketbrain_env():
-    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ."""
+    """Carga POCKETHOST_HOST, POCKETHOST_EMAIL, POCKETHOST_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ."""
     env = {}
     env_path = os.path.expanduser('~/.hermes/.env')
     if os.path.exists(env_path):
@@ -44,16 +44,16 @@ def _load_pocketbrain_env():
                     val = v.strip().strip('"').strip("'")
                     env[k.strip()] = val
                     # Propagar a os.environ para que esté disponible globalmente
-                    if k.strip().startswith('POCKETBRAIN_'):
+                    if k.strip().startswith('POCKETHOST_') or k.strip().startswith('POCKETBRAIN_'):
                         os.environ[k.strip()] = val
     return env
 
 def _pocketbrain_pb():
-    """Crea un PB autenticado usando POCKETBRAIN_* del .env."""
+    """Crea un PB autenticado usando POCKETHOST_* del .env."""
     env = _load_pocketbrain_env()
-    host = env.get('POCKETBRAIN_HOST', 'http://localhost:8090')
-    email = env.get('POCKETBRAIN_EMAIL', '')
-    password = env.get('POCKETBRAIN_PASSWORD', '')
+    host = env.get('POCKETHOST_HOST', env.get('POCKETBRAIN_HOST', 'http://localhost:8090'))
+    email = env.get('POCKETHOST_EMAIL', env.get('POCKETBRAIN_EMAIL', ''))
+    password = env.get('POCKETHOST_PASSWORD', env.get('POCKETBRAIN_PASSWORD', ''))
     return quick_pb(host, email, password)
 
 
@@ -86,50 +86,56 @@ BRAIN_SCHEMA = {
         "name": "brain_pages",
         "type": "base",
         "fields": [
+            # ── Core ─────────────────────────────────────────────
             {"name": "title", "type": "text", "required": True},
             {"name": "slug", "type": "text", "required": True, "unique": True},
             {"name": "context", "type": "relation", "collectionId": "brain_contexts",
              "cascadeDelete": False, "maxSelect": 1},
             {"name": "page_type", "type": "select", "required": True,
-             "values": ["entity", "concept", "comparison", "query", "raw", "project", "plan", "todo", "goal", "milestone", "reminder", "journal", "note", "idea", "file"], "maxSelect": 1},
+             "values": ["entity", "concept", "comparison", "query", "raw",
+                        "project", "plan", "note", "idea", "todo",
+                        "goal", "milestone", "reminder", "journal", "file"],
+             "maxSelect": 1},
             {"name": "body", "type": "text"},
             {"name": "summary", "type": "text"},
-            {"name": "confidence", "type": "select",
-             "values": ["high", "medium", "low"], "maxSelect": 1},
-            {"name": "source_url", "type": "url"},
-            {"name": "source_sha256", "type": "text"},
-            {"name": "contested", "type": "bool"},
-            {"name": "contradictions", "type": "text"},
             {"name": "tags", "type": "relation", "collectionId": "brain_tags",
              "cascadeDelete": False, "maxSelect": None},
-            {"name": "archived", "type": "bool"},
-            {"name": "attachment", "type": "file", "maxSelect": 1, "maxSize": 0},
-            {"name": "file_type", "type": "select",
-             "values": ["pdf", "image", "doc", "sheet", "other"], "maxSelect": 1, "required": False},
-            {"name": "version", "type": "text"},
             {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
              "cascadeDelete": False, "maxSelect": None},
-            {"name": "content", "type": "text"},
+            {"name": "archived", "type": "bool"},
+
+            # ── Knowledge (entity, concept, comparison, query, raw) ──
+            {"name": "kb_confidence", "type": "select",
+             "values": ["high", "medium", "low"], "maxSelect": 1, "required": False},
+            {"name": "kb_contested", "type": "bool"},
+            {"name": "kb_contradictions", "type": "text"},
+            {"name": "kb_source_url", "type": "url"},
+            {"name": "kb_source_sha256", "type": "text"},
+
+            # ── Shared fields (used by multiple page types) ─────
             {"name": "status", "type": "select",
-             "values": ["backlog", "this week", "today", "in progress", "done",
-                        "cancelled", "planned", "active", "completed", "draft",
-                        "review", "final"],
+             "values": ["planned", "active", "on_hold", "completed", "cancelled",
+                        "draft", "seed", "considering", "paused", "dropped", "done",
+                        "backlog", "this_week", "today", "in_progress"],
              "maxSelect": 1, "required": False},
+            {"name": "owner", "type": "text"},
             {"name": "deadline", "type": "date"},
-            {"name": "owner", "type": "select",
-             "values": ["alvaro", "chaos-manager", "project-manager", "bravo-manager",
-                        "minion", "alv-bot", "bravo-bot", "ops-bot"],
-             "maxSelect": 1, "required": False},
             {"name": "date", "type": "date"},
             {"name": "time", "type": "text"},
             {"name": "done", "type": "bool"},
             {"name": "done_date", "type": "date"},
-            {"name": "mood", "type": "select",
-             "values": ["great", "meh", "bad"], "maxSelect": 1, "required": False},
-            {"name": "started_date", "type": "date"},
-            {"name": "completed_date", "type": "date"},
-            {"name": "cancelled_date", "type": "date"},
-            {"name": "comment", "type": "text"},
+            {"name": "mood", "type": "text"},
+            {"name": "project", "type": "relation", "collectionId": "brain_pages",
+             "cascadeDelete": False, "maxSelect": 1},
+
+            # ── Todo ───────────────────────────────────────────────
+            {"name": "todo_goal", "type": "relation", "collectionId": "brain_pages",
+             "cascadeDelete": False, "maxSelect": 1},
+
+            # ── File ────────────────────────────────────────────────
+            {"name": "file_type", "type": "text"},
+            {"name": "file_version", "type": "text"},
+            {"name": "file_attachment", "type": "file", "maxSelect": 1, "maxSize": 0},
         ],
     },
     "brain_page_versions": {
@@ -144,7 +150,6 @@ BRAIN_SCHEMA = {
             {"name": "summary", "type": "text"},
             {"name": "change_summary", "type": "text"},
             {"name": "page_type", "type": "text"},
-            {"name": "confidence", "type": "text"},
         ],
     },
     "brain_log": {
@@ -166,13 +171,130 @@ BRAIN_SCHEMA = {
 
 CREATION_ORDER = ["brain_contexts", "brain_tags", "brain_pages", "brain_log", "brain_page_versions"]
 
-# Colecciones con campos self-reference que necesitan PATCH post-creación
+# Colecciones con campos self-reference o cross-reference que necesitan PATCH post-creación
 SELF_REF_FIELDS = {
     "brain_pages": [
         {"name": "related_pages", "type": "relation", "collectionId": "brain_pages",
          "cascadeDelete": False, "maxSelect": None},
+        {"name": "project", "type": "relation", "collectionId": "brain_pages",
+         "cascadeDelete": False, "maxSelect": 1},
+        {"name": "todo_goal", "type": "relation", "collectionId": "brain_pages",
+         "cascadeDelete": False, "maxSelect": 1},
+    ],
+    "brain_page_versions": [
+        {"name": "page", "type": "relation", "collectionId": "brain_pages",
+         "cascadeDelete": False, "maxSelect": 1},
+    ],
+    "brain_log": [
+        {"name": "page", "type": "relation", "collectionId": "brain_pages",
+         "cascadeDelete": False, "maxSelect": 1},
     ],
 }
+
+# Nombres de campos que deben omitirse en la creación inicial y agregarse vía PATCH
+DEFERRED_FIELDS = set()
+for _fields in SELF_REF_FIELDS.values():
+    for f in _fields:
+        DEFERRED_FIELDS.add(f['name'])
+
+# Mapeo de colección -> nombres de campos que se omiten en creación y se patchan después
+DEFERRED_BY_COLLECTION = {}
+for col_name, fields in SELF_REF_FIELDS.items():
+    DEFERRED_BY_COLLECTION[col_name] = {f['name'] for f in fields}
+
+# Dependencias para creación/verificación (sin relaciones internas)
+DEPENDENCIES = {
+    'brain_pages':     ['brain_contexts', 'brain_tags'],
+    'brain_log':       ['brain_contexts'],
+    'brain_page_versions': ['brain_contexts'],
+}
+
+
+def setup_contexts(pb: PB) -> dict:
+    """Crea las colecciones del PocketBrain en PocketBase.
+
+    Resuelve dinámicamente los IDs de las colecciones para las relaciones,
+    ya que PocketBase requiere IDs reales (pbc_xxx) en collectionId, no nombres.
+
+    Usa un enfoque de dos pasos:
+      1. Crea todas las colecciones sin campos de relación interna/cruzada no resueltos.
+      2. PATCHea cada colección para agregar los campos diferidos con collectionId real.
+    """
+    import copy
+    results = {}
+    collection_ids = {}
+
+    # Paso 1: Crear colecciones base (sin campos diferidos)
+    for name in CREATION_ORDER:
+        schema = BRAIN_SCHEMA[name]
+        deferred_names = DEFERRED_BY_COLLECTION.get(name, set())
+
+        # Verificar si ya existe
+        try:
+            existing = pb.get_collection(name)
+            if existing and 'id' in existing:
+                collection_ids[name] = existing['id']
+                results[name] = {"status": "already_exists", "id": existing['id']}
+                continue
+        except Exception:
+            pass
+
+        # Copiar campos y omitir los diferidos
+        fields = copy.deepcopy(schema['fields'])
+        fields = [f for f in fields if f['name'] not in deferred_names]
+
+        # Resolver collectionId placeholders en campos restantes
+        for field in fields:
+            if field.get('type') == 'relation' and field.get('collectionId'):
+                ref_name = field['collectionId']
+                if ref_name in collection_ids:
+                    field['collectionId'] = collection_ids[ref_name]
+                else:
+                    try:
+                        col_info = pb.get_collection(ref_name)
+                        if col_info and 'id' in col_info:
+                            field['collectionId'] = col_info['id']
+                            collection_ids[ref_name] = col_info['id']
+                    except Exception:
+                        pass
+
+        try:
+            result = pb.create_collection(
+                name=schema['name'],
+                fields=fields,
+                collection_type=schema['type'],
+            )
+            if isinstance(result, dict) and 'id' in result:
+                collection_ids[name] = result['id']
+                results[name] = {"status": "created", "id": result['id']}
+            else:
+                results[name] = {"status": "error", "error": str(result)}
+        except Exception as e:
+            results[name] = {"status": "error", "error": str(e)}
+
+    # Paso 2: PATCH de campos diferidos con collectionId real
+    for name, patch_fields in SELF_REF_FIELDS.items():
+        if name not in collection_ids:
+            continue
+        col_id = collection_ids[name]
+        try:
+            existing = pb.get_collection(col_id)
+            current_fields = existing.get('fields', [])
+            # Convertir campos patch a usar collectionId real de brain_pages
+            resolved_patch = []
+            for f in patch_fields:
+                f_copy = dict(f)
+                target = f_copy.get('collectionId')
+                if target and target in collection_ids:
+                    f_copy['collectionId'] = collection_ids[target]
+                resolved_patch.append(f_copy)
+            updated_fields = current_fields + resolved_patch
+            pb.update_collection(col_id, {'fields': updated_fields})
+            results[name]['deferred_patched'] = [f['name'] for f in patch_fields]
+        except Exception as e:
+            results[name]['deferred_patched'] = f"error: {str(e)[:80]}"
+
+    return results
 
 
 # Dependencias para creación/verificación
@@ -583,32 +705,19 @@ class Brain:
 
     # ── Page CRUD ────────────────────────────────────────────────
 
-    def create_page(self, title: str, body: str, page_type: str = 'concept',
-                    tags: Optional[list] = None,
-                    summary: str = '', confidence: Optional[str] = None,
-                    source_url: str = '', source_sha256: str = '',
-                    contested: bool = False, contradictions: str = '',
-                    related_slugs: Optional[list] = None,
-                    status: str = '', owner: str = '',
-                    deadline: str = '', date: str = '', time: str = '',
-                    done: bool = False, mood: str = '',
-                    content: str = '',
-                    filepath: str = '', file_type: str = '',
-                    version: str = '') -> dict:
+    def create_page(self, title: str, body: str = '', page_type: str = 'concept',
+                    *, filepath: str = '', related_slugs: Optional[list] = None,
+                    tags: Optional[list] = None, **kwargs) -> dict:
         """Crea una página de conocimiento.
 
         Args:
             title: Título de la página
             body: Contenido en markdown con [[wikilinks]]
-            page_type: 'entity', 'concept', 'comparison', 'query', 'raw'
-            tags: Lista de nombres de tags (se crean si no existen)
-            summary: Resumen (default: primeras 200 chars del body)
-            confidence: 'high', 'medium', 'low'
-            source_url: URL original si es raw
-            source_sha256: Hash del contenido raw
-            contested: ¿Tiene contradicciones?
-            contradictions: Slugs de páginas en conflicto (coma-separados)
+            page_type: Uno de los PAGE_TYPES
+            filepath: Si se provee, sube el archivo como file_attachment vía curl
             related_slugs: Lista de slugs de páginas relacionadas
+            tags: Lista de nombres de tags (se crean si no existen)
+            **kwargs: Campos del schema directamente (kb_*, status, owner, deadline, etc.)
         """
         if not self._context_id:
             self.orient()
@@ -616,7 +725,6 @@ class Brain:
         slug = slugify(title)
 
         # Auto-suggest page_type si no se especificó explícitamente
-        # Si page_type se pasa como None o '', usar sugerencia
         effective_page_type = page_type
         if not effective_page_type or effective_page_type == '':
             effective_page_type = suggest_page_type(title, body)
@@ -646,52 +754,44 @@ class Brain:
             'context': self._context_id,
             'page_type': effective_page_type,
             'body': body,
-            'summary': summary or body[:200].split('\n')[0] if body else '',
-            'contested': contested,
-            'contradictions': contradictions,
+            'summary': kwargs.pop('summary', body[:200].split('\n')[0] if body else ''),
             'archived': False,
         }
 
-        if confidence:
-            data['confidence'] = confidence
-        if source_url:
-            data['source_url'] = source_url
-        if source_sha256:
-            data['source_sha256'] = source_sha256
+        # Tags
         if tags:
             data['tags'] = [self.get_or_create_tag(t) for t in tags]
+
+        # Related pages
         if linked_page_ids:
             data['related_pages'] = linked_page_ids
 
-        # Nuevos campos opcionales
-        if status:
-            data['status'] = status
-        if owner:
-            data['owner'] = owner
-        if deadline:
-            data['deadline'] = deadline
-        if date:
-            data['date'] = date
-        if time:
-            data['time'] = time
-        if done:
-            data['done'] = True
-        if mood:
-            data['mood'] = mood
-        if content:
-            data['content'] = content
+        # Resolver relaciones pasadas como slugs a IDs
+        relation_fields = {'project', 'todo_goal'}
+        for rel_key in relation_fields:
+            if rel_key in kwargs:
+                rel_val = kwargs[rel_key]
+                if isinstance(rel_val, str) and rel_val and not rel_val.startswith('pbc_'):
+                    rel_page = self._get_page(rel_val)
+                    if rel_page and 'id' in rel_page:
+                        kwargs[rel_key] = rel_page['id']
+                    else:
+                        kwargs[rel_key] = None
 
-        if file_type:
-            data['file_type'] = file_type
-        if version:
-            data['version'] = version
+        # Campos directos del schema (excluir parámetros de conveniencia)
+        convenience = {'filepath', 'related_slugs', 'tags'}
+        for key, value in kwargs.items():
+            if key in convenience:
+                continue
+            if value is not None and value != '':
+                data[key] = value
 
         # Si hay filepath, hacer multipart upload via curl
         if filepath:
             import subprocess
             host = self.pb.host
-            token = self.pb.get_token()
             url = f"{host}/api/collections/brain_pages/records"
+            token = self.pb.get_token()
             args = ["curl", "-s", "-X", "POST", url,
                     "-H", f"Authorization: Bearer {token}",
                     "-F", f"title={title}",
@@ -699,14 +799,16 @@ class Brain:
                     "-F", f"context={self._context_id}",
                     "-F", f"page_type={effective_page_type}",
                     "-F", f"body={body or ''}",
-                    "-F", f"attachment=@{filepath}",
+                    "-F", f"file_attachment=@{filepath}",
             ]
-            if file_type: args += ["-F", f"file_type={file_type}"]
-            if version: args += ["-F", f"version={version}"]
-            if status: args += ["-F", f"status={status}"]
-            if owner: args += ["-F", f"owner={owner}"]
-            if linked_page_ids:
-                for lid in linked_page_ids: args += ["-F", f"related_pages={lid}"]
+            for key, value in data.items():
+                if key in ('title', 'slug', 'context', 'page_type', 'body'):
+                    continue
+                if isinstance(value, list):
+                    for v in value:
+                        args += ["-F", f"{key}={v}"]
+                else:
+                    args += ["-F", f"{key}={value}"]
             result = subprocess.run(args, capture_output=True, text=True)
             data_resp = json.loads(result.stdout)
             if 'id' not in data_resp:
@@ -732,6 +834,51 @@ class Brain:
         self.log('create', page_id=page_id, description=f'Created: {title} (type={effective_page_type}, links={len(linked_page_ids)})')
         self.save_version(slug, 'Initial version')
         return page
+
+    # ── Typed page creators ──────────────────────────────────────
+
+    def create_project(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo project."""
+        return self.create_page(title=title, body=body, page_type='project', **kwargs)
+
+    def create_goal(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo goal."""
+        return self.create_page(title=title, body=body, page_type='goal', **kwargs)
+
+    def create_milestone(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo milestone."""
+        return self.create_page(title=title, body=body, page_type='milestone', **kwargs)
+
+    def create_plan(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo plan."""
+        return self.create_page(title=title, body=body, page_type='plan', **kwargs)
+
+    def create_idea(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo idea."""
+        return self.create_page(title=title, body=body, page_type='idea', **kwargs)
+
+    def create_note(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo note."""
+        return self.create_page(title=title, body=body, page_type='note', **kwargs)
+
+    def create_todo(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo todo."""
+        return self.create_page(title=title, body=body, page_type='todo', **kwargs)
+
+    def create_reminder(self, title: str, body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo reminder."""
+        return self.create_page(title=title, body=body, page_type='reminder', **kwargs)
+
+    def create_journal(self, title: str = '', body: str = '', **kwargs) -> dict:
+        """Crea una página de tipo journal."""
+        if not title:
+            from datetime import date
+            title = f"Journal: {date.today().isoformat()}"
+        return self.create_page(title=title, body=body, page_type='journal', **kwargs)
+
+    def create_file(self, title: str, body: str = '', *, filepath: str = '', **kwargs) -> dict:
+        """Crea una página de tipo file. Si filepath se provee, adjunta el archivo."""
+        return self.create_page(title=title, body=body, page_type='file', filepath=filepath, **kwargs)
 
     def build_backlinks(self, slug: Optional[str] = None) -> dict:
         """Reconstruye los related_pages de una o todas las páginas
@@ -948,24 +1095,27 @@ class Brain:
 
     def ingest_text(self, text: str, title: str = '',
                     page_type: str = 'raw',
-                    source_url: str = '',
+                    kb_source_url: str = '',
                     tags: Optional[list] = None) -> dict:
         """Ingesta texto crudo como página.
 
-        Calcula source_sha256 automáticamente si page_type='raw'.
+        Calcula kb_source_sha256 automáticamente si page_type='raw'.
         """
         if not self._context_id:
             self.orient()
 
         title = title or f"Ingest {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}"
-        return self.create_page(
-            title=title,
-            body=text,
-            page_type=page_type,
-            tags=tags,
-            source_url=source_url,
-            source_sha256=sha256(text) if page_type == 'raw' else '',
-        )
+        kwargs = {
+            'title': title,
+            'body': text,
+            'page_type': page_type,
+            'tags': tags,
+        }
+        if kb_source_url:
+            kwargs['kb_source_url'] = kb_source_url
+        if page_type == 'raw':
+            kwargs['kb_source_sha256'] = sha256(text)
+        return self.create_page(**kwargs)
 
     # ── Log ──────────────────────────────────────────────────────
 
@@ -1053,11 +1203,11 @@ class Brain:
             body = page.get('body', '')
 
             # Confidence
-            if page.get('confidence') == 'low':
+            if page.get('kb_confidence') == 'low':
                 report['low_confidence'].append(slug)
 
             # Contested
-            if page.get('contested'):
+            if page.get('kb_contested'):
                 report['contested_pages'].append(slug)
 
             # Oversized
@@ -1134,7 +1284,7 @@ class Brain:
         """Actualiza el schema_config (merge superficial)."""
         current = self.get_schema()
         merged = {**current, **updates}
-        self.pb.update('brains', self._context_id,
+        self.pb.update('brain_contexts', self._context_id,
                        {'schema_config': merged})
         self._schema = merged
         self.log('update', description='Schema actualizado')
@@ -1180,7 +1330,7 @@ class Brain:
                 'slug': p['slug'],
                 'title': p['title'],
                 'summary': p.get('summary', ''),
-                'confidence': p.get('confidence'),
+                'kb_confidence': p.get('kb_confidence'),
             })
 
         return index
@@ -1209,7 +1359,6 @@ class Brain:
             'summary': page.get('summary', ''),
             'change_summary': change_summary,
             'page_type': page.get('page_type', ''),
-            'confidence': page.get('confidence', ''),
         })
 
     def get_history(self, slug: str, limit: int = 20) -> list:
@@ -1221,25 +1370,6 @@ class Brain:
             filter=f"(page='{page['id']}')", sort='-version', perPage=limit)
 
     # ── Todos ───────────────────────────────────────────────────
-
-    def create_todo(self, title: str,
-                    page_slug: Optional[str] = None,
-                    goal_id: Optional[str] = None,
-                    content: str = "",
-                    status: str = "backlog",
-                    owner: str = "alvaro") -> dict:
-        valid_statuses = ('backlog', 'this week', 'today', 'in progress', 'done', 'cancelled')
-        if status not in valid_statuses:
-            raise ValueError(f"status '{status}' no válido. Debe ser uno de: {', '.join(valid_statuses)}")
-        related = [page_slug] if page_slug else None
-        return self.create_page(
-            title=title,
-            body=content or "",
-            page_type='todo',
-            status=status,
-            owner=owner,
-            related_slugs=related,
-        )
 
     def todos(self, status: Optional[str] = None,
               owner: Optional[str] = None,
@@ -1257,12 +1387,9 @@ class Brain:
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         new_status = updates.get('status')
-        if new_status == 'in progress':
-            updates['started_date'] = updates.get('started_date', now)
-        elif new_status == 'done':
-            updates['completed_date'] = updates.get('completed_date', now)
-        elif new_status == 'cancelled':
-            updates['cancelled_date'] = updates.get('cancelled_date', now)
+        if new_status == 'done':
+            updates['done'] = True
+            updates.setdefault('done_date', now)
         if 'page_slug' in updates:
             updates['related_slugs'] = [updates.pop('page_slug')]
         return self.update_page(todo_id, **updates)
@@ -1311,10 +1438,9 @@ class Brain:
             pd = (p.get('date', '') or '')[:10]
             if pd == date_str or pd == date_str[:10]:
                 return p
-        return self.create_page(
+        return self.create_journal(
             title=title,
             body='',
-            page_type='journal',
             date=date_str,
         )
 
@@ -1393,7 +1519,7 @@ class Brain:
                     name: str = '', file_type: str = 'other') -> dict:
         """Adjunta un archivo a una pagina como pagina type='file'.
 
-        Crea una brain_page con page_type='file' y attachment,
+        Crea una brain_page con page_type='file' y file_attachment,
         linkeada a la pagina via related_slugs.
         """
         if not self._context_id:
@@ -1405,13 +1531,12 @@ class Brain:
 
         name = name or os.path.basename(filepath)
 
-        return self.create_page(
+        return self.create_file(
             title=name,
             body='',
-            page_type='file',
+            filepath=filepath,
             file_type=file_type,
             related_slugs=[page_slug],
-            filepath=filepath,
         )
 
 
@@ -1431,25 +1556,6 @@ class Brain:
         return self.pb.update("brain_pages", file_id, {"archived": True})
 
     # ── Goals / Milestones ─────────────────────────────────────
-
-    def create_goal(self, title: str, type: str = 'goal',
-                    project_slug: Optional[str] = None,
-                    description: str = '',
-                    deadline: str = '',
-                    parent_id: Optional[str] = None,
-                    status: str = 'planned') -> dict:
-        """Crea un goal o milestone como pagina."""
-        if type not in ('goal', 'milestone'):
-            raise ValueError(f"type '{type}' no válido. Debe ser 'goal' o 'milestone'.")
-        related = [project_slug] if project_slug else None
-        return self.create_page(
-            title=title,
-            body=description or '',
-            page_type=type,
-            status=status,
-            deadline=deadline or '',
-            related_slugs=related,
-        )
 
     def list_goals(self, project_slug: Optional[str] = None,
                    type: Optional[str] = None,
@@ -1539,12 +1645,15 @@ class Brain:
 
     def report_todos(self, status: Optional[str] = None, project_slug: Optional[str] = None) -> list:
         """Reporte de todos con metadatos útiles."""
-        todos = self.todos(status=status, project_slug=project_slug)
+        todos = self.todos(status=status)
+        if project_slug:
+            project = self._get_page(project_slug)
+            if project:
+                todos = [t for t in todos if project['id'] in (t.get('related_pages') or [])]
         return [{
             'slug': t.get('slug', ''), 'title': t.get('title', ''),
-            'status': t.get('status', 'backlog'), 'priority': t.get('priority', ''),
-            'owner': t.get('owner', ''), 'started': (t.get('started_date', '') or '')[:10],
-            'completed': (t.get('completed_date', '') or '')[:10],
+            'status': t.get('status', 'backlog'),
+            'owner': t.get('owner', ''), 'deadline': (t.get('deadline', '') or '')[:10],
         } for t in todos]
 
     def report_journal(self, days: int = 7) -> list:
@@ -1572,21 +1681,6 @@ class Brain:
 
 
 
-    def create_reminder(self, title: str, date: str, time: str = '',
-                        content: str = '', page_slug: Optional[str] = None) -> dict:
-        """Crea un recordatorio como pagina con page_type='reminder'."""
-        import re as _re
-        if not _re.match(r'^\d{4}-\d{2}-\d{2}$', date):
-            raise ValueError(f"date '{date}' no tiene formato YYYY-MM-DD")
-        related = [page_slug] if page_slug else None
-        return self.create_page(
-            title=title,
-            body=content or '',
-            page_type='reminder',
-            date=date,
-            time=time,
-            related_slugs=related,
-        )
 
     def reminders(self, done: Optional[bool] = None, date: str = '',
                   page_slug: str = '') -> list:
@@ -1603,19 +1697,19 @@ class Brain:
 
     def ingest_file(self, filepath: str, title: str = '',
                     tags: Optional[list] = None,
-                    source_url: str = '') -> dict:
+                    kb_source_url: str = '') -> dict:
         """Ingesta un archivo (PDF, TXT, etc.) al cerebro.
 
         Args:
             filepath: Ruta al archivo en disco.
             title: Título (default: nombre del archivo).
             tags: Tags opcionales.
-            source_url: URL original si aplica.
+            kb_source_url: URL original si aplica.
 
         Returns:
             El registro creado en brain_pages.
 
-        El archivo se sube como attachment. El body se deja vacío
+        El archivo se sube como file_attachment. El body se deja vacío
         inicialmente — luego se llena con el texto extraído.
         """
         import subprocess
@@ -1643,11 +1737,11 @@ class Brain:
             "-F", f"slug={slug}",
             "-F", f"context={self._context_id}",
             "-F", "page_type=raw",
-            "-F", f"source_sha256={file_hash}",
-            "-F", f"attachment=@{filepath}",
+            "-F", f"kb_source_sha256={file_hash}",
+            "-F", f"file_attachment=@{filepath}",
         ]
-        if source_url:
-            args += ["-F", f"source_url={source_url}"]
+        if kb_source_url:
+            args += ["-F", f"kb_source_url={kb_source_url}"]
         for tid in tag_ids:
             args += ["-F", f"tags={tid}"]
 
@@ -1667,9 +1761,9 @@ class Brain:
     # ── LLM Wiki methods ──────────────────────────────────────────
 
     def detect_drift(self, limit: int = 50) -> list:
-        """Detecta paginas raw cuyo source_sha256 no coincide con el contenido actual.
+        """Detecta paginas raw cuyo kb_source_sha256 no coincide con el contenido actual.
 
-        Para paginas con page_type='raw' y source_sha256, recalcula el SHA256
+        Para paginas con page_type='raw' y kb_source_sha256, recalcula el SHA256
         del body y lo compara con el almacenado.
 
         Args:
@@ -1682,21 +1776,21 @@ class Brain:
             self.orient()
 
         pages = self.pb.list('brain_pages',
-            filter=f"(context='{self._context_id}' && page_type='raw' && source_sha256!='')",
+            filter=f"(context='{self._context_id}' && page_type='raw' && kb_source_sha256!='')",
             perPage=limit)
 
         drifted = []
         for page in pages:
             body = page.get('body', '') or ''
             current_hash = sha256(body)
-            stored_hash = page.get('source_sha256', '')
+            stored_hash = page.get('kb_source_sha256', '')
             if current_hash != stored_hash:
                 drifted.append({
                     'slug': page['slug'],
                     'title': page['title'],
                     'stored_sha256': stored_hash[:16],
                     'current_sha256': current_hash[:16],
-                    'source_url': page.get('source_url', ''),
+                    'kb_source_url': page.get('kb_source_url', ''),
                 })
 
         self.log('lint', description=f'Drift detect: {len(drifted)} paginas con cambios')
@@ -1709,7 +1803,7 @@ class Brain:
         - entity: title, body, summary
         - concept: title, body, summary
         - comparison: title, body
-        - raw: title, source_url, source_sha256
+        - raw: title, kb_source_url, kb_source_sha256
         - project: title, body
         - query: title, body
 
@@ -1723,7 +1817,7 @@ class Brain:
             'entity': ['title', 'body', 'summary'],
             'concept': ['title', 'body', 'summary'],
             'comparison': ['title', 'body'],
-            'raw': ['title', 'source_url', 'source_sha256'],
+            'raw': ['title', 'kb_source_url', 'kb_source_sha256'],
             'project': ['title', 'body'],
             'query': ['title', 'body'],
         }

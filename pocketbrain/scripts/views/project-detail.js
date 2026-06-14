@@ -73,11 +73,11 @@ function collectProjectData(slug) {
   const pages = Store.state.pages || [];
   const p = Store.mapPages()[slug];
 
-  const goals = (Store.state.goals || []).filter(g => g.page === slug || g.page_slug === slug);
-  const todos = (Store.state.todos || []).filter(t => t.page_slug === slug);
-  const reminders = (Store.state.reminders || []).filter(r => r.page_slug === slug);
-  const journal = (Store.state.journal || []).filter(j => j.page_slug === slug);
-  const files = (Store.state.files || []).filter(f => f.page_slug === slug);
+  const goals = (Store.state.goals || []).filter(g => g.project === slug);
+  const todos = (Store.state.todos || []).filter(t => t.project === slug);
+  const reminders = (Store.state.reminders || []).filter(r => r.project === slug);
+  const journal = (Store.state.journal || []).filter(j => j.project === slug);
+  const files = (Store.state.files || []).filter(f => f.project === slug);
 
   const relatedPages = pages.filter(pg => isProjectRelated(pg, slug));
   const ideas = relatedPages.filter(pg => pg.page_type === 'idea');

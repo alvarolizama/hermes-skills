@@ -27,9 +27,9 @@ with open(env_path) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
-os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
-os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
+os.environ["POCKETHOST_HOST"] = env["POCKETHOST_HOST"]
+os.environ["POCKETHOST_EMAIL"] = env["POCKETHOST_EMAIL"]
+os.environ["POCKETHOST_PASSWORD"] = env["POCKETHOST_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -80,7 +80,7 @@ def build_graph(ctx: Brain) -> dict:
             "label": page.get("title", slug),
             "color": PAGE_COLORS.get(pt, "#607D8B"),
             "page_type": pt,
-            "confidence": page.get("confidence", ""),
+            "kb_confidence": page.get("kb_confidence", ""),
             "summary": (page.get("summary", "") or "")[:100],
         })
 
@@ -105,7 +105,7 @@ def build_graph(ctx: Brain) -> dict:
                         "label": tp.get("title", target),
                         "color": PAGE_COLORS.get(tp.get("page_type", "concept"), "#607D8B"),
                         "page_type": tp.get("page_type", "concept"),
-                        "confidence": tp.get("confidence", ""),
+                        "kb_confidence": tp.get("kb_confidence", ""),
                         "summary": (tp.get("summary", "") or "")[:100],
                     })
 
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     context, output = parse_args()
     output = output or os.path.expanduser(f"~/context-graph-{context}.html")
 
-    pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
+    pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
     ctx = Brain(context, pb=pb)
     graph = build_graph(ctx)
 

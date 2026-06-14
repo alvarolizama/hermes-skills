@@ -357,7 +357,7 @@ PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente
 |-------------|-----|------------------|
 | `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
 | `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
-| `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
+| `POCKETHOST_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
 | `POCKETBRAIN_CONTEXT` | Contexto default del agente | `~/.hermes/.env` o variable de entorno. |
 
 ### Quick Start headless
@@ -396,7 +396,7 @@ python3 brain_web.py --context personal --port 8899
 
 Requisitos:
 - PocketBase corriendo con las colecciones creadas.
-- Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` en `~/.hermes/.env`.
+- Variables `POCKETHOST_HOST`, `POCKETHOST_EMAIL`, `POCKETHOST_PASSWORD` en `~/.hermes/.env`.
 - Usa `--context <name>` para seleccionar el contexto.
 
 Después de modificar módulos ES o CSS, reiniciar el servidor no basta por el cache del browser (`max-age=3600`). Usa `Cmd+Shift+R` o DevTools → Disable cache.
@@ -445,6 +445,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI (secuencia de vistas, rutas relativas, README conciso) |
 | `references/domain-to-context-cleanup.md` | Domain ya no se usa; contexto es el único silo. Schema, API y UI actualizados |
 | `references/context-only-migration.md` | Guía de migración a context-only: schema, reportes, UI, lecciones |
+| `references/schema-refactor-patterns.md` | Convenciones para refactorizar el schema de brain_pages: campos compartidos vs prefijados, relaciones por contexto, mass rename checklist |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 | `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
@@ -528,6 +529,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Entregables no va en sidebar**: Álvaro usa solo `Archivos`. Deliverables ya no es un item de navegación principal.
 - **Hard refresh obligatorio**: `brain_web.py` sirve assets JS con `Cache-Control: max-age=3600`. Después de cambiar módulos ES, reiniciar el servidor NO basta. Usar `Cmd+Shift+R` o DevTools con "Disable cache" para ver los cambios.
 - **Subagentes para fixes UI no son garantía**: los subagentes pueden llegar al límite de iteraciones sin aplicar el fix, dejando solo análisis parcial. Si el fix es pequeño y crítico (ej. un import roto, un `classList.add` que causa stacking), es más rápido hacerlo directamente, validar con `node --check`, y luego lanzar subagentes solo para verificación o tareas paralelas grandes. Siempre re-verificar visualmente después de subagentes.
+- **Subagentes para refactors de backend también pueden quedarse cortos**: refactorizar `brain.py`, `brain_web.py`, `sync.py`, `graph.py` y todo el schema a la vez excede la ventana de atención de un subagente. Dividir en fases (schema → backend → frontend → seed → validación visual) y verificar `py_compile` / `node --check` en cada paso. Si un subagente se atasca, continuar manualmente con lecturas directas y scripts de reemplazo controlados.
 - **Modular SPA: validar imports y registros de router**: al extraer funciones a módulos ES (ej. `views/project-detail.js`), asegurar que el handler registrado en `Router.register('project', handler)` coincida con la firma `(slug, ptab)`. Si el router pasa `ptab` pero el handler lo ignora, las tabs internas no se restauran desde el hash.
 - **Validación mínima de project detail**: al terminar el project detail, confirmar en browser: (a) todas las tabs visibles con counts reales, (b) tab Contenido renderiza markdown, (c) click en goal/todo/reminder/journal/file navega a la página sin stacking (`#main > div.active` === 1), (d) wikilinks dentro del markdown y backlinks también navegan sin stacking.
 - **Breadcrumb links must use valid targets**: in `wiki.js` the page-type breadcrumb calls `showTab('type_' + type)`. That only works if the matching `view-type-*` container exists in `web_ui.html`. When adding a new `page_type`, also add its `<div id="view-type-NAME">` to `web_ui.html` or the breadcrumb click will blank the main area without an error. Verified by checking `document.querySelectorAll('#main > div.active').length === 1` after navigation.

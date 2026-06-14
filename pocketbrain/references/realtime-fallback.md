@@ -44,7 +44,7 @@ Dado que el SSE nativo no funciona, se implementa una detección de cambios basa
 elif path == "/api/config":
     brain = get_brain()
     self.serve_json({
-        "pb_url": env["POCKETBRAIN_HOST"],
+        "pb_url": env["POCKETHOST_HOST"],
         "token": brain.pb.get_token(),
         "context": CTX
     })

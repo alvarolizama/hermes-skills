@@ -37,9 +37,9 @@ export function renderTodosView() {
   let todos = Store.state.todos;
 
   if (filter === 'project') {
-    todos = todos.filter(t => !!t.page_slug);
+    todos = todos.filter(t => !!t.project);
   } else if (filter === 'noproject') {
-    todos = todos.filter(t => !t.page_slug);
+    todos = todos.filter(t => !t.project);
   }
 
   const byCol = {};
@@ -114,10 +114,10 @@ export function renderTodosView() {
       }
       const id = el.dataset.pbTodo;
       const todo = Store.state.todos.find(t => String(t.id) === id);
-      let slug = todo && (todo.page_slug || todo.goal_id);
+      let slug = todo && (todo.project || todo.goal_id);
       if (todo && todo.goal_id && !slug) {
         const goal = Store.state.goals.find(g => String(g.id) === String(todo.goal_id));
-        slug = goal && (goal.page_slug || goal.slug);
+        slug = goal && (goal.project || goal.slug);
       }
       if (slug && typeof window.showPage === 'function') {
         window.showPage(slug);

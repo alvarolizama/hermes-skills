@@ -53,14 +53,14 @@ export function renderProjectsView() {
   });
   const addCount = (slug, key) => { if (counts[slug]) counts[slug][key]++; };
 
-  Store.state.goals.forEach(g => { if (g.page_slug) addCount(g.page_slug, 'goals'); });
-  Store.state.todos.forEach(t => { if (t.page_slug) addCount(t.page_slug, 'todos'); });
-  Store.state.reminders.forEach(r => { if (r.page_slug) addCount(r.page_slug, 'reminders'); });
-  Store.state.journal.forEach(j => { if (j.page_slug) addCount(j.page_slug, 'journal'); });
+  Store.state.goals.forEach(g => { if (g.project) addCount(g.project, 'goals'); });
+  Store.state.todos.forEach(t => { if (t.project) addCount(t.project, 'todos'); });
+  Store.state.reminders.forEach(r => { if (r.project) addCount(r.project, 'reminders'); });
+  Store.state.journal.forEach(j => { if (j.project) addCount(j.project, 'journal'); });
   Store.state.pages.forEach(p => {
-    if (p.page_type === 'note' && p.page_slug) addCount(p.page_slug, 'notes');
-    if (p.page_type === 'idea' && p.page_slug) addCount(p.page_slug, 'ideas');
-    if (p.page_type === 'plan' && p.page_slug) addCount(p.page_slug, 'plans');
+    if (p.page_type === 'note' && p.project) addCount(p.project, 'notes');
+    if (p.page_type === 'idea' && p.project) addCount(p.project, 'ideas');
+    if (p.page_type === 'plan' && p.project) addCount(p.project, 'plans');
   });
 
   const map = Store.mapPages();

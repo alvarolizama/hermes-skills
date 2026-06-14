@@ -49,18 +49,18 @@ export function renderWikiView(slug) {
 function pageMetadataRows(p) {
   const rows = [];
   if (p.page_type) rows.push(['Tipo', p.page_type]);
-  if (p.confidence) rows.push(['Confianza', p.confidence]);
+  if (p.kb_confidence) rows.push(['Confianza', p.kb_confidence]);
   if (p.status) rows.push(['Estado', p.status]);
   if (p.tags && p.tags.length) rows.push(['Tags', p.tags.join(', ')]);
-  if (p.source_url) rows.push(['Source URL', `<a href="${esc(p.source_url)}" target="_blank" rel="noopener">${esc(p.source_url.substring(0, 40))}</a>`]);
-  if (p.source_sha256) rows.push(['SHA256', `<span style="font-family:monospace;font-size:11px">${esc(p.source_sha256.substring(0, 16))}...</span>`]);
-  if (p.contested) rows.push(['Contested', `<span style="color:#E53935;display:flex;align-items:center;gap:4px">${icon('exclamation-triangle', 12)}<span>Sí</span></span>`]);
-  if (p.contradictions) rows.push(['Contradicciones', p.contradictions]);
+  if (p.kb_source_url) rows.push(['Source URL', `<a href="${esc(p.kb_source_url)}" target="_blank" rel="noopener">${esc(p.kb_source_url.substring(0, 40))}</a>`]);
+  if (p.kb_source_sha256) rows.push(['SHA256', `<span style="font-family:monospace;font-size:11px">${esc(p.kb_source_sha256.substring(0, 16))}...</span>`]);
+  if (p.kb_contested) rows.push(['Contested', `<span style="color:#E53935;display:flex;align-items:center;gap:4px">${icon('exclamation-triangle', 12)}<span>Sí</span></span>`]);
+  if (p.kb_contradictions) rows.push(['Contradicciones', p.kb_contradictions]);
   if (p.created) rows.push(['Creado', p.created]);
   if (p.updated) rows.push(['Actualizado', p.updated]);
-  if (p.started_date) rows.push(['Iniciado', p.started_date]);
-  if (p.completed_date) rows.push(['Completado', p.completed_date]);
-  if (p.cancelled_date) rows.push(['Cancelado', p.cancelled_date]);
+  if (p) rows.push(['Iniciado', p]);
+  if (p) rows.push(['Completado', p]);
+  if (p) rows.push(['Cancelado', p]);
   if (p.comment) rows.push(['Nota', p.comment]);
   return rows;
 }

@@ -16,9 +16,9 @@ with open(p) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
-os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
-os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
+os.environ["POCKETHOST_HOST"] = env["POCKETHOST_HOST"]
+os.environ["POCKETHOST_EMAIL"] = env["POCKETHOST_EMAIL"]
+os.environ["POCKETHOST_PASSWORD"] = env["POCKETHOST_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -46,7 +46,7 @@ def get_brain(ctx=None):
     with _brain_lock:
         if ctx in _brain_cache:
             return _brain_cache[ctx]
-        pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
+        pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
         brain = Brain(ctx, pb=pb)
         brain.orient()
         _brain_cache[ctx] = brain
@@ -73,16 +73,13 @@ def get_pages(ctx, include_archived=False):
         bld = [{"slug":b,"title":smap[b].get("title",b)} for b in bls.get(pg["slug"],[]) if b in smap]
         result.append({"id":pg["id"],"slug":pg["slug"],"title":pg.get("title",pg["slug"]),
             "page_type":pg.get("page_type","concept"),"color":COLORS.get(pg.get("page_type","concept"),"#607D8B"),
-            "confidence":pg.get("confidence",""),"summary":pg.get("summary","") or "",
+            "kb_confidence":pg.get("kb_confidence",""),"summary":pg.get("summary","") or "",
             "tags":tns,"body":pg.get("body","") or "","backlinks":bld,
-            "status":pg.get("status","") or "","started_date":(pg.get("started_date","") or "")[:10],
-            "completed_date":(pg.get("completed_date","") or "")[:10],
-            "cancelled_date":(pg.get("cancelled_date","") or "")[:10],
-            "comment":pg.get("comment","") or "",
-            "source_url":pg.get("source_url","") or "",
-            "source_sha256":pg.get("source_sha256","") or "",
-            "contested":pg.get("contested",False),
-            "contradictions":pg.get("contradictions","") or "",
+            "status":pg.get("status","") or "",
+            "kb_source_url":pg.get("kb_source_url","") or "",
+            "kb_source_sha256":pg.get("kb_source_sha256","") or "",
+            "kb_contested":pg.get("kb_contested",False),
+            "kb_contradictions":pg.get("kb_contradictions","") or "",
             "created":(pg.get("created","") or "")[:10],"updated":(pg.get("updated","") or "")[:10]})
     return result
 
@@ -173,7 +170,7 @@ def get_todos(ctx):
         result.append({
             "id": p["id"], "title": p.get("title", ""), "status": p.get("status", "backlog"),
             "owner": p.get("owner", ""),
-            "content": p.get("body", "") or "",
+            "body": p.get("body", "") or "",
             "page_slug": ps, "page_title": pt,
             "goal_id": goal_id, "goal_title": goal_title,
         })
@@ -192,10 +189,9 @@ def get_deps(ctx):
             ps = rel.get("slug",""); pt = rel.get("title","")
         elif rel and isinstance(rel,list) and len(rel)>0 and isinstance(rel[0],dict):
             ps = rel[0].get("slug",""); pt = rel[0].get("title","")
-        result.append({"id":p["id"],"title":p.get("title",""),"version":p.get("version",""),
+        result.append({"id":p["id"],"title":p.get("title",""),
             "status":p.get("status","draft"),
-            "page_slug":ps,"page_title":pt,
-            "milestone":p.get("milestone","") or ""})
+            "page_slug":ps,"page_title":pt})
     return result
 
 def get_files(ctx):
@@ -232,7 +228,7 @@ def get_reminders(ctx):
             pt = rel[0].get("title", "")
         result.append({
             "id": p["id"], "title": p.get("title", ""),
-            "content": p.get("body", "") or "",
+            "body": p.get("body", "") or "",
             "date": (p.get("date", "") or "")[:10],
             "time": p.get("time", "") or "",
             "done": p.get("done", False),
@@ -342,7 +338,7 @@ def get_graph(ctx):
 def get_logs(ctx):
     brain = get_brain(ctx)
     logs = brain.pb.all("brain_log", filter="(context='{}')".format(brain._context_id), sort="-created", per_page=100)
-    return [{"id":l["id"],"operation":l.get("operation",""),"created":(l.get("created") or "")[:10],"details":l.get("details","") or "","page":l.get("page","") or "","goal":l.get("goal","") or "","todo":l.get("todo","") or ""} for l in logs]
+    return [{"id":l["id"],"action":l.get("action",""),"created":(l.get("created") or "")[:10],"details":l.get("details","") or "","page_id":l.get("page","") or ""} for l in logs]
 
 def get_versions(ctx, slug=None):
     brain = get_brain(ctx)
@@ -387,13 +383,46 @@ def _read_json(handler):
 
 def create_todo(ctx, payload):
     brain = get_brain(ctx)
-    return brain.create_todo(
+    kwargs = {
+        "title": payload["title"],
+        "body": payload.get("content", ""),
+        "status": payload.get("status", "backlog"),
+        "owner": payload.get("owner", "alvaro"),
+    }
+    if payload.get("page_slug"):
+        kwargs["related_slugs"] = [payload["page_slug"]]
+    if payload.get("goal_id"):
+        kwargs["todo_goal"] = payload["goal_id"]
+    return brain.create_todo(**kwargs)
+
+def create_reminder(ctx, payload):
+    brain = get_brain(ctx)
+    return brain.create_reminder(
         title=payload["title"],
-        page_slug=payload.get("page_slug"),
-        goal_id=payload.get("goal_id"),
-        content=payload.get("content", ""),
-        status=payload.get("status", "backlog"),
-        owner=payload.get("owner", "alvaro"),
+        body=payload.get("body", ""),
+        date=payload.get("date"),
+        time=payload.get("time"),
+        related_slugs=payload.get("related_slugs", []),
+    )
+
+def create_journal(ctx, payload):
+    brain = get_brain(ctx)
+    return brain.create_journal(
+        title=payload.get("title", ""),
+        body=payload.get("body", ""),
+        date=payload.get("date"),
+        mood=payload.get("mood"),
+        related_slugs=payload.get("related_slugs", []),
+    )
+
+def create_file(ctx, payload):
+    brain = get_brain(ctx)
+    return brain.create_file(
+        title=payload["title"],
+        body=payload.get("body", ""),
+        filepath=payload.get("filepath", ""),
+        file_type=payload.get("file_type", "other"),
+        related_slugs=payload.get("related_slugs", []),
     )
 
 def move_todo(ctx, todo_id, status):
@@ -408,7 +437,7 @@ def create_page(ctx, payload):
         page_type=payload.get("page_type", "concept"),
         tags=payload.get("tags"),
         summary=payload.get("summary", ""),
-        confidence=payload.get("confidence"),
+        kb_confidence=payload.get("kb_confidence"),
         related_slugs=payload.get("related_slugs", []),
     )
 
@@ -451,10 +480,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.serve_json(get_versions(ctx, qs.get('slug',[None])[0]))
             elif path == "/api/logs": self.serve_json(get_logs(ctx))
             elif path == "/api/contexts":
-                pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("brain_contexts", perPage=50)
+                pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"]); contexts = pb.list("brain_contexts", perPage=50)
                 self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
             elif path == "/api/config":
-                self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "context": ctx})
+                self.serve_json({"pb_url": env["POCKETHOST_HOST"], "context": ctx})
             elif path == "/api.js":
                 self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
                 js_path = Path(__file__).parent / "api.js"
@@ -512,6 +541,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = _read_json(self)
             if path == "/api/todos":
                 self.serve_json(create_todo(ctx, body))
+            elif path == "/api/reminders":
+                self.serve_json(create_reminder(ctx, body))
+            elif path == "/api/journal":
+                self.serve_json(create_journal(ctx, body))
+            elif path == "/api/files":
+                self.serve_json(create_file(ctx, body))
             elif path == "/api/pages":
                 self.serve_json(create_page(ctx, body))
             else:

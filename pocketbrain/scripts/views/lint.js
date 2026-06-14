@@ -14,7 +14,7 @@ const SUMMARY_KEYS = [
   { k: 'orphans', label: 'Huérfanos' },
   { k: 'broken_links', label: 'Links rotos' },
   { k: 'low_confidence', label: 'Confianza baja' },
-  { k: 'contested', label: 'Contested' },
+  { k: 'kb_contested', label: 'Contested' },
   { k: 'invalid_tags', label: 'Tags inválidos' },
   { k: 'oversized', label: 'Páginas grandes' },
   { k: 'drift', label: 'Source drift' },

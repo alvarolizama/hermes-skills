@@ -9,7 +9,7 @@ Los attachments de páginas raw se descargan al mismo directorio.
 Uso:
     python3 sync.py [--context CONTEXT_NAME] [--full] [--output DIR]
 
-    --context  Solo sync de un contexto específico (default: todos)
+    --context  Solo sync de un contexto específico (default: $POCKETBRAIN_CONTEXT; si no existe, todos)
     --full     Forzar sync completo (ignora estado incremental)
     --output   Directorio de salida (default: ~/brain-sync)
 """
@@ -45,7 +45,7 @@ class SyncEngine:
     def __init__(self, output_dir: str, full: bool = False):
         self.output_dir = Path(output_dir).expanduser().resolve()
         self.full = full
-        self.pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
+        self.pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
         self.state_file = self.output_dir / ".sync_state.json"
         self.state = self._load_state()
         self.stats = {"updated": 0, "skipped": 0, "attachments": 0}
@@ -72,21 +72,19 @@ class SyncEngine:
 
     # ── Frontmatter ────────────────────────────────────────────────
 
-    def _build_frontmatter(self, page: dict, tags: list, domain_name: str = "") -> str:
+    def _build_frontmatter(self, page: dict, tags: list) -> str:
         """Construye YAML frontmatter para una pagina."""
         fm = {
             "title": page.get("title", ""),
             "slug": page.get("slug", ""),
             "page_type": page.get("page_type", ""),
-            "confidence": page.get("confidence", ""),
-            "source_url": page.get("source_url", ""),
+            "kb_confidence": page.get("kb_confidence", ""),
+            "kb_source_url": page.get("kb_source_url", ""),
             "created": page.get("created", ""),
             "updated": page.get("updated", ""),
         }
-        if domain_name:
-            fm["domain"] = domain_name
-        if page.get("contradictions"):
-            fm["contradictions"] = page["contradictions"]
+        if page.get("kb_contradictions"):
+            fm["kb_contradictions"] = page["kb_contradictions"]
         if tags:
             fm["tags"] = tags
 
@@ -195,7 +193,6 @@ class SyncEngine:
         """Exporta todos de brain_pages (page_type='todo') a todos.md agrupado por status."""
         todos = self.pb.all("brain_pages",
             filter=f"(context='{context_id}' && page_type='todo')",
-            expand="domain",
             perPage=500)
 
         if not todos:
@@ -225,31 +222,18 @@ class SyncEngine:
             lines.append("")
             for t in items:
                 title = t.get("title", "?")
-                dom_exp = t.get("expand", {}).get("domain", {})
-                domain = dom_exp.get("name", "") if isinstance(dom_exp, dict) else ""
-                content = (t.get("body", "") or "")[:200]
-                comment = t.get("comment", "") or ""
-                started = (t.get("started_date", "") or "")[:10]
-                completed = (t.get("completed_date", "") or "")[:10]
-                cancelled = (t.get("cancelled_date", "") or "")[:10]
+                body = (t.get("body", "") or "")[:200]
+                done_date = (t.get("done_date", "") or "")[:10]
 
                 meta = []
-                if domain:
-                    meta.append("domain: " + domain)
-                if started:
-                    meta.append("started: " + started)
-                if completed:
-                    meta.append("completed: " + completed)
-                if cancelled:
-                    meta.append("cancelled: " + cancelled)
+                if done_date:
+                    meta.append("done: " + done_date)
 
                 lines.append("- [ ] **" + title + "**")
                 if meta:
                     lines.append("  _(" + ", ".join(meta) + ")_")
-                if content:
-                    lines.append("  " + content)
-                if comment:
-                    lines.append("  > " + comment)
+                if body:
+                    lines.append("  " + body)
                 lines.append("")
             lines.append("")
 
@@ -261,7 +245,7 @@ class SyncEngine:
     def _write_files(self, context_id: str, context_dir: Path):
         """Descarga archivos adjuntos de brain_pages (page_type='file')."""
         files = self.pb.all("brain_pages",
-            filter=f"(context='{context_id}' && page_type='file' && attachment!='')",
+            filter=f"(context='{context_id}' && page_type='file' && file_attachment!='')",
             expand="related_pages", perPage=500)
 
         if not files:
@@ -271,7 +255,7 @@ class SyncEngine:
         t = self.pb.get_token()
         downloaded = 0
         for f_rec in files:
-            filename = f_rec.get("attachment", "")
+            filename = f_rec.get("file_attachment", "")
             if not filename:
                 continue
 
@@ -286,7 +270,7 @@ class SyncEngine:
             host = self.pb.host
             url = host + "/api/files/brain_pages/" + f_rec["id"] + "/" + filename
             out = str(dest_dir / filename)
-            auth = f"Authorization: Bearer {t}"
+            auth = "Authorization: Bearer " + t
             subprocess.run(["curl", "-s", "-o", out, url, "-H", auth], capture_output=True)
             if Path(out).exists():
                 downloaded += 1
@@ -318,7 +302,7 @@ class SyncEngine:
                 slug = p.get("slug", "")
                 title = p.get("title", "")
                 summary = p.get("summary", "")
-                confidence = p.get("confidence", "")
+                confidence = p.get("kb_confidence", "")
                 conf_str = f" `[{confidence}]`" if confidence else ""
                 lines.append(f"- [[{slug}]] — {title}{conf_str}")
                 if summary and summary != title:
@@ -356,23 +340,16 @@ class SyncEngine:
             else:
                 tag_names = expanded_tags
 
-        domain_name = ""
-        expanded_domain = expand.get("domain")
-        if isinstance(expanded_domain, dict):
-            domain_name = expanded_domain.get("name", "")
-        elif isinstance(expanded_domain, str) and expanded_domain:
-            domain_name = expanded_domain
-
-        md_content = self._build_frontmatter(page, tag_names, domain_name) + body
+        md_content = self._build_frontmatter(page, tag_names) + body
         if not md_content.endswith("\n"):
             md_content += "\n"
 
         md_path = page_dir / f"{slug}.md"
         md_path.write_text(md_content)
 
-        attachment = page.get("attachment", "")
-        if attachment and pt == "raw":
-            self._download_attachment(page["id"], attachment, page_dir, slug)
+        file_attachment = page.get("file_attachment", "")
+        if file_attachment and pt == "raw":
+            self._download_attachment(page["id"], file_attachment, page_dir, slug)
 
     def _download_attachment(self, page_id: str, filename: str,
                              page_dir: Path, slug: str):
@@ -386,7 +363,7 @@ class SyncEngine:
         ext = Path(filename).suffix or ""
         out_path = page_dir / (slug + ext)
 
-        auth = f"Authorization: Bearer {token}"
+        auth = "Authorization: Bearer " + token
         result = subprocess.run(
             ["curl", "-s", "-o", str(out_path), url, "-H", auth],
             capture_output=True, text=True)
@@ -409,7 +386,7 @@ class SyncEngine:
 
         pages = self.pb.all("brain_pages",
             filter=f"(context='{context_id}' && archived=false)",
-            expand="tags,domain",
+            expand="tags",
             sort="title")
 
         print(f"   Pages: {len(pages)}")
@@ -513,6 +490,10 @@ def parse_args():
 
 if __name__ == "__main__":
     context_name, full, output = parse_args()
+
+    # Si no pasan --context, usar POCKETBRAIN_CONTEXT si existe
+    if not context_name:
+        context_name = os.environ.get('POCKETBRAIN_CONTEXT')
 
     engine = SyncEngine(output_dir=output, full=full)
 
