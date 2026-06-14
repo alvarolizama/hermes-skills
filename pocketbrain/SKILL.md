@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundaria."
-version: 2.29.1
+version: 2.29.5
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -126,7 +126,25 @@ OpenAI lanzó GPT-4o, un modelo multimodal...
 
 PocketBrain es un LLM Wiki. Cada página tiene un page_type, relaciones trazables, y metadatos completos. El agente debe **entender, clasificar, relacionar y persistir** datos siguiendo un proceso estructurado.
 
-### PASO 0 — Entender el contenido ANTES de guardar
+### PASO 0 — Confirmar con el usuario antes de guardar (initiativa del agente)
+
+**Nunca guardes datos por iniciativa propia sin avisar.** Cuando identifiques contenido que vale la pena persistir (info de una conversación, descubrimiento, resumen):
+
+1. **Explica qué vas a guardar** usando `clarify()` — di exactamente qué página(s), con qué tipo, y qué contenido.
+2. **Espera su aprobación** antes de hacer cualquier `create_page()` o `append_to_page()`.
+3. No digas "s" o "dale" como respuesta — describe lo que propones guardar y pregunta si procede.
+
+Ejemplo:
+```python
+clarify(
+    question="¿Guardo esto como página 'Arquitectura Hexagonal' (concept) en el brain personal?",
+    choices=["Sí, guarda", "No, mejor idea", "Cambia el tipo/contexto"]
+)
+```
+
+Esta regla aplica incluso si el contenido es obviamente valioso. El usuario prefiere decidir qué entra a su brain.
+
+### PASO 0a — Si el usuario TE pide guardar
 
 Cuando el usuario te pida guardar algo, NO crees páginas de inmediato. Primero:
 
@@ -353,9 +371,13 @@ PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente
 | Dependencia | Uso | Cómo se resuelve |
 |-------------|-----|------------------|
 | `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
-| `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
-| `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
+| `curl` (en PATH) | File uploads vía multipart + auth (PocketHost bloquea urllib) | `which curl` |
+| `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` o variable de entorno (BWS inyecta directo a `os.environ`) |
 | `POCKETBRAIN_CONTEXT` | Contexto default del agente | `~/.hermes/.env` o variable de entorno. |
+
+> **Fuente de credenciales:** `_load_pocketbrain_env()` lee exclusivamente de `os.environ`. BWS inyecta `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` y `POCKETBRAIN_CONTEXT` directo al proceso de Hermes. Ya no lee `~/.hermes/.env`. Si ves `ValueError: Faltan credenciales`, verifica que BWS esté inyectando las vars con `hermes secrets bitwarden status`.
+
+> **Refrescar BWS cuando el usuario cambia credenciales:** Si el usuario dice que actualizó las credenciales (host, email, password) de PocketBrain, **no preguntes cuáles son ni revises el `.env`.** Refresca BWS primero con `hermes secrets bitwarden sync --apply`. Esto exporta las creds actualizadas al shell actual. Después de eso, las vars `POCKETBRAIN_*` en `os.environ` ya tienen los nuevos valores. BWS es la fuente de verdad, no `.env`.
 
 ### Quick Start headless
 
@@ -393,7 +415,7 @@ python3 brain_web.py --context personal --port 8899
 
 Requisitos:
 - PocketBase corriendo con las colecciones creadas.
-- Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` en `~/.hermes/.env`.
+- Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` disponibles en `os.environ` (inyectadas por BWS).
 - Usa `--context <name>` para seleccionar el contexto.
 
 Después de modificar módulos ES o CSS, reiniciar el servidor no basta por el cache del browser (`max-age=3600`). Usa `Cmd+Shift+R` o DevTools → Disable cache.
@@ -450,6 +472,9 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
+| v2.29.5 | `_load_pocketbrain_env()` ya no lee `~/.hermes/.env`. Solo lee `os.environ` (BWS inyecta directo). Actualizados: Dependencias (nota de credenciales), pitfall BWS env injection, y requisitos web UI para reflejar que .env ya no se usa. brain.py actualizado en runtime y repo. |
+| v2.29.3 | Added PASO 0 — confirmar con clarify() antes de guardar data por iniciativa del agente. El usuario prefiere que le expliques qué vas a guardar y esperes su ✅. Updated sync_repo.sh repo path → ~/Workspace/repos/personal/hermes-skills/ (antes ~/Repos/personal/hermes-skills/). Bumped version. |
+| v2.29.2 | Added pitfalls: BWS env injection (fallback a `os.environ` en `_load_pocketbrain_env`), PocketHost 403/1010 (urllib bloqueado, curl funciona). Updated Dependencias to note BWS and PocketHost. |
 | v2.29.1 | Updated SKILL.md examples and references for v2.29.0 schema (project relations, kb_confidence, create_project). Added `references/schema-refactor-patterns.md` with migration pitfalls. |
 | v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETBRAIN_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. |
 | v2.28.0 | Domain concept removed entirely. Schema drops `brain_domains` collection and `domain` field from `brain_pages`. API no longer accepts/returns `domain`. UI no longer renders domain chips. Updated `references/domain-to-context-cleanup.md`. Context is the only organizational silo. |
@@ -534,3 +559,6 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Schema reset pitfall**: `nuke_context()` truncates records but leaves old collections and fields. To actually reset a PocketBrain schema (e.g., after renaming `brain`→`context`, dropping `domain`, or adding prefixed fields), delete collections explicitly before calling `setup_contexts()`. See `references/schema-refactor-patterns.md`.
 - **`.env` file after env var rename**: al renombrar variables de entorno en el skill (ej. `POCKETBRAIN_HOST` → `POCKETBRAIN_HOST`), también hay que actualizar `~/.hermes/.env`. Si el código lee `POCKETBRAIN_HOST` pero el `.env` sigue con `POCKETBRAIN_HOST`, el servidor no arranca. Usar `grep -rn "POCKETBRAIN_HOST\|POCKETBRAIN_HOST" ~/.hermes/` para encontrar todas las referencias.
 - **Relation slug→ID resolution**: high-level API methods like `create_goal(..., project="slug")` or `create_todo(..., todo_goal="slug")` work because `create_page()` resolves relation slugs to PocketBase IDs before sending the payload. If you write custom scripts that bypass `create_page()`, you must resolve relation slugs yourself or PocketBase will reject the record with a relation validation error.
+- **BWS refresh primero, no preguntes ni revises .env**: cuando el usuario dice "cambié el host/credenciales de PocketBrain", NO preguntes cuáles son ni revises el `.env` o env vars. Refresca BWS con `hermes secrets bitwarden sync --apply` para traer las credenciales actualizadas al shell actual. BWS es la fuente de verdad, no `.env` ni las env vars viejas del proceso actual.
+- **`_load_pocketbrain_env()` solo lee `os.environ` (BWS) — ya no toca `.env`**: `_load_pocketbrain_env()` lee las vars `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`, `POCKETBRAIN_CONTEXT` directo de `os.environ`. BWS inyecta estas vars al proceso de Hermes. Si ves `ValueError: Faltan credenciales`, verifica que BWS esté cacheando las creds con `cat ~/.hermes/cache/bws_cache.json | python3 -m json.tool`. Si el cache está desactualizado, refresca con `hermes secrets bitwarden sync --apply`.
+- **PocketHost bloquea Python urllib (403 error 1010)**: PocketHost (pockethost.io) usa Cloudflare anti-bot que rechaza `urllib.request` con HTTP 403 error 1010. `pb.py` usa `curl` vía subprocess, por lo que jala bien. Si conectas con un script Python que use urllib/requests directamente contra PocketHost, falla. Síntoma: `HTTP Error 403: Forbidden` con `error code: 1010`. Solución: usar `pb.py` (que invoca curl) o hacer los requests con `subprocess.run(["curl", ...])`.

@@ -14,7 +14,7 @@ Run this after any UI change that affects:
 ## 1. Delete old screenshots
 
 ```bash
-rm -f ~/Workspace/repos/personal/hermes-skills/screenshots/*.png
+rm -f ~/Workspace/repos/skills/hermes-skills/screenshots/*.png
 ```
 
 Do not keep old names. Use the numbered sequence below.
@@ -42,7 +42,7 @@ Copy the `browser_vision` screenshot cache to the final path:
 
 ```bash
 cp /Users/alvaro/.hermes/cache/screenshots/browser_screenshot_xxxx.png \
-   ~/Workspace/repos/personal/hermes-skills/screenshots/NN-name.png
+   ~/Workspace/repos/skills/hermes-skills/screenshots/NN-name.png
 ```
 
 ## 3. Keep image paths relative
@@ -61,7 +61,7 @@ Inside the root `README.md` use `screenshots/NN-name.png` directly.
 ## 5. Sync, commit, push
 
 ```bash
-cd ~/Workspace/repos/personal/hermes-skills
+cd ~/Workspace/repos/skills/hermes-skills
 rsync -av --delete ~/.hermes/skills/productivity/pocketbrain/ pocketbrain/
 rm -f pocketbrain/scripts/web_ui.html.bak pocketbrain/scripts/reseed_personal.py
 rm -rf pocketbrain/scripts/__pycache__
