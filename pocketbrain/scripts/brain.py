@@ -32,24 +32,11 @@ from pb import PB, quick_pb
 # ── PocketBrain env loader ──────────────────────────────────────────
 
 def _load_pocketbrain_env():
-    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ.
-    Fallback a os.environ si la variable no está en .env (ej. inyectada por BWS)."""
+    """Lee POCKETBRAIN_HOST, EMAIL, PASSWORD, CONTEXT de os.environ.
+    BWS inyecta estas vars directo al proceso de Hermes. Ya no lee .env."""
     env = {}
-    env_path = os.path.expanduser('~/.hermes/.env')
-    if os.path.exists(env_path):
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    k, v = line.split('=', 1)
-                    val = v.strip().strip('"').strip("'")
-                    env[k.strip()] = val
-                    # Propagar a os.environ para que esté disponible globalmente
-                    if k.strip().startswith('POCKETHOST_') or k.strip().startswith('POCKETBRAIN_'):
-                        os.environ[k.strip()] = val
-    # Fallback a os.environ para vars que BWS inyecta directo
     for key in ('POCKETBRAIN_HOST', 'POCKETBRAIN_EMAIL', 'POCKETBRAIN_PASSWORD', 'POCKETBRAIN_CONTEXT'):
-        if key not in env and key in os.environ:
+        if key in os.environ:
             env[key] = os.environ[key]
     return env
 
