@@ -63,12 +63,13 @@ brain = Brain('<context_name>')
 brain.create_page("GPT-4o", body="Modelo multimodal de [[OpenAI]]", page_type="entity")
 
 # Proyectos y tareas
-brain.create_page("Migración K8s", page_type="project")
-brain.create_todo("Configurar CI/CD")
-brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30")
+brain.create_project("Migración K8s")
+brain.create_todo("Configurar CI/CD", project="migracion-k8s")
+brain.create_goal("Migrar 50% servicios", status="active", deadline="2026-09-30",
+                  project="migracion-k8s")
 
 # Diario y recordatorios
-brain.journal_write("## Hoy\n- Avance en [[proyecto-x]]")
+brain.journal_write("## Hoy\n- Avance en [[migracion-k8s]]")
 brain.create_reminder("Reunión", date="2026-12-25", time="10:00")
 ```
 

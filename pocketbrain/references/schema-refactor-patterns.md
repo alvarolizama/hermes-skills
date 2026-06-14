@@ -20,6 +20,8 @@ Patrones y convenciones para refactorizar el schema de `brain_pages` sin romper 
   - `file_type`, `file_version`, `file_attachment`
   - `kb_confidence`, `kb_contested`, `kb_contradictions`, `kb_source_url`, `kb_source_sha256`
 
+> **Regla de oro del usuario:** si un campo se repite en varios tipos, pasa a ser genérico. Nunca uses espacios en valores de `select`; siempre `snake_case` con underscore.
+
 ## Decidir si un campo es compartido o prefijado
 
 | ¿Se repite en 2+ tipos? | Acción | Ejemplo |
@@ -125,3 +127,19 @@ Un refactor de schema completo (brain.py + brain_web.py + sync.py + graph.py + v
 4. Deploy + validación visual — levantar `brain_web.py` y verificar tabs.
 
 Si un subagente se atasca, continuar manualmente con lecturas directas y scripts de reemplazo controlados.
+
+### ⚠️ Pitfall: relaciones self/cross-reference en `setup_contexts`
+
+Cuando una colección tiene relaciones a sí misma (ej. `brain_pages.related_pages`) o a colecciones creadas posteriormente (ej. `brain_page_versions.page` -> `brain_pages`), `setup_contexts()` debe crear las colecciones en **dos pasos**:
+
+1. **Paso 1**: crear cada colección SIN los campos de relación no resueltos.
+2. **Paso 2**: PATCH cada colección para agregar los campos diferidos, usando los `pbc_xxx` IDs reales ya conocidos.
+
+Si intentas crear `brain_pages` con `related_pages` apuntando a `brain_pages` antes de que exista, PocketBase responde:
+
+```
+{"data":{"fields":{"22":{"collectionId":{"code":"validation_field_relation_missing_collection",
+  "message":"The relation collection doesn't exist."}}}},"message":"Failed to create collection.","status":400}
+```
+
+La solución es mantener un registro `SELF_REF_FIELDS` con los campos diferidos por colección, omitirlos en la creación inicial, y PATCHearlos después. Ver `brain.py` `setup_contexts()` para la implementación actual.

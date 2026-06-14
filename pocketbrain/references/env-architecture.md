@@ -9,6 +9,8 @@ Cada skill es dueño de sus propias credenciales:
 | `pocketbase` | `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD` | Nadie — `pb.py` no lee env vars |
 | `pocketbrain` | `POCKETHOST_HOST`, `POCKETHOST_EMAIL`, `POCKETHOST_PASSWORD`, `POCKETBRAIN_CONTEXT` | `brain.py` → `_pocketbrain_pb()` y `Brain(context_name='')` |
 
+> **Naming final acordado con el usuario:** las credenciales de conexión usan el prefijo `POCKETHOST_`. El contexto default del agente conserva su nombre original `POCKETBRAIN_CONTEXT`. No renombrar a `POCKETHOST_CONTEXT`.
+
 ## Flujo de conexión
 
 ```
@@ -40,7 +42,7 @@ pb = quick_pb()  # ValueError: PB() requiere 'host'
 
 ```python
 def _pocketbrain_pb():
-    """Crea un PB autenticado usando POCKETBRAIN_* del .env."""
+    """Crea un PB autenticado usando POCKETHOST_* del .env."""
     env = _load_pocketbrain_env()
     host = env.get('POCKETHOST_HOST', 'http://localhost:8090')
     email = env.get('POCKETHOST_EMAIL', '')

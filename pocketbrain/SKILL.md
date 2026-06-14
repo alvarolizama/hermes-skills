@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundaria."
-version: 2.28.0
+version: 2.29.0
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -231,15 +231,15 @@ proyecto (page_type='project')
 brain.create_page("Migración K8s", page_type="project")
 
 # 2. Definir goals y milestones
-brain.create_goal("Migrar 50% servicios", type="milestone", deadline="2026-09-30",
-                  project_slug="migracion-k8s")  # relaciona al proyecto
+brain.create_goal("Migrar 50% servicios", status="active", deadline="2026-09-30",
+                  project="migracion-k8s")  # relaciona al proyecto
 
 # 3. Crear tareas
-brain.create_todo("Configurar CI/CD para K8s", related_slugs=["migracion-k8s"])
+brain.create_todo("Configurar CI/CD para K8s", project="migracion-k8s")
 
 # 4. Agendar recordatorios (reuniones, fechas límite)
 brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
-                      related_slugs=["migracion-k8s"])
+                      project="migracion-k8s")
 ```
 ```
 
@@ -264,9 +264,9 @@ tags=["elixir", "phoenix", "ecto"]
 tags=["devops", "kubernetes", "cicd"]
 
 # Confidence: sé honesto sobre la certeza
-confidence='high'    # múltiples fuentes confiables, experiencia directa
-confidence='medium'  # bien documentado, hay debate, fuente única confiable
-confidence='low'     # fuente única, especulación, inferencia propia
+kb_confidence='high'    # múltiples fuentes confiables, experiencia directa
+kb_confidence='medium'  # bien documentado, hay debate, fuente única confiable
+kb_confidence='low'     # fuente única, especulación, inferencia propia
 ```
 
 ### Resumen del flujo completo
@@ -284,7 +284,7 @@ else:
         title="GPT-4o",
         body="[[OpenAI]] lanzó GPT-4o...\nVs [[Claude 3.5 Sonnet]]...\n^[paper-x]",
         page_type="entity",
-        confidence='high',
+        kb_confidence='high',
         tags=["multimodal", "llm"]
     )
 ```
@@ -301,7 +301,7 @@ if report['summary']['orphans']:
 
 Si `broken_links` aparece:
 1. **Typo** → corrígelo directamente (ej. `transforrmer` → `transformer`)
-2. **Página faltante** → créala con `create_page()`, confidence='low'
+2. **Página faltante** → créala con `create_page()`, kb_confidence='low'
 3. **No sabes** → créala igual con body mínimo, no bloquees el flujo
 
 ---
@@ -319,14 +319,14 @@ brain.create_todo("Revisar PR", related_slugs=["proyecto-x"])
 brain.todos(status="today")
 brain.move_todo(id, "done")
 
-# Goals (ver references/goals.md)
-brain.create_goal("Lanzar MVP", type="milestone", deadline="2026-09-30")
-brain.complete_goal(id, retrospective="Entregado a tiempo.")
-brain.get_goal_tree()
+```python
+# Goals
+brain.create_goal("Lanzar MVP", status="active", deadline="2026-09-30")
+brain.create_milestone("Beta cerrada", status="active", deadline="2026-08-15")
 
 # Proyectos
-brain.create_page("App Móvil", page_type="project")
-
+brain.create_project("App Móvil")
+```
 # Diario
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
 
@@ -433,7 +433,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/cli-migration.md` | Mass rename de variables/colecciones |
 | `references/rename-checklist.md` | Checklist pre/post mass rename |
 | `references/realtime-fallback.md` | Heartbeat vs SSE para notificaciones |
-| `references/env-architecture.md` | Variables de entorno POCKETBRAIN_* |
+| `references/env-architecture.md` | Variables de entorno POCKETHOST_* y POCKETBRAIN_CONTEXT; separación de responsabilidades con pocketbase skill |
 | `references/repo-maintenance.md` | Mantener repo sync con skill runtime |
 | `references/tracing.md` | Trazabilidad con brain_log |
 | `references/collection-unification.md` | Como migrar colecciones a brain_pages y agregar nuevos tipos al sidebar |
@@ -453,6 +453,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
+| v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETHOST_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. See `references/schema-refactor-patterns.md` and `references/env-architecture.md`. |
 | v2.28.0 | Domain concept removed entirely. Schema drops `brain_domains` collection and `domain` field from `brain_pages`. API no longer accepts/returns `domain`. UI no longer renders domain chips. Updated `references/domain-to-context-cleanup.md`. Context is the only organizational silo. |
 | v2.27.1 | Added predefined reports (`report_projects`, `report_project_status`, `report_todos`, `report_journal`, `report_reminders`, `report_lint`) in `brain.py` plus `/api/reports/*` endpoints in `brain_web.py`. Added channel-aware response formatting: use `clarify()` for ambiguous queries, then format for Hermes Desktop (rich markdown), Telegram (short + emojis), or CLI (dense pipes). See `references/reports-by-channel.md`. |
 | v2.26.1 | Removed `okr` and `deliverable` page types (14 types total). Updated `brain.py` PAGE_TYPES, `create_goal` validation, and `sync.py` to match. Docs no longer list real/default contexts as examples. Added `references/screenshots-readme-workflow.md`. |
@@ -473,8 +474,8 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 ### Pitfalls
 
 - **CREATION_ORDER**: las relaciones mandan. Ver setup_contexts() en brain.py.
-- **Self-ref fields**: brain_pages.related_pages (auto-relación) se agrega con PATCH post-creación.
-- **Naming**: campo relation en PB se llama brain (legado) pero coleccion padre es contexts.
+- **Self-ref fields**: `brain_pages` auto-relaciones (`related_pages`, `project`, `todo_goal`) y relaciones cruzadas (`brain_log.page`, `brain_page_versions.page`) se agregan con PATCH post-creación. Ver `setup_contexts()` en `brain.py`.
+- **Naming**: campo relation se llama `context` y la colección padre es `brain_contexts`.
 - **`_get_page()` returns error dicts on 404, not None**: PocketBase devuelve `{"data":{}, "message":"not found", "status":404}` cuando una página no existe. La función `_get_page()` lo retorna directamente. **Siempre verifica `'id' in result` antes de usar cualquier campo del dict retornado.** Usa `page = self._get_page(slug); if page and 'id' in page:` como patrón.
 - **PocketBase schema updates**: `setup_contexts()` solo CREA colecciones que no existen. No actualiza colecciones existentes con nuevos campos o valores. Para actualizar una colección existente:
   1. Usar `pb.import_collections()` con el schema completo (requiere resolver IDs de relaciones a pbc_xxx)
