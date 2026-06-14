@@ -27,9 +27,9 @@ with open(env_path) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETHOST_HOST"] = env["POCKETHOST_HOST"]
-os.environ["POCKETHOST_EMAIL"] = env["POCKETHOST_EMAIL"]
-os.environ["POCKETHOST_PASSWORD"] = env["POCKETHOST_PASSWORD"]
+os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
+os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
+os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     context, output = parse_args()
     output = output or os.path.expanduser(f"~/context-graph-{context}.html")
 
-    pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
+    pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
     ctx = Brain(context, pb=pb)
     graph = build_graph(ctx)
 

@@ -354,7 +354,7 @@ PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente
 |-------------|-----|------------------|
 | `pocketbase` skill → `pb.py` | Cliente HTTP PocketBase | `sys.path.insert(0, ~/.hermes/skills/productivity/pocketbase/scripts)` |
 | `curl` (en PATH) | File uploads vía multipart en `create_page()`, `ingest_file()` | `which curl` |
-| `POCKETHOST_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
+| `POCKETBRAIN_HOST`, `_EMAIL`, `_PASSWORD` | Credenciales PocketBase | `~/.hermes/.env` (independiente de `POCKETBASE_*`) |
 | `POCKETBRAIN_CONTEXT` | Contexto default del agente | `~/.hermes/.env` o variable de entorno. |
 
 ### Quick Start headless
@@ -393,7 +393,7 @@ python3 brain_web.py --context personal --port 8899
 
 Requisitos:
 - PocketBase corriendo con las colecciones creadas.
-- Variables `POCKETHOST_HOST`, `POCKETHOST_EMAIL`, `POCKETHOST_PASSWORD` en `~/.hermes/.env`.
+- Variables `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD` en `~/.hermes/.env`.
 - Usa `--context <name>` para seleccionar el contexto.
 
 Después de modificar módulos ES o CSS, reiniciar el servidor no basta por el cache del browser (`max-age=3600`). Usa `Cmd+Shift+R` o DevTools → Disable cache.
@@ -451,7 +451,7 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | Version | Cambios |
 |---------|--------|
 | v2.29.1 | Updated SKILL.md examples and references for v2.29.0 schema (project relations, kb_confidence, create_project). Added `references/schema-refactor-patterns.md` with migration pitfalls. |
-| v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETHOST_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. |
+| v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETBRAIN_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. |
 | v2.28.0 | Domain concept removed entirely. Schema drops `brain_domains` collection and `domain` field from `brain_pages`. API no longer accepts/returns `domain`. UI no longer renders domain chips. Updated `references/domain-to-context-cleanup.md`. Context is the only organizational silo. |
 | v2.27.1 | Added predefined reports (`report_projects`, `report_project_status`, `report_todos`, `report_journal`, `report_reminders`, `report_lint`) in `brain.py` plus `/api/reports/*` endpoints in `brain_web.py`. Added channel-aware response formatting: use `clarify()` for ambiguous queries, then format for Hermes Desktop (rich markdown), Telegram (short + emojis), or CLI (dense pipes). See `references/reports-by-channel.md`. |
 | v2.26.1 | Removed `okr` and `deliverable` page types (14 types total). Updated `brain.py` PAGE_TYPES, `create_goal` validation, and `sync.py` to match. Docs no longer list real/default contexts as examples. Added `references/screenshots-readme-workflow.md`. |
@@ -532,5 +532,5 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Mobile header must stack title → breadcrumb → select**: on narrow viewports, the `.view-header` should use a flex column layout where the H1 is first, the breadcrumb is second, and the filter select is third. Do not leave them in a single horizontal row. This is the expected mobile layout. See `references/ui-validation-checklist.md`.
 - **Screenshots and README must be refreshed together after UI changes**: when the user asks to update screenshots, follow the workflow in `references/screenshots-readme-workflow.md`: delete old PNGs, capture each view, update README paths/captions, sync runtime→repo, commit, and push.
 - **Schema reset pitfall**: `nuke_context()` truncates records but leaves old collections and fields. To actually reset a PocketBrain schema (e.g., after renaming `brain`→`context`, dropping `domain`, or adding prefixed fields), delete collections explicitly before calling `setup_contexts()`. See `references/schema-refactor-patterns.md`.
+- **`.env` file after env var rename**: al renombrar variables de entorno en el skill (ej. `POCKETBRAIN_HOST` → `POCKETBRAIN_HOST`), también hay que actualizar `~/.hermes/.env`. Si el código lee `POCKETBRAIN_HOST` pero el `.env` sigue con `POCKETBRAIN_HOST`, el servidor no arranca. Usar `grep -rn "POCKETBRAIN_HOST\|POCKETBRAIN_HOST" ~/.hermes/` para encontrar todas las referencias.
 - **Relation slug→ID resolution**: high-level API methods like `create_goal(..., project="slug")` or `create_todo(..., todo_goal="slug")` work because `create_page()` resolves relation slugs to PocketBase IDs before sending the payload. If you write custom scripts that bypass `create_page()`, you must resolve relation slugs yourself or PocketBase will reject the record with a relation validation error.
-- **Dense seed data pattern**: `seed.py` creates contexts and ~89+ pages per context covering all page types, with cross-links via `[[wikilinks]]` and `project` relations. After schema changes, run `seed.py [context...]` against a clean instance to validate end-to-end data creation and relations.

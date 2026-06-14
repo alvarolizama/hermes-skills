@@ -45,7 +45,7 @@ class SyncEngine:
     def __init__(self, output_dir: str, full: bool = False):
         self.output_dir = Path(output_dir).expanduser().resolve()
         self.full = full
-        self.pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
+        self.pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
         self.state_file = self.output_dir / ".sync_state.json"
         self.state = self._load_state()
         self.stats = {"updated": 0, "skipped": 0, "attachments": 0}

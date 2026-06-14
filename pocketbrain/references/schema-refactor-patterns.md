@@ -51,6 +51,7 @@ Al renombrar campos o colecciones, verificar:
 5. Vistas JS que lean el campo.
 6. Scripts auxiliares (`sync.py`, `graph.py`, `seed.py`).
 7. Documentación y ejemplos.
+8. **Archivo `.env`** (`~/.hermes/.env`): si renombraste variables de entorno como `POCKETBRAIN_HOST` → `POCKETHOST_HOST`, actualizar también los nombres de las claves en el `.env`. Si el código lee `POCKETHOST_HOST` pero el `.env` sigue teniendo `POCKETBRAIN_HOST`, el servidor no arranca. Usa `grep -rn "POCKETBRAIN_HOST\|POCKETHOST_HOST" ~/.hermes/` para encontrar todas las referencias.
 
 ## Ejemplo de schema reducido
 

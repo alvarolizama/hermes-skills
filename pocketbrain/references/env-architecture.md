@@ -7,7 +7,7 @@ Cada skill es dueño de sus propias credenciales:
 | Skill | Variables en `.env` | Quién las lee |
 |-------|--------------------|---------------|
 | `pocketbase` | `POCKETBASE_HOST`, `POCKETBASE_EMAIL`, `POCKETBASE_PASSWORD` | Nadie — `pb.py` no lee env vars |
-| `pocketbrain` | `POCKETHOST_HOST`, `POCKETHOST_EMAIL`, `POCKETHOST_PASSWORD`, `POCKETBRAIN_CONTEXT` | `brain.py` → `_pocketbrain_pb()` y `Brain(context_name='')` |
+| `pocketbrain` | `POCKETBRAIN_HOST`, `POCKETBRAIN_EMAIL`, `POCKETBRAIN_PASSWORD`, `POCKETBRAIN_CONTEXT` | `brain.py` → `_pocketbrain_pb()` y `Brain(context_name='')` |
 
 > **Naming final acordado con el usuario:** las credenciales de conexión usan el prefijo `POCKETHOST_`. El contexto default del agente conserva su nombre original `POCKETBRAIN_CONTEXT`. No renombrar a `POCKETHOST_CONTEXT`.
 
@@ -15,9 +15,9 @@ Cada skill es dueño de sus propias credenciales:
 
 ```
 ~/.hermes/.env
-  ├── POCKETHOST_HOST=http://zima.vpn.cloud:18090
-  ├── POCKETHOST_EMAIL=soy@alvarolizama.com
-  └── POCKETHOST_PASSWORD=***
+  ├── POCKETBRAIN_HOST=http://zima.vpn.cloud:18090
+  ├── POCKETBRAIN_EMAIL=soy@alvarolizama.com
+  └── POCKETBRAIN_PASSWORD=***
 
         ↓ _pocketbrain_pb() lee y pasa a quick_pb()
 
@@ -44,9 +44,9 @@ pb = quick_pb()  # ValueError: PB() requiere 'host'
 def _pocketbrain_pb():
     """Crea un PB autenticado usando POCKETHOST_* del .env."""
     env = _load_pocketbrain_env()
-    host = env.get('POCKETHOST_HOST', 'http://localhost:8090')
-    email = env.get('POCKETHOST_EMAIL', '')
-    password = env.get('POCKETHOST_PASSWORD', '')
+    host = env.get('POCKETBRAIN_HOST', 'http://localhost:8090')
+    email = env.get('POCKETBRAIN_EMAIL', '')
+    password = env.get('POCKETBRAIN_PASSWORD', '')
     return quick_pb(host, email, password)
 ```
 
@@ -62,7 +62,7 @@ with open(os.path.expanduser('~/.hermes/.env')) as f:
             k, v = line.split('=', 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
 
-pb = quick_pb(env['POCKETHOST_HOST'], env['POCKETHOST_EMAIL'], env['POCKETHOST_PASSWORD'])
+pb = quick_pb(env['POCKETBRAIN_HOST'], env['POCKETBRAIN_EMAIL'], env['POCKETBRAIN_PASSWORD'])
 ```
 
 ## Por qué existen POCKETBASE_* y POCKETBRAIN_*

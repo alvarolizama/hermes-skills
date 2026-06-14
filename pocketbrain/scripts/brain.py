@@ -32,7 +32,7 @@ from pb import PB, quick_pb
 # ── PocketBrain env loader ──────────────────────────────────────────
 
 def _load_pocketbrain_env():
-    """Carga POCKETHOST_HOST, POCKETHOST_EMAIL, POCKETHOST_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ."""
+    """Carga POCKETBRAIN_HOST, POCKETBRAIN_EMAIL, POCKETBRAIN_PASSWORD, POCKETBRAIN_CONTEXT del .env y los setea en os.environ."""
     env = {}
     env_path = os.path.expanduser('~/.hermes/.env')
     if os.path.exists(env_path):
@@ -51,9 +51,9 @@ def _load_pocketbrain_env():
 def _pocketbrain_pb():
     """Crea un PB autenticado usando POCKETHOST_* del .env."""
     env = _load_pocketbrain_env()
-    host = env.get('POCKETHOST_HOST', env.get('POCKETBRAIN_HOST', 'http://localhost:8090'))
-    email = env.get('POCKETHOST_EMAIL', env.get('POCKETBRAIN_EMAIL', ''))
-    password = env.get('POCKETHOST_PASSWORD', env.get('POCKETBRAIN_PASSWORD', ''))
+    host = env.get('POCKETBRAIN_HOST', env.get('POCKETBRAIN_HOST', 'http://localhost:8090'))
+    email = env.get('POCKETBRAIN_EMAIL', env.get('POCKETBRAIN_EMAIL', ''))
+    password = env.get('POCKETBRAIN_PASSWORD', env.get('POCKETBRAIN_PASSWORD', ''))
     return quick_pb(host, email, password)
 
 

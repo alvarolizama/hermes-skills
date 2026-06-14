@@ -16,9 +16,9 @@ with open(p) as f:
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip().strip('"').strip("'")
-os.environ["POCKETHOST_HOST"] = env["POCKETHOST_HOST"]
-os.environ["POCKETHOST_EMAIL"] = env["POCKETHOST_EMAIL"]
-os.environ["POCKETHOST_PASSWORD"] = env["POCKETHOST_PASSWORD"]
+os.environ["POCKETBRAIN_HOST"] = env["POCKETBRAIN_HOST"]
+os.environ["POCKETBRAIN_EMAIL"] = env["POCKETBRAIN_EMAIL"]
+os.environ["POCKETBRAIN_PASSWORD"] = env["POCKETBRAIN_PASSWORD"]
 
 from brain import Brain, extract_wikilinks
 from pb import quick_pb
@@ -46,7 +46,7 @@ def get_brain(ctx=None):
     with _brain_lock:
         if ctx in _brain_cache:
             return _brain_cache[ctx]
-        pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"])
+        pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"])
         brain = Brain(ctx, pb=pb)
         brain.orient()
         _brain_cache[ctx] = brain
@@ -481,10 +481,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.serve_json(get_versions(ctx, qs.get('slug',[None])[0]))
             elif path == "/api/logs": self.serve_json(get_logs(ctx))
             elif path == "/api/contexts":
-                pb = quick_pb(env["POCKETHOST_HOST"], env["POCKETHOST_EMAIL"], env["POCKETHOST_PASSWORD"]); contexts = pb.list("brain_contexts", perPage=50)
+                pb = quick_pb(env["POCKETBRAIN_HOST"], env["POCKETBRAIN_EMAIL"], env["POCKETBRAIN_PASSWORD"]); contexts = pb.list("brain_contexts", perPage=50)
                 self.serve_json([{"name":c["name"],"label":c.get("label",""),"id":c["id"]} for c in contexts])
             elif path == "/api/config":
-                self.serve_json({"pb_url": env["POCKETHOST_HOST"], "context": ctx})
+                self.serve_json({"pb_url": env["POCKETBRAIN_HOST"], "context": ctx})
             elif path == "/api.js":
                 self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Cache-Control","max-age=3600"); self.end_headers()
                 js_path = Path(__file__).parent / "api.js"

@@ -9,9 +9,9 @@ Guía rápida de setup, uso y flujos de trabajo comunes.
 ### 1. Variables de entorno (`~/.hermes/.env`)
 
 ```bash
-POCKETHOST_HOST=http://localhost:8090
-POCKETHOST_EMAIL=admin@example.com
-POCKETHOST_PASSWORD=***
+POCKETBRAIN_HOST=http://localhost:8090
+POCKETBRAIN_EMAIL=admin@example.com
+POCKETBRAIN_PASSWORD=***
 ```
 
 ### 2. Crear colecciones en PocketBase
