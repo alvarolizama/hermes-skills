@@ -29,7 +29,7 @@ Antes de commitear cambios al README, verificar:
 
 2. **Puerto del servidor**: verificar que el puerto en el Quick Start coincide con el `--port` que realmente se usa. El SKILL.md y el README deben mostrar el mismo comando.
 
-3. **Variables de entorno**: la sección de Dependencia/Setup en el README debe reflejar EXACTAMENTE lo que usa `brain.py`. Si `brain.py` lee `POCKETBRAIN_HOST`, el README no debe mostrar `POCKETBASE_HOST`.
+3. **Variables de entorno**: la sección de Dependencia/Setup en el README debe reflejar EXACTAMENTE lo que usa `brain.py`. Si `brain.py` lee `POCKETHOST_HOST`, el README no debe mostrar `POCKETBASE_HOST`.
 
 4. **Screenshots**: confirmar que los paths relativos apuntan a archivos que existen y están en git:
    ```bash

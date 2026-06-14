@@ -117,16 +117,26 @@ setup_contexts(pb)
 
 Luego verifica en el Admin UI de PocketBase que los campos antiguos (`brain`, `domain`, `confidence`, etc.) desaparecieron y los nuevos (`context`, `kb_*`, compartidos) están presentes.
 
-## Subagentes y fases
+### ⚠️ Pitfall: relaciones pasadas como slugs en `create_page`
 
-Un refactor de schema completo (brain.py + brain_web.py + sync.py + graph.py + vistas JS + seed.py) excede la ventana de atención de un solo subagente. Dividir en fases:
+PocketBase requiere IDs (`pbc_xxx`) en los campos `relation`, no slugs. Si `seed.py` o un script de carga pasa `project="migracion-k8s"` o `todo_goal="lanzar-mvp"`, `create_page()` debe resolver esos slugs a IDs **antes** de enviar el payload a PocketBase.
 
-1. Schema y backend (`brain.py`, `brain_web.py`, `sync.py`, `graph.py`) — validar con `python3 -m py_compile`.
-2. Frontend JS (`views/*.js`) — validar con `node --check`.
-3. Seed data (`seed.py`) — ejecutar contra base limpia.
-4. Deploy + validación visual — levantar `brain_web.py` y verificar tabs.
+El patrón en `brain.py` es:
 
-Si un subagente se atasca, continuar manualmente con lecturas directas y scripts de reemplazo controlados.
+```python
+relation_fields = {'project', 'todo_goal'}
+for rel_key in relation_fields:
+    if rel_key in kwargs:
+        rel_val = kwargs[rel_key]
+        if isinstance(rel_val, str) and rel_val and not rel_val.startswith('pbc_'):
+            rel_page = self._get_page(rel_val)
+            if rel_page and 'id' in rel_page:
+                kwargs[rel_key] = rel_page['id']
+            else:
+                kwargs[rel_key] = None
+```
+
+Esto permite que el API de alto nivel use slugs legibles (como en `seed.py` y en ejemplos del agente) mientras el backend envía IDs válidos a PocketBase.
 
 ### ⚠️ Pitfall: relaciones self/cross-reference en `setup_contexts`
 
@@ -143,3 +153,24 @@ Si intentas crear `brain_pages` con `related_pages` apuntando a `brain_pages` an
 ```
 
 La solución es mantener un registro `SELF_REF_FIELDS` con los campos diferidos por colección, omitirlos en la creación inicial, y PATCHearlos después. Ver `brain.py` `setup_contexts()` para la implementación actual.
+
+## Subagentes y fases
+
+Un refactor de schema completo (brain.py + brain_web.py + sync.py + graph.py + vistas JS + seed.py) excede la ventana de atención de un solo subagente. Dividir en fases:
+
+1. Schema y backend (`brain.py`, `brain_web.py`, `sync.py`, `graph.py`) — validar con `python3 -m py_compile`.
+2. Frontend JS (`views/*.js`) — validar con `node --check`.
+3. Seed data (`seed.py`) — ejecutar contra base limpia.
+4. Deploy + validación visual — levantar `brain_web.py` y verificar tabs.
+
+Si un subagente se atasca, continuar manualmente con lecturas directas y scripts de reemplazo controlados.
+
+## Validación post-refactor
+
+Después de cualquier cambio de schema o relaciones:
+
+1. `python3 -m py_compile brain.py brain_web.py sync.py graph.py seed.py`
+2. `node --check app.js router.js store.js api.js markdown.js components/*.js views/*.js`
+3. Listar colecciones en PocketBase y confirmar que no quedan campos legacy.
+4. Crear un registro de prueba de cada `page_type` con relaciones.
+5. Levantar `brain_web.py` y verificar que la UI renderiza counts, tabs y relaciones sin errores de consola.

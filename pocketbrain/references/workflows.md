@@ -9,18 +9,18 @@ Guía rápida de setup, uso y flujos de trabajo comunes.
 ### 1. Variables de entorno (`~/.hermes/.env`)
 
 ```bash
-POCKETBRAIN_HOST=http://localhost:8090
-POCKETBRAIN_EMAIL=admin@example.com
-POCKETBRAIN_PASSWORD=***
+POCKETHOST_HOST=http://localhost:8090
+POCKETHOST_EMAIL=admin@example.com
+POCKETHOST_PASSWORD=***
 ```
 
 ### 2. Crear colecciones en PocketBase
 
 ```python
-from brain import _pocketbrain_pb, setup_brains
+from brain import _pocketbrain_pb, setup_contexts
 
 pb = _pocketbrain_pb()       # carga POCKETBRAIN_* del .env, autentica
-setup_brains(pb)              # crea las 11 colecciones
+setup_contexts(pb)              # crea las 11 colecciones
 ```
 
 ### 3. Crear tu primer cerebro

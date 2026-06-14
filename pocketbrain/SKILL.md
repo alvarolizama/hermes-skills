@@ -1,7 +1,7 @@
 ---
 name: pocketbrain
 description: "Segundo cerebro digital sobre PocketBase. Prioridad: responder al usuario en conversación con markdown (tablas, listas, metadata). Web UI live es secundaria."
-version: 2.29.0
+version: 2.29.1
 author: Alvaro L.
 platforms: [macos, linux]
 metadata:
@@ -168,7 +168,7 @@ Usa esta tabla de decisión para determinar el tipo correcto:
 
 **Si hay ambigüedad real** (ej. "Álvaro" podría ser entity o concept): pregunta al usuario.
 
-**No preguntes por:** `confidence`, `tags`, `summary`, `source_url` — infiérelos del contexto.
+**No preguntes por:** `kb_confidence`, `tags`, `summary`, `kb_source_url` — infiérelos del contexto.
 
 ### PASO 2 — Buscar contenido previo (evitar duplicados)
 
@@ -228,7 +228,7 @@ proyecto (page_type='project')
 **Flujo de proyecto:**
 ```python
 # 1. Crear el proyecto
-brain.create_page("Migración K8s", page_type="project")
+brain.create_project("Migración K8s")
 
 # 2. Definir goals y milestones
 brain.create_goal("Migrar 50% servicios", status="active", deadline="2026-09-30",
@@ -240,7 +240,6 @@ brain.create_todo("Configurar CI/CD para K8s", project="migracion-k8s")
 # 4. Agendar recordatorios (reuniones, fechas límite)
 brain.create_reminder("Demo migración", date="2026-08-15", time="10:00",
                       project="migracion-k8s")
-```
 ```
 
 **Para goals, usa el tipo correcto:**
@@ -287,7 +286,6 @@ else:
         kb_confidence='high',
         tags=["multimodal", "llm"]
     )
-```
 
 # 3. MANTENER: lint periódico
 report = brain.lint()
@@ -315,18 +313,17 @@ brain.search("machine learning")     # case-insensitive, rankeado
 brain.append_to_page("mantrams", "- Nuevo", heading="2026-06-10")
 
 # Tareas
-brain.create_todo("Revisar PR", related_slugs=["proyecto-x"])
+brain.create_todo("Revisar PR", project="proyecto-x")
 brain.todos(status="today")
 brain.move_todo(id, "done")
 
-```python
 # Goals
 brain.create_goal("Lanzar MVP", status="active", deadline="2026-09-30")
 brain.create_milestone("Beta cerrada", status="active", deadline="2026-08-15")
 
 # Proyectos
 brain.create_project("App Móvil")
-```
+
 # Diario
 brain.journal_write("## Hoy\n- Avancé en [[proyecto-x]]", mood="great")
 
@@ -342,7 +339,7 @@ brain.index()          # catálogo
 brain.recent_logs(20)  # trazabilidad
 
 # Seed data (para tests/demos)
-# python3 scripts/seed.py  # crea ~72 páginas interconectadas
+# python3 scripts/seed.py  # crea ~89+ páginas interconectadas por contexto
 ```
 
 ---
@@ -366,7 +363,7 @@ PocketBrain funciona **sin necesidad de levantar servidor web**. Desde el agente
 # 0. Verificar dependencias
 which curl || brew install curl
 
-# 1. Crear las 6 colecciones (una vez)
+# 1. Crear las 5 colecciones (una vez)
 cd ~/.hermes/skills/productivity/pocketbrain/scripts
 python3 -c "from brain import _pocketbrain_pb, setup_contexts; setup_contexts(_pocketbrain_pb())"
 
@@ -380,7 +377,7 @@ from brain import Brain
 brain = Brain('personal')  # o Brain() usando POCKETBRAIN_CONTEXT
 brain.orient()
 brain.create_page("Nueva idea", page_type="idea")
-brain.create_todo("Revisar logs", page_slug="nueva-idea", status="today")
+brain.create_todo("Revisar logs", project="nueva-idea", status="today")
 brain.lint()
 ```
 
@@ -412,8 +409,9 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/auto-linking.md` | Auto-link de wikilinks, auto-suggest page_type, auto-backlinks |
 | `references/llm-wiki-workflow.md` | Flujo LLM Wiki: ingest, calidad, mantenimiento, consulta |
 | `references/llm-wiki-comparison.md` | Mapeo PocketBrain vs LLM Wiki de Karpathy |
-| `references/schema.md` | Detalle de las 6 colecciones y sus campos, historial de unificación |
-| `references/schema-audit.md` | Auditoría de integridad del schema: checklist 10 puntos para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
+| `references/schema.md` | Detalle de las colecciones y sus campos, historial de unificación |
+| `references/schema-audit.md` | Auditoría de integridad del schema: checklist para detectar colecciones legacy, stale references e inconsistencias lectura/escritura |
+| `references/schema-refactor-patterns.md` | Convenciones para refactorizar el schema: campos compartidos vs prefijados, relaciones por contexto, mass rename checklist, pitfalls de `nuke_context`, relaciones self/cross-reference, resolución slug→ID |
 | `references/goals.md` | Sistema de goals y milestones |
 | `references/reports-by-channel.md` | Reportes predefinidos y formatos por canal: Hermes Desktop, Telegram, CLI |
 | `references/web-ui.md` | Navegación y vistas del servidor web live (opcional) |
@@ -445,7 +443,6 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 | `references/screenshots-readme-workflow.md` | Cómo refrescar screenshots y README.md tras cambios UI (secuencia de vistas, rutas relativas, README conciso) |
 | `references/domain-to-context-cleanup.md` | Domain ya no se usa; contexto es el único silo. Schema, API y UI actualizados |
 | `references/context-only-migration.md` | Guía de migración a context-only: schema, reportes, UI, lecciones |
-| `references/schema-refactor-patterns.md` | Convenciones para refactorizar el schema de brain_pages: campos compartidos vs prefijados, relaciones por contexto, mass rename checklist |
 | `references/project-detail-ui.md` | Implementación completa de vista de proyecto: métricas, 12 tabs, kanban, grafo local |
 | `references/ui-consistency-patterns.md` | Patrones de consistencia visual: headers con icono, tabs con iconos, filter select uniforme, kanban unificado, sin emoji, hash state |
 
@@ -453,29 +450,19 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 
 | Version | Cambios |
 |---------|--------|
-| v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETHOST_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. See `references/schema-refactor-patterns.md` and `references/env-architecture.md`. |
+| v2.29.1 | Updated SKILL.md examples and references for v2.29.0 schema (project relations, kb_confidence, create_project). Added `references/schema-refactor-patterns.md` with migration pitfalls. |
+| v2.29.0 | Schema refactor: prefixed/shared fields (`status`, `owner`, `deadline`, `date`, `time`, `done`, `done_date`, `mood`, `project`) and type-specific fields (`todo_goal`, `kb_*`, `file_*`). Renamed env vars `POCKETBRAIN_HOST/EMAIL/PASSWORD` → `POCKETHOST_HOST/EMAIL/PASSWORD`. Rewrote `setup_contexts()` to create collections in two passes with deferred self/cross-relations. Rewrote `seed.py` with dense generic demo data. Wiped and re-seeded live PocketBase. |
 | v2.28.0 | Domain concept removed entirely. Schema drops `brain_domains` collection and `domain` field from `brain_pages`. API no longer accepts/returns `domain`. UI no longer renders domain chips. Updated `references/domain-to-context-cleanup.md`. Context is the only organizational silo. |
 | v2.27.1 | Added predefined reports (`report_projects`, `report_project_status`, `report_todos`, `report_journal`, `report_reminders`, `report_lint`) in `brain.py` plus `/api/reports/*` endpoints in `brain_web.py`. Added channel-aware response formatting: use `clarify()` for ambiguous queries, then format for Hermes Desktop (rich markdown), Telegram (short + emojis), or CLI (dense pipes). See `references/reports-by-channel.md`. |
 | v2.26.1 | Removed `okr` and `deliverable` page types (14 types total). Updated `brain.py` PAGE_TYPES, `create_goal` validation, and `sync.py` to match. Docs no longer list real/default contexts as examples. Added `references/screenshots-readme-workflow.md`. |
-| v2.25.0 | Skill optimizado para uso headless: Setup reordenado, UI web documentada como opcional. Project detail completo: dashboard de métricas + 12 tabs (Contenido, Goals, Milestones, Ideas, Planes, Todo kanban, Notas, Reminders, Journal, Archivos, Pages, Graph). brain.py: PAGE_TYPES, validaciones en create_page/create_goal/create_todo/create_reminder, list_goals filtra por project_slug. brain_web.py: fix `related` no definido en `get_todos` cuando related_pages es lista. |
-| v2.24.1 | Modular SPA refactor completado: view stacking fix, project detail con todas las tabs y counts reales, cards navegables, wikilinks/backlinks navegables sin stacking, sidebar iconos alineados, Entregables eliminado. Backend: normalizar `expand.related_pages` (dict vs list) en `brain_web.py`. Seed: reminders/journal ahora vinculan `page_slug`. Nuevas referencias: `backend-relations-shape.md`, `project-detail-validation.md`, `modular-spa-project-tabs.md`, `modular-spa-journal.md`, `brain-py-improvement-plan.md`. |
-| v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0). |
-| v2.24.0 | Markdown-first + contexto obligatorio + POCKETBRAIN_CONTEXT + showIndex view activation + Wiki sidebar link + breadcrumb ← Todos tipo linkeable. Fix: status tabs en goals/milestones (gt is not defined, typeFilter perdido). Cards clickeables. Links con href=# → javascript:void(0).
-| v2.20.0 | Minimalist cards (title only, no chips/status/metadata). Sidebar `;return false` en todos los onclicks. Pitfall: read_file() corrompe archivos si se escribe de vuelta. |
-| v2.18.0 | Filter select: Todo y Reminders cambian a Todos/Con proyecto/Sin proyecto. Fix goal filter else-if bug ('project' atrapado por else-if generico). Actualizado ui-filter-pattern.md con page_slug filter y pitfall. |
-| v2.17.0 | fix: showPage() desactiva vistas previas antes de activar view-wiki para evitar stacking. |
-| v2.14.0 | LLM Wiki gaps: metadata sidebar, confidence badges, provenance markers, archived toggle, lint view, detect_drift, validate_frontmatter, archive_old, rotate_log |
-| v2.13.0 | Live status indicator, change toasts, heartbeat polling |
-| v2.12.0 | Goal progress removed, status-only goals |
-| v2.11.0 | Project kanban filters (all, no-goal, by-goal) |
-| v2.10.0 | URL deep-linking, graph legends, consistent branding |
-| v2.9.x | UI refactor: sidebar, tabs, Heroicons, wiki page layout, project view, lint |
 
 ### Pitfalls
 
 - **CREATION_ORDER**: las relaciones mandan. Ver setup_contexts() en brain.py.
 - **Self-ref fields**: `brain_pages` auto-relaciones (`related_pages`, `project`, `todo_goal`) y relaciones cruzadas (`brain_log.page`, `brain_page_versions.page`) se agregan con PATCH post-creación. Ver `setup_contexts()` en `brain.py`.
 - **Naming**: campo relation se llama `context` y la colección padre es `brain_contexts`.
+- **`nuke_context()` NO borra el schema**: `nuke_context()` solo trunca registros. Para un reset real de schema (renombrar campos, quitar campos legacy), hay que borrar las colecciones explícitamente con `pb._request('DELETE', '/api/collections/{name}')` y luego `setup_contexts()`. Ver `references/schema-refactor-patterns.md`.
+- **`create_page` recibe slugs en campos relation**: el agente y `seed.py` pueden pasar `project="slug-proyecto"` o `todo_goal="slug-goal"`. `brain.py` resuelve esos slugs a IDs de PocketBase antes de crear el registro. Si un script propio falla con KeyError 'id' al crear un registro con relación, probablemente está enviando un slug en vez de un ID.
 - **`_get_page()` returns error dicts on 404, not None**: PocketBase devuelve `{"data":{}, "message":"not found", "status":404}` cuando una página no existe. La función `_get_page()` lo retorna directamente. **Siempre verifica `'id' in result` antes de usar cualquier campo del dict retornado.** Usa `page = self._get_page(slug); if page and 'id' in page:` como patrón.
 - **PocketBase schema updates**: `setup_contexts()` solo CREA colecciones que no existen. No actualiza colecciones existentes con nuevos campos o valores. Para actualizar una colección existente:
   1. Usar `pb.import_collections()` con el schema completo (requiere resolver IDs de relaciones a pbc_xxx)
@@ -544,3 +531,6 @@ El skill tiene documentación detallada referenciada. Carga cada archivo solo cu
 - **Every hash-driven walkthrough must leave exactly one active view**: after navigating to any `#tab=...`, `#project=...`, or `#page=...` URL, run `document.querySelectorAll('#main > div.active').length === 1`. More than one means a view activation pitfall. See `references/ui-validation-checklist.md`.
 - **Mobile header must stack title → breadcrumb → select**: on narrow viewports, the `.view-header` should use a flex column layout where the H1 is first, the breadcrumb is second, and the filter select is third. Do not leave them in a single horizontal row. This is the expected mobile layout. See `references/ui-validation-checklist.md`.
 - **Screenshots and README must be refreshed together after UI changes**: when the user asks to update screenshots, follow the workflow in `references/screenshots-readme-workflow.md`: delete old PNGs, capture each view, update README paths/captions, sync runtime→repo, commit, and push.
+- **Schema reset pitfall**: `nuke_context()` truncates records but leaves old collections and fields. To actually reset a PocketBrain schema (e.g., after renaming `brain`→`context`, dropping `domain`, or adding prefixed fields), delete collections explicitly before calling `setup_contexts()`. See `references/schema-refactor-patterns.md`.
+- **Relation slug→ID resolution**: high-level API methods like `create_goal(..., project="slug")` or `create_todo(..., todo_goal="slug")` work because `create_page()` resolves relation slugs to PocketBase IDs before sending the payload. If you write custom scripts that bypass `create_page()`, you must resolve relation slugs yourself or PocketBase will reject the record with a relation validation error.
+- **Dense seed data pattern**: `seed.py` creates contexts and ~89+ pages per context covering all page types, with cross-links via `[[wikilinks]]` and `project` relations. After schema changes, run `seed.py [context...]` against a clean instance to validate end-to-end data creation and relations.
