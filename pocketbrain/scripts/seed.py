@@ -96,14 +96,14 @@ def seed_context(ctx_name: str):
         create(title, body, 'raw', kb_confidence='high', tags=['paper'])
 
     # ── PROJECTS ──
-    project_slugs = {}
+    project_map = {}
     for title, body, status, owner, deadline in [
         ("PocketBrain", "Herramienta de gestion de conocimiento sobre [[PocketBase]].\n\nStack: [[PocketBase]]+[[PostgreSQL]], vanilla JS, [[vis.js]].\nFeatures: [[Auto-linking]], [[Backlinks]], [[Graph view]].", "active", "dev-team", (TODAY + timedelta(days=90)).isoformat()),
         ("Rediseno Web", "Migrar sitio corporativo a [[Next.js]]+[[Tailwind CSS]].\n\nObjetivos: Performance 95+, SEO, CMS headless.", "planned", "design-team", (TODAY + timedelta(days=120)).isoformat()),
         ("Migracion Kubernetes", "Migrar infraestructura a [[Kubernetes]] en [[AWS]] [[EKS]].\n\nAlcance: 15 microservicios, [[PostgreSQL]]+[[Redis]].\nPipeline: [[CI/CD]] con [[GitHub Actions]].", "active", "ops-team", (TODAY + timedelta(days=180)).isoformat()),
     ]:
         p = brain.create_project(title=title, body=body, status=status, owner=owner, deadline=deadline, tags=['project'])
-        project_slugs[title] = p['slug']
+        project_map[title] = p['slug']
         created += 1
 
     # ── GOALS + MILESTONES ──
@@ -118,7 +118,7 @@ def seed_context(ctx_name: str):
         if deadline:
             kw['deadline'] = deadline
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         g = brain.create_goal(title=title, **kw)
         created += 1
 
@@ -131,7 +131,7 @@ def seed_context(ctx_name: str):
     ]:
         kw = {'status': status, 'deadline': deadline}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_milestone(title=title, **kw)
         created += 1
 
@@ -143,7 +143,7 @@ def seed_context(ctx_name: str):
     ]:
         kw = {'status': status}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_plan(title=title, body=body, **kw)
         created += 1
 
@@ -157,7 +157,7 @@ def seed_context(ctx_name: str):
     ]:
         kw = {'status': status}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_idea(title=title, body=body, **kw)
         created += 1
 
@@ -170,7 +170,7 @@ def seed_context(ctx_name: str):
     ]:
         kw = {}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_note(title=title, body=body, **kw)
         created += 1
 
@@ -197,7 +197,7 @@ def seed_context(ctx_name: str):
     ]:
         kw = {'status': status}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_todo(title=title, **kw)
         created += 1
 
@@ -217,7 +217,7 @@ def seed_context(ctx_name: str):
     for title, d, t, project_title in reminders_data:
         kw = {'date': d, 'time': t}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_reminder(title=title, **kw)
         created += 1
 
@@ -236,7 +236,7 @@ def seed_context(ctx_name: str):
     for days_ago, mood, body, project_title in journal_entries:
         kw = {'date': (TODAY - timedelta(days=days_ago)).isoformat(), 'mood': mood}
         if project_title:
-            kw['project'] = project_slugs[project_title]
+            kw['project'] = project_map[project_title]
         brain.create_journal(title=f"Journal {TODAY - timedelta(days=days_ago)}", body=body, **kw)
         created += 1
 

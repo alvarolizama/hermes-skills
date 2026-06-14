@@ -1557,10 +1557,11 @@ class Brain:
 
     # ── Goals / Milestones ─────────────────────────────────────
 
-    def list_goals(self, project_slug: Optional[str] = None,
+    def list_goals(self, project: Optional[str] = None,
                    type: Optional[str] = None,
                    status: Optional[str] = None) -> list:
         """Lista goals como paginas con page_type."""
+        project_slug = project
         filters = {}
         if type:
             filters['page_type'] = type
@@ -1582,9 +1583,10 @@ class Brain:
     def update_goal(self, goal_id: str, **updates) -> dict:
         return self.update_page(goal_id, **updates)
 
-    def get_goal_tree(self, project_slug: Optional[str] = None) -> list:
+    def get_goal_tree(self, project: Optional[str] = None) -> list:
         """Devuelve goals como lista plana."""
-        return self.list_goals(project_slug=project_slug)
+        project_slug = project
+        return self.list_goals(project=project_slug)
 
     # ── Reports (predefined structured output) ───────────────────
 
@@ -1607,8 +1609,9 @@ class Brain:
             })
         return result
 
-    def report_project_status(self, project_slug: str) -> dict:
+    def report_project_status(self, project: str) -> dict:
         """Status completo de un proyecto: goals, todos, reminders, journal, notas."""
+        project_slug = project
         project = self._get_page(project_slug, expand='related_pages,tags')
         if not project:
             raise ValueError(f"Proyecto '{project_slug}' no encontrado")
@@ -1643,8 +1646,9 @@ class Brain:
             }
         }
 
-    def report_todos(self, status: Optional[str] = None, project_slug: Optional[str] = None) -> list:
+    def report_todos(self, status: Optional[str] = None, project: Optional[str] = None) -> list:
         """Reporte de todos con metadatos útiles."""
+        project_slug = project
         todos = self.todos(status=status)
         if project_slug:
             project = self._get_page(project_slug)

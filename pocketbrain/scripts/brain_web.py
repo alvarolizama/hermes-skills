@@ -97,9 +97,10 @@ def report_project_status(ctx, slug):
     brain = get_brain(ctx)
     return brain.report_project_status(slug)
 
-def report_todos(ctx, status=None, project_slug=None):
+def report_todos(ctx, status=None, project=None):
     brain = get_brain(ctx)
-    return brain.report_todos(status=status, project_slug=project_slug)
+    project_slug = project
+    return brain.report_todos(status=status, project=project_slug)
 
 def report_journal(ctx, days=7):
     brain = get_brain(ctx)
@@ -470,7 +471,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             elif path.startswith("/api/reports/project/"):
                 self.serve_json(report_project_status(ctx, path.split('/')[-1]))
             elif path == "/api/reports/todos":
-                self.serve_json(report_todos(ctx, status=qs.get('status', [None])[0], project_slug=qs.get('project', [None])[0]))
+                self.serve_json(report_todos(ctx, status=qs.get('status', [None])[0], project=qs.get('project', [None])[0]))
             elif path == "/api/reports/journal":
                 self.serve_json(report_journal(ctx, days=int(qs.get('days', ['7'])[0] or '7')))
             elif path == "/api/reports/reminders":
